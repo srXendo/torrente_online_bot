@@ -199,26 +199,31 @@ function get_action(){
     const ping = Buffer.from("3f02970d9a35fcaf", 'hex')
             
     if(!start){
-        setTimeout(()=>{
+        start = true
+
             
-                arr_actions.push(Buffer.from('3f00c80a001a58656e646f3300000000000000000000000e000000000000000000000363011070b21900020b0610'.replace(user_name.toString('hex'), user_bot.toString('hex')), 'hex'))
+            arr_actions.push(Buffer.from('3f004f0c010e000000000000000000000363011070b21900020b0610'.replace(user_name.toString('hex'), user_bot.toString('hex')), 'hex'))
+            start = true
+
+
             
-        }, 4000)
-        setTimeout(()=>{
+            arr_actions.push(Buffer.from('3f02500bfdd63373', 'hex'))
+            start = true
             
-                arr_actions.push(Buffer.from('3f00240b010e0000ad78a40db02df2170363011070b21900020b0610', 'hex'))
-                start = true
-        }, 4200)
         return ping
     }else if(arr_actions.length === 0){
-        setTimeout(()=>{
-            
-                arr_actions.push(Buffer.from('3f005a1e0101644522c31cc65a55b244281a11c51a68803f', 'hex'))
-                start = true
-        }, 4200)
+
         return ping
     }else{
         
         return arr_actions.shift(0);
     }
+}
+send_msg_chat_bot()
+function send_msg_chat_bot(){
+    setInterval(()=>{
+        arr_actions.push(Buffer.from('3f00f01101fbff6573746f7964656e74726f20792070756e746f6b61646a61646164610019000000050000001f71da0c01000000020000004022250ca436061000000000', 'hex'))
+    },5000)
+    
+                
 }
