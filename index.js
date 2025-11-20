@@ -2,6 +2,7 @@ const dgram = require('dgram');
 const server = dgram.createSocket('udp4');
 let ip_server = '192.168.1.134'
 let port_server = 8888
+const user_fix_name = Buffer.from('Xendo3', 'ascii')
 const user_name = Buffer.from('Xendo', 'ascii')
 const user_bot = Buffer.from('Bot01', 'ascii')
 let party = null
@@ -193,18 +194,31 @@ function replace_name_map(buffer, new_name_map){
     return copy
 }
 const arr_actions = []
+let start = false
 function get_action(){
     const ping = Buffer.from("3f02970d9a35fcaf", 'hex')
             
-    if(arr_actions.length === 0){
+    if(!start){
         setTimeout(()=>{
-            if(arr_actions.length === 0){
-                arr_actions.push(Buffer.from('3f000b0f000a8ad8cfe000262d02e98db4c6b71484c21c305b45', 'hex'))
-            }
-        }, 200)
+            
+                arr_actions.push(Buffer.from('3f00c80a001a58656e646f3300000000000000000000000e000000000000000000000363011070b21900020b0610'.replace(user_name.toString('hex'), user_bot.toString('hex')), 'hex'))
+            
+        }, 4000)
+        setTimeout(()=>{
+            
+                arr_actions.push(Buffer.from('3f00240b010e0000ad78a40db02df2170363011070b21900020b0610', 'hex'))
+                start = true
+        }, 4200)
+        return ping
+    }else if(arr_actions.length === 0){
+        setTimeout(()=>{
+            
+                arr_actions.push(Buffer.from('3f005a1e0101644522c31cc65a55b244281a11c51a68803f', 'hex'))
+                start = true
+        }, 4200)
         return ping
     }else{
         
-        return ping//arr_actions.shift(0);
+        return arr_actions.shift(0);
     }
 }
