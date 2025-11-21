@@ -2,6 +2,7 @@ const dgram = require('dgram');
 const server = dgram.createSocket('udp4');
 let ip_server = '192.168.1.134'
 let port_server = 8888
+const buffer_session = Buffer.from('9a35fcbf', 'hex')
 const user_fix_name = Buffer.from('Xendo3', 'ascii')
 const user_name = Buffer.from('Xendo', 'ascii')
 const user_bot = Buffer.from('Bot01', 'ascii')
@@ -12,7 +13,7 @@ function handler_message(msg, rinfo){
         case 0x3700:
             console.log('msg: No uknow: ', '0x3700')
             
-            const ok = Buffer.from("3f0200009a35fcaf", 'hex')
+            const ok = Buffer.from("3f020404c3d31a57", 'hex')
             ok.writeUint8(msg.readUint8(3), 2)
             ok.writeUint8(msg.readUint8(2), 3)
             return ok
@@ -21,7 +22,7 @@ function handler_message(msg, rinfo){
         case 0x3f00:
             console.log('msg: No uknow: ', '0x3f000')
 
-                const ok2 = Buffer.from("3f0200009a35fcaf", 'hex')
+                const ok2 = Buffer.from("3f020404c3d31a57", 'hex')
                 ok2.writeUint8(msg.readUint8(3), 2)
                 ok2.writeUint8(msg.readUint8(2), 3)
                 return ok2
@@ -51,12 +52,12 @@ function handler_message(msg, rinfo){
         case 0x8802:
             console.log('msg: firstStage: ', "0x8802")
             const session = Buffer.from('7f000100c100000002000000070000005800000014000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000430068006100760061006c006f00740065000000','hex')
-            server.send(Buffer.from("80020100060001009a35fcaf2a758a00", "hex"), port_server, ip_server, (err)=>{
+            server.send(Buffer.from("8002010006000100c3d31a57e665f602", "hex"), port_server, ip_server, (err)=>{
                 if(err){
                     console.error(`Error al enviar la respuesta: ${err.message}`);                    
                 }
             })
-            server.send(Buffer.from("3f0200009a35fcaf", 'hex'), port_server, ip_server, (err)=>{
+            server.send(Buffer.from("3f020000c3d31a57", 'hex'), port_server, ip_server, (err)=>{
                 if(err){
                     console.error(`Error al enviar la respuesta: ${err.message}`);                    
                 }
@@ -67,7 +68,7 @@ function handler_message(msg, rinfo){
             console.log('headers msg: helloServe: ', "0x0003")
             party = extract_data(msg)
             console.log(party)
-            return Buffer.from("88010000060001009a35fcaf18758a00", 'hex')
+            return Buffer.from("8801000006000100c3d31a57e665f602", 'hex')
         break;
         default: 
             console.log("err: msg not recognice: ",msg.toString('hex'))
@@ -196,20 +197,18 @@ function replace_name_map(buffer, new_name_map){
 const arr_actions = []
 let start = false
 function get_action(){
-    const ping = Buffer.from("3f02970d9a35fcaf", 'hex')
+    const ping = Buffer.from("3f020404c3d31a57", 'hex')
             
     if(!start){
         start = true
 
             
-            arr_actions.push(Buffer.from('3f004f0c010e000000000000000000000363011070b21900020b0610'.replace(user_name.toString('hex'), user_bot.toString('hex')), 'hex'))
+            arr_actions.push(Buffer.from('3f001376010e0000261370c522beb644d58c1dc614ae473f010b0610'.replace(user_name.toString('hex'), user_bot.toString('hex')), 'hex'))
             start = true
+            arr_actions.push(Buffer.from('3f008714010d100101803f261370c55b55b244d58c1dc6771ef013', 'hex'))
+            
 
 
-            
-            arr_actions.push(Buffer.from('3f02500bfdd63373', 'hex'))
-            start = true
-            
         return ping
     }else if(arr_actions.length === 0){
 
@@ -221,8 +220,16 @@ function get_action(){
 }
 send_msg_chat_bot()
 function send_msg_chat_bot(){
-    setInterval(()=>{
+    setInterval(()=>{             
+        //4022250ca4360610
+        //363011070b21900020b0610
+        //3f00f01101fbff6573746f7964656e74726f20792070756e746f6b61646a61646164610019000000050000001f71da0c01000000020000004022250ca436061000000000                                                                                               
         arr_actions.push(Buffer.from('3f00f01101fbff6573746f7964656e74726f20792070756e746f6b61646a61646164610019000000050000001f71da0c01000000020000004022250ca436061000000000', 'hex'))
+        arr_actions.push(Buffer.from('3f00d932010c060101803f140319c65b55b2446e2a11c6110ef013010afe0ce150','hex'))
+        setTimeout(()=>{
+            arr_actions.push(Buffer.from('3f00f2320101803f104620c65b55b244608c08c64507f013','hex'))
+            
+        },300)
     },5000)
     
                 
