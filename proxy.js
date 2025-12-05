@@ -11,7 +11,7 @@ server.on('message', (msg, rinfo) => {
         ip_client = rinfo.address
         port_client = rinfo.port
     }
-    console.log(`Mensaje recibido: ${rinfo.address}:${rinfo.port}\n${msg.toString('hex')}`);
+   console.log(`Mensaje recibido: ${rinfo.address}:${rinfo.port}\n${msg.toString('hex')}`);
    
     // Procesar el mensaje recibido
         // Enviar la respuesta al cliente
@@ -19,21 +19,28 @@ server.on('message', (msg, rinfo) => {
     let port_response =  rinfo.port === port_client ? port_server: port_client
     let ip_response = rinfo.address === ip_client ? ip_server : ip_client
     counter ++
+    if(ip_response === ip_server){
+      if(msg.readUInt8(0) === 0x3f && msg.readUInt8(1) === 0x00){
+       //console.log('client action: ', msg)
+      }else if(msg.readUInt8(0) === 0x3f){
+        //console.log('0x3f: ', msg)
+      }
+    }
     server.send(msg, port_response, ip_response, (err) => {
       if (err) {
         console.error(`Error al enviar la respuesta: ${err.message}`);
       } else {
-        console.log(`Respuesta enviada: ${ip_response}:${port_response}`);
+       console.log(`Respuesta enviada: ${ip_response}:${port_response}`);
           
       }
-      console.log(`------FIN DEL MENSAJE------`);
+     //console.log(`------FIN DEL MENSAJE------`);
     });
 });
 
 server.on('listening', () => {
   const address = server.address();
-  console.log(`Servidor UDP escuchando en ${address.address}:${address.port}`);
-  console.log(`------INICIO DE LA ESCUCHA------`);
+ console.log(`Servidor UDP escuchando en ${address.address}:${address.port}`);
+ console.log(`------INICIO DE LA ESCUCHA------`);
 });
 
 server.on('error', (err) => {

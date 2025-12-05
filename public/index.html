@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>three.js FPS / Strafe</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+</head>
+<body>
+
+<script type="importmap">
+{
+"imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+}
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+const raycaster = new THREE.Raycaster();
+const playerHeight = 1.6;
+const collisionDistance = 0.2; // distancia mínima antes de chocar
+
+function checkCollision(dirVector) {
+    const playerPos = controls.object.position.clone();
+    playerPos.y -= playerHeight / 2; // poner ray desde los pies
+    raycaster.set(playerPos, dirVector.clone().normalize());
+    
+    const intersects = raycaster.intersectObjects(scene.children, true)
+        .filter(obj => obj.object !== controls.object); // ignorar la cámara
+
+    if (intersects.length > 0 && intersects[0].distance < collisionDistance) {
+        return true; // hay colisión
+    }
+    return false;
+}
+let camera, scene, renderer, controls, object;
+const move = { forward: false, backward: false, left: false, right: false };
+const speed = 0.05;
+let object2
+init();
+
+async function init() {
+    camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 1.6, 2.5);
+
+    scene = new THREE.Scene();
+
+    const ambientLight = new THREE.AmbientLight(0xffffff);
+    scene.add(ambientLight);
+
+    const pointLight = new THREE.PointLight(0xffffff, 1);
+    camera.add(pointLight);
+    scene.add(camera);
+
+    // Cargar OBJ
+    const objLoader = new OBJLoader().setPath('./');
+    object = await objLoader.loadAsync('map.obj');
+    object.position.y = -0.95;
+    object.scale.setScalar(0.01);
+    scene.add(object);
+
+    object2 = await objLoader.loadAsync('model.bot.obj');
+    object2.position.y = -0;
+    object2.position.x = 0;
+    object2.position.z = 0;
+    object2.scale.setScalar(1);
+    scene.add(object2);
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    document.body.appendChild(renderer.domElement);
+
+    // PointerLockControls
+    controls = new PointerLockControls(camera, renderer.domElement);
+    scene.add(controls); // agregar el objeto de controles directamente
+
+    // Click sobre canvas para activar pointer lock
+    renderer.domElement.addEventListener('click', () => controls.lock());
+
+    // Teclado
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keyup', onKeyUp);
+
+    window.addEventListener('resize', onWindowResize);
+
+    animate();
+
+}
+
+function onKeyDown(event) {
+    switch(event.code) {
+        case 'KeyW': move.forward = true; break;
+        case 'KeyS': move.backward = true; break;
+        case 'KeyA': move.left = true; break;
+        case 'KeyD': move.right = true; break;
+    }
+}
+
+function onKeyUp(event) {
+    switch(event.code) {
+        case 'KeyW': move.forward = false; break;
+        case 'KeyS': move.backward = false; break;
+        case 'KeyA': move.left = false; break;
+        case 'KeyD': move.right = false; break;
+    }
+}
+
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
+function connect(){
+    const source  = new EventSource('/api/connect')
+    console.log("-->2", source) 
+    source.onerror = (err)=>{
+        console.error(new Error(err.stack))
+    }
+    source.onmessage = (msg)=>{
+
+        let res_json = null 
+        try{
+            res_json = JSON.parse(msg.data)
+            process_action(res_json)
+        }catch(err){
+            console.error(new Error('sse stream msg not a json'))
+        }
+    }
+    source.onopen = (msg)=>{
+        console.log('open sse')
+    }
+}
+function animate() {
+    requestAnimationFrame(animate);
+
+    if (controls.isLocked) {
+        const dir = new THREE.Vector3();
+        controls.getDirection(dir);
+        dir.y = 0;
+        dir.normalize();
+
+        const right = new THREE.Vector3();
+        right.crossVectors(dir, camera.up).normalize();
+
+        const obj = controls.object;
+
+        if (move.forward && !checkCollision(dir)) obj.position.add(dir.clone().multiplyScalar(speed));
+        if (move.backward && !checkCollision(dir.clone().multiplyScalar(-1))) obj.position.add(dir.clone().multiplyScalar(-speed));
+        if (move.left && !checkCollision(right.clone().multiplyScalar(-1))) obj.position.add(right.clone().multiplyScalar(-speed));
+        if (move.right && !checkCollision(right)) obj.position.add(right.clone().multiplyScalar(speed));
+    }
+
+    renderer.render(scene, camera);
+}
+connect()
+function process_action(action){
+    console.log(action)
+    switch(action.type_action){
+        case 'camera':
+            move_camera(action.value_action)    
+        break;
+    }
+}
+function move_camera(y){
+     object2.rotation.y = y
+}
+</script>
+</body>
+</html>
