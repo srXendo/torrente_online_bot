@@ -226,9 +226,9 @@ function get_action(){
         start = true
 
             
-            arr_actions.push(Buffer.from('3f001376010e0000261370c522beb644d58c1dc614ae473f010b0610'.replace(user_name.toString('hex'), user_bot.toString('hex')), 'hex'))
+            arr_actions.push(Buffer.from('3f001376010e0000261370c522beb644d58c1dc614ae473f010b0610'.replace('261370c5', buffer_session.toString('hex')), 'hex'))
             start = true
-            arr_actions.push(Buffer.from('3f008714010d100101803f261370c55b55b244d58c1dc6771ef013', 'hex'))
+            arr_actions.push(Buffer.from('3f008714010d100101803f261370c55b55b244d58c1dc6771ef013'.replace('261370c5', buffer_session.toString('hex')), 'hex'))
             
 
 
