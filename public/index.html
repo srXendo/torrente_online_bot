@@ -127,7 +127,9 @@ function connect(){
             res_json = JSON.parse(msg.data)
             process_action(res_json)
         }catch(err){
+            console.log(msg)
             console.error(new Error('sse stream msg not a json'))
+            console.error(new Error(err))
         }
     }
     source.onopen = (msg)=>{
@@ -161,10 +163,77 @@ function process_action(action){
     console.log(action)
     switch(action.type_action){
         case 'camera':
-            move_camera(action.value_action)    
+            move_camera(action.value_action)
+        break;
+        case 'move':
+            botMoving = !action.value_action ? false : true
+            if(action.value_action === 'a' && directionKeys === 'd'){
+                return false
+            }
+            if(action.value_action === 'd' && directionKeys === 'a'){
+                return false
+            }
+            if(action.value_action === 'w' && directionKeys === 's'){
+                return false
+            }
+            if(action.value_action === 's' && directionKeys === 'w'){
+                return false
+            }
+            directionKeys = action.value_action
+            move_model();
         break;
     }
 }
+let botMoving = false; // indica si el bot está en movimiento
+let directionKeys = false
+function move_model() {
+        // Si directionKeys es null, detenemos el movimiento
+    if (!directionKeys || !botMoving) {
+        botMoving = false;
+        return;
+    }else{
+        
+        if (!object2) return;
+
+
+
+        const speed = 0.05;
+
+        // Vector de dirección basado en la rotación del modelo
+        const forward = new THREE.Vector3(
+            Math.sin(object2.rotation.y),
+            0,
+            Math.cos(object2.rotation.y)
+        ).normalize();
+
+        const right = new THREE.Vector3(
+            Math.sin(object2.rotation.y + Math.PI / 2),
+            0,
+            Math.cos(object2.rotation.y + Math.PI / 2)
+        ).normalize();
+
+        // Movimiento según las teclas
+        if (directionKeys.includes("w")) object2.position.add(forward.clone().multiplyScalar(-speed));
+        if (directionKeys.includes("s")) object2.position.add(forward.clone().multiplyScalar(speed));
+        if (directionKeys.includes("d")) object2.position.add(right.clone().multiplyScalar(speed));
+        if (directionKeys.includes("a")) object2.position.add(right.clone().multiplyScalar(-speed));
+
+        // Renderizamos después de mover
+        renderer.render(scene, camera);
+        setTimeout(()=>{
+            if(!directionKeys || !botMoving){
+                return
+            }else{
+                move_model(directionKeys)
+            }
+        },1)
+        
+    }
+
+}
+
+
+
 function move_camera(y){
      object2.rotation.y = y
 }

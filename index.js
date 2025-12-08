@@ -281,6 +281,8 @@ function users_actions(msg){
 const obj_key_press = {pressed_key: null, is_pressed: false}
 function user_move(msg){
     const pressed_key= msg.readUInt8(6) //pressed key
+    obj_key_press.pressed_key = null
+    obj_key_press.pressed_key = false
     switch(pressed_key){
         case 0x0c: 
             //derecha
@@ -304,10 +306,36 @@ function user_move(msg){
             break;
         case 0x07:
             //up press key byte
-            obj_key_press.pressed_key = null;
+            obj_key_press.pressed_key = false;
             is_pressed = false
             break;
+
+        case 63:
+            //a + w
+            obj_key_press.pressed_key = 'a+w'
+            obj_key_press.is_pressed = true
+            break;
+        case 64:  
+            //w + d
+            obj_key_press.pressed_key = 'w+d'
+            obj_key_press.is_pressed = true
+            break;
+        case 65:
+            //a + s
+            obj_key_press.pressed_key = 'a+s'
+            obj_key_press.is_pressed = true
+            break;
+        case 66:
+            //s + d
+            obj_key_press.pressed_key = 's+d'
+            obj_key_press.is_pressed = true
+
+            break;
+        default:
+            console.log('key not recognice: ', pressed_key )
+            break;
     }
+    bot_helper.send_event(JSON.stringify({type_action: 'move', value_action: obj_key_press.pressed_key}))
 }
 function user_camera(msg){
     const moviment= msg.readUInt8(6) //pressed key
@@ -344,6 +372,6 @@ process.on('SIGINT', () => {
     });
     setTimeout(()=>{
         process.exit(0)
-    }, 2000)
+    }, 500)
 })
 //<Buffer 3f 00 1f 7a 00 0a 27 c2 e4 02>
