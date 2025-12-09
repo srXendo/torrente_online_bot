@@ -4,7 +4,7 @@ const bot_helper = new c_bot_helper()
 const c_apis = require('./apis/index.api')
 const apis = new c_apis(bot_helper)
 const server = dgram.createSocket('udp4');
-let ip_server = '192.168.1.135'
+let ip_server = '192.168.1.134'
 let port_server = 8888
 const buffer_session = 'cac340f2'
 const max_name_byte = 16
@@ -224,9 +224,11 @@ function get_action(){
             
     if(!start){
         start = true
-
-            
-            arr_actions.push(Buffer.from('3f001376010e0000261370c522beb644d58c1dc614ae473f010b0610'.replace('261370c5', buffer_session.toString('hex')), 'hex'))
+            const pj_setup = Buffer.from('3f001376010e0000261370c522beb644d58c1dc614ae473f010b0610'.replace('261370c5', buffer_session.toString('hex')), 'hex')
+            pj_setup.writeUInt8(0x02, pj_setup.length-3) //modelo byte 0x00 torrente 0x0b yonki
+            pj_setup.writeUInt8(0x00, pj_setup.length-4) //equipo byte 0x00 0x00 random 0x01 amarillo 0x02 rojo
+            arr_actions.push(pj_setup)
+            console.log
             start = true
             arr_actions.push(Buffer.from('3f008714010d100101803f261370c55b55b244d58c1dc6771ef013'.replace('261370c5', buffer_session.toString('hex')), 'hex'))
             
