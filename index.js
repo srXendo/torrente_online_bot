@@ -226,11 +226,11 @@ function get_action(){
         start = true
             const pj_setup = Buffer.from('3f001376010e0000261370c522beb644d58c1dc614ae473f010b0610'.replace('261370c5', buffer_session.toString('hex')), 'hex')
             pj_setup.writeUInt8(0x02, pj_setup.length-3) //modelo byte 0x00 torrente 0x0b yonki
-            pj_setup.writeUInt8(0x00, pj_setup.length-4) //equipo byte 0x00 0x00 random 0x01 amarillo 0x02 rojo
+            pj_setup.writeUInt8(0x02, pj_setup.length-4) //equipo byte 0x02 random 0x01 amarillo 0x00 rojo
+            pj_setup.writeUInt8(0x02, pj_setup.length- 10) //numero de jugador 0x01 jugador 1 0x02 jugador 2
             arr_actions.push(pj_setup)
-            console.log
             start = true
-            arr_actions.push(Buffer.from('3f008714010d100101803f261370c55b55b244d58c1dc6771ef013'.replace('261370c5', buffer_session.toString('hex')), 'hex'))
+            arr_actions.push(Buffer.from('3f00800d000d1000010000e55e1d465c55b244ba37d045f6a30000'.replace('261370c5', buffer_session.toString('hex')), 'hex'))
             
 
 
