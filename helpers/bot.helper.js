@@ -1,4 +1,4 @@
-module.exports = class bot_helper{
+module.exports = class BotHelper{
     #stream = null
     constructor(){
     }

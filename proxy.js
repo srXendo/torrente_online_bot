@@ -11,7 +11,7 @@ server.on('message', (msg, rinfo) => {
         ip_client = rinfo.address
         port_client = rinfo.port
     }
-   console.log(`Mensaje recibido: ${rinfo.address}:${rinfo.port}\n${msg.toString('hex')}`);
+   //console.log(`Mensaje recibido: ${rinfo.address}:${rinfo.port}\n${msg.toString('hex')}`);
    
     // Procesar el mensaje recibido
         // Enviar la respuesta al cliente
@@ -20,17 +20,17 @@ server.on('message', (msg, rinfo) => {
     let ip_response = rinfo.address === ip_client ? ip_server : ip_client
     counter ++
     if(ip_response === ip_server){
-      if(msg.readUInt8(0) === 0x3f && msg.readUInt8(1) === 0x00){
-       //console.log('client action: ', msg)
+      if(msg.readUInt8(0) === 0x3f && msg.readUInt8(1) === 0x00 && msg.readUInt8(10) === 0x0d){
+       console.log('client die: ', msg)
       }else if(msg.readUInt8(0) === 0x3f){
         //console.log('0x3f: ', msg)
       }
     }
     server.send(msg, port_response, ip_response, (err) => {
       if (err) {
-        console.error(`Error al enviar la respuesta: ${err.message}`);
+        //console.error(`Error al enviar la respuesta: ${err.message}`);
       } else {
-       console.log(`Respuesta enviada: ${ip_response}:${port_response}`);
+       //console.log(`Respuesta enviada: ${ip_response}:${port_response}`);
           
       }
      //console.log(`------FIN DEL MENSAJE------`);
