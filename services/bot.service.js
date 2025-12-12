@@ -273,17 +273,47 @@ module.exports = class BotService{
         
                     
     }
+convertirHP(msg) {
+    // Suponiendo que los bytes del HP son msg[7], msg[8], msg[9]
+    // Ajusta índices según el patrón de tus paquetes
+    const hp_raw = (msg[7] << 16) | (msg[8] << 8) | msg[9];
+
+    // Normalizamos el valor
+    const HPmax_raw = 0xffffff; // máximo valor posible de 3 bytes
+    const HPmin_raw = 0x000000; // mínimo valor posible
+    let hpPercent = ((hp_raw - HPmin_raw) / (HPmax_raw - HPmin_raw)) * 100;
+
+    // Opcional: ajustar a saltos
+    if(hpPercent > 74) return 100;
+    else if(hpPercent > 45) return 74;
+    else if(hpPercent > 10) return 45;
+    else return 0;
+}
+
 
     users_actions(msg){
         const action = msg.readUInt8(5) //action player byte
         switch(action){
             case 0x0c:
-                console.log('any user mov')
-                this.user_move(msg)
+                //console.log('any user mov')
+                //this.user_move(msg)
             break;
             case 0x0a:
+                //this.user_camera(msg)
+            break;
+            case 0xfc: 
+                console.log('any user impact other user: ', msg.toString('hex'))
+               // console.log('hp: ', this.convertirHP(msg))
                 
-                this.user_camera(msg)
+                break;
+            case 0xed:
+                console.log('any player death')
+                break;
+            case 0x0e: 
+                console.log('respawn any player')
+                break;
+            case 0x26:
+                console.log('shot air', msg)    
             break;
             default:
                 break;
