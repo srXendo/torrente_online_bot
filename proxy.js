@@ -11,7 +11,7 @@ server.on('message', (msg, rinfo) => {
         ip_client = rinfo.address
         port_client = rinfo.port
     }
-   console.log(`Mensaje recibido: ${rinfo.address}:${rinfo.port}\n${msg.toString('hex')}`);
+   //console.log(`Mensaje recibido: ${rinfo.address}:${rinfo.port}\n${msg.toString('hex')}`);
    
     // Procesar el mensaje recibido
         // Enviar la respuesta al cliente
@@ -30,12 +30,14 @@ server.on('message', (msg, rinfo) => {
       }else if(msg.readUInt8(0) === 0x3f && msg.readUInt8(1) === 0x00 && msg.readUInt8(5) === 0x26){
         //console.log('what?: ', msg)
         no_call = false
+      }else if(msg.readUInt8(0) === 0x3f && msg.readUInt8(1) === 0x00 && msg.readUInt8(5) === 0xfc ){
+        console.log('life: ', msg.readUInt8(10))
       }
 
     }
     if(port_response === port_server){
       if(msg.readUInt8(0) === 0x3f && msg.readUInt8(1) === 0x00 && msg.readUInt8(5) === 0x05){
-       console.log('esto muerto ', msg)
+      // console.log('esto muerto ', msg)
         no_call = false
       }
 
@@ -43,12 +45,12 @@ server.on('message', (msg, rinfo) => {
     if(!no_call ){
       server.send(msg, port_response, ip_response, (err) => {
         if (err) {
-          console.error(`Error al enviar la respuesta: ${err.message}`);
+          //console.error(`Error al enviar la respuesta: ${err.message}`);
         } else {
-        console.log(`Respuesta enviada: ${ip_response}:${port_response}`);
+        //console.log(`Respuesta enviada: ${ip_response}:${port_response}`);
             
         }
-      console.log(`------FIN DEL MENSAJE------`);
+      //console.log(`------FIN DEL MENSAJE------`);
       });
     }
 });
