@@ -1,0 +1,174 @@
+any user impact other user:  3f0096550bfce7e7e71d500300
+hp:  80
+any user impact other user:  3f0099970bfcebebeb1d3c0300
+hp:  60
+any user impact other user:  3f009a9e0bfce8e8e81d280300
+hp:  40
+any user impact other user:  3f009bca0bfcf4f4f41d1a1400
+hp:  26
+any user impact other user:  3f009ddf0bfceaeaea1d060300
+hp:  6
+any user impact other user:  3f009e0b0bfceaeaea1d00030000c30e001d0000c30f000b000bf91d1000409c46
+hp:  0
+bot11 muere
+
+any user impact other user:  3f00657204fcfdfdfd1d560e00
+hp:  86
+any user impact other user:  3f006a6704fc0101011d480e00
+hp:  72
+any user impact other user:  3f006be904fc0c0c0c1d3a0e00
+hp:  58
+err: msg not recognice:  <Buffer 80 04 01 00 06 00 01 00 ca c3 40 25 89 12 2b 00>
+Error: msg not recognice
+    at BotService.handler_message (D:\Users\Xendo\Microservices\torrente_online_bot\services\bot.service.js:150:31)
+    at Socket.<anonymous> (D:\Users\Xendo\Microservices\torrente_online_bot\services\bot.service.js:49:35)
+    at Socket.emit (node:events:524:28)
+    at UDP.onMessage [as onmessage] (node:dgram:951:8)
+err: msg not recognice:  <Buffer 80 04 02 00 06 00 01 00 ca c3 40 25 99 12 2b 00>
+Error: msg not recognice
+    at BotService.handler_message (D:\Users\Xendo\Microservices\torrente_online_bot\services\bot.service.js:150:31)
+    at Socket.<anonymous> (D:\Users\Xendo\Microservices\torrente_online_bot\services\bot.service.js:49:35)
+    at Socket.emit (node:events:524:28)
+    at UDP.onMessage [as onmessage] (node:dgram:951:8)
+err: msg not recognice:  <Buffer 80 04 03 00 06 00 01 00 ca c3 40 25 aa 12 2b 00>
+Error: msg not recognice
+    at BotService.handler_message (D:\Users\Xendo\Microservices\torrente_online_bot\services\bot.service.js:150:31)
+    at Socket.<anonymous> (D:\Users\Xendo\Microservices\torrente_online_bot\services\bot.service.js:49:35)
+    at Socket.emit (node:events:524:28)
+    at UDP.onMessage [as onmessage] (node:dgram:951:8)
+err: msg not recognice:  <Buffer 80 04 01 00 06 00 01 00 ca c3 40 26 b9 13 2b 00>
+Error: msg not recognice
+    at BotService.handler_message (D:\Users\Xendo\Microservices\torrente_online_bot\services\bot.service.js:150:31)
+    at Socket.<anonymous> (D:\Users\Xendo\Microservices\torrente_online_bot\services\bot.service.js:49:35)
+    at Socket.emit (node:events:524:28)
+    at UDP.onMessage [as onmessage] (node:dgram:951:8)
+err: msg not recognice:  <Buffer 80 04 02 00 06 00 01 00 ca c3 40 26 c9 13 2b 00>
+    at Socket.<anonymous> (D:\Users\Xendo\Microservices\torrente_online_bot\services\bot.service.js:49:35)
+    at Socket.emit (node:events:524:28)
+    at UDP.onMessage [as onmessage] (node:dgram:951:8)
+err: msg not recognice:  <Buffer 80 04 02 00 06 00 01 00 ca c3 40 26 c9 13 2b 00>
+Error: msg not recognice
+    at BotService.handler_message (D:\Users\Xendo\Microservices\torrente_online_bot\services\bot.service.js:150:31)
+    at Socket.<anonymous> (D:\Users\Xendo\Microservices\torrente_online_bot\services\bot.service.js:49:35)
+    at Socket.emit (node:events:524:28)
+    at UDP.onMessage [as onmessage] (node:dgram:951:8)
+err: msg not recognice:  <Buffer 80 04 03 00 06 00 01 00 ca c3 40 26 d9 13 2b 00>
+Error: msg not recognice
+    at BotService.handler_message (D:\Users\Xendo\Microservices\torrente_online_bot\services\bot.service.js:150:31)
+    at Socket.<anonymous> (D:\Users\Xendo\Microservices\torrente_online_bot\services\bot.service.js:49:35)
+    at Socket.emit (node:events:524:28)
+    at UDP.onMessage [as onmessage] (node:dgram:951:8)
+any user impact other user:  3f00dc5604fce9e9e91d260300
+hp:  38
+any user impact other user:  3f00de9304fce9e9e91d120300
+hp:  18
+any user impact other user:  3f00f2c204fce8e8e81d00030000c30f00040004f91d1000409c46
+hp:  0
+bot_04 muere
+
+any user impact other user:  3f00657204fcfdfdfd1d560e00
+hp:  86
+any user impact other user:  3f006a6704fc0101011d480e00
+hp:  72
+any user impact other user:  3f006be904fc0c0c0c1d3a0e00
+hp:  58
+err: msg not recognice:  <Buffer 80 04 01 00 06 00 01 00 ca c3 40 25 89 12 2b 00>
+Error: msg not recognice
+    at BotService.handler_message (D:\Users\Xendo\Microservices\torrente_online_bot\services\bot.service.js:150:31)
+    at Socket.<anonymous> (D:\Users\Xendo\Microservices\torrente_online_bot\services\bot.service.js:49:35)
+    at Socket.emit (node:events:524:28)
+    at UDP.onMessage [as onmessage] (node:dgram:951:8)
+err: msg not recognice:  <Buffer 80 04 02 00 06 00 01 00 ca c3 40 25 99 12 2b 00>
+Error: msg not recognice
+    at BotService.handler_message (D:\Users\Xendo\Microservices\torrente_online_bot\services\bot.service.js:150:31)
+    at Socket.<anonymous> (D:\Users\Xendo\Microservices\torrente_online_bot\services\bot.service.js:49:35)
+    at Socket.emit (node:events:524:28)
+    at UDP.onMessage [as onmessage] (node:dgram:951:8)
+err: msg not recognice:  <Buffer 80 04 03 00 06 00 01 00 ca c3 40 25 aa 12 2b 00>
+Error: msg not recognice
+    at BotService.handler_message (D:\Users\Xendo\Microservices\torrente_online_bot\services\bot.service.js:150:31)
+    at Socket.<anonymous> (D:\Users\Xendo\Microservices\torrente_online_bot\services\bot.service.js:49:35)
+    at Socket.emit (node:events:524:28)
+    at UDP.onMessage [as onmessage] (node:dgram:951:8)
+err: msg not recognice:  <Buffer 80 04 01 00 06 00 01 00 ca c3 40 26 b9 13 2b 00>
+Error: msg not recognice
+    at BotService.handler_message (D:\Users\Xendo\Microservices\torrente_online_bot\services\bot.service.js:150:31)
+    at Socket.<anonymous> (D:\Users\Xendo\Microservices\torrente_online_bot\services\bot.service.js:49:35)
+    at Socket.emit (node:events:524:28)
+    at UDP.onMessage [as onmessage] (node:dgram:951:8)
+err: msg not recognice:  <Buffer 80 04 02 00 06 00 01 00 ca c3 40 26 c9 13 2b 00>
+    at Socket.<anonymous> (D:\Users\Xendo\Microservices\torrente_online_bot\services\bot.service.js:49:35)
+    at Socket.emit (node:events:524:28)
+    at UDP.onMessage [as onmessage] (node:dgram:951:8)
+err: msg not recognice:  <Buffer 80 04 02 00 06 00 01 00 ca c3 40 26 c9 13 2b 00>
+Error: msg not recognice
+    at BotService.handler_message (D:\Users\Xendo\Microservices\torrente_online_bot\services\bot.service.js:150:31)
+    at Socket.<anonymous> (D:\Users\Xendo\Microservices\torrente_online_bot\services\bot.service.js:49:35)
+    at Socket.emit (node:events:524:28)
+    at UDP.onMessage [as onmessage] (node:dgram:951:8)
+err: msg not recognice:  <Buffer 80 04 03 00 06 00 01 00 ca c3 40 26 d9 13 2b 00>
+Error: msg not recognice
+    at BotService.handler_message (D:\Users\Xendo\Microservices\torrente_online_bot\services\bot.service.js:150:31)\bot.service.js:150:31)                                                                     vice.js:49:35)
+    at Socket.<anonymous> (D:\Users\Xendo\Microservices\torrente_online_bot\services\bot.service.js:49:35)
+    at Socket.emit (node:events:524:28)
+    at UDP.onMessage [as onmessage] (node:dgram:951:8)
+any user impact other user:  3f00dc5604fce9e9e91d260300
+hp:  38
+any user impact other user:  3f00de9304fce9e9e91d120300
+hp:  18
+any user impact other user:  3f00f2c204fce8e8e81d00030000c30f00040004f91d1000409c46
+hp:  0
+bot 11
+
+any user impact other user:  3f00231f14fce8e8e81d4b0300
+hp:  75
+any user impact other user:  3f00245d14fce8e8e81d320300
+hp:  50
+any user impact other user:  3f0025ab14fce8e8e81d190300
+hp:  25
+any user impact other user:  3f0026ee14fce8e8e81d00030014f91d0500409c46
+hp:  0
+bot 20 muere
+
+
+any user impact other user:  3f00d4ce01fcf5f5f51d521400
+hp:  82
+any user impact other user:  3f00d51c01fcf5f5f51d411400
+hp:  65
+any user impact other user:  3f00d66801fcf5f5f51d2f1400
+hp:  47
+any user impact other user:  3f00d7a801fcf4f4f41d1e1400
+hp:  30
+any user impact other user:  3f00d8e801fcf4f4f41d0c1400
+hp:  12
+any user impact other user:  3f00d93001fcf4f4f41d00140000c30f00010001f91d0500409c46
+hp:  0
+bot 01 muere
+
+any user impact other user:  3f000c1f17fc0202021d521900
+hp:  82
+any user impact other user:  3f000d8417fc0101011d411900
+hp:  65
+any user impact other user:  3f000ec317fc0202021d2f1900
+hp:  47
+any user impact other user:  3f000f0117fc0101011d1e1900
+hp:  30
+any user impact other user:  3f00103717fc0202021d0c1900
+hp:  12
+any user impact other user:  3f00119e17fc0202021d00190017f91d0500409c46
+hp:  0
+bot23 muere
+
+any user impact other user:  3f00483e11fcfbfbfb1d521400
+hp:  82
+any user impact other user:  3f00497711fcfbfbfb1d411400
+hp:  65
+any user impact other user:  3f004ab011fcfbfbfb1d2f1400
+hp:  47
+any user impact other user:  3f004be611fcfbfbfb1d1e1400
+hp:  30
+any user impact other user:  3f00596e11fc0909091d0c1800
+hp:  12
+any user impact other user:  3f0061c311fc0b0b0b1d00190011f91d0500409c46
+hp:  0
+bot17 muere

@@ -7,7 +7,7 @@ const c_apis = require('./apis/index.api')
 const apis = new c_apis(bot_helper)
 const BotService = require('./services/bot.service')
 const bots = []
-for(let i = 0; i< 31; i++){
+for(let i = 0; i< 30; i++){
     setTimeout(()=>{
         bots.push(new BotService(ip_server, port_server, i, bot_helper))
 
