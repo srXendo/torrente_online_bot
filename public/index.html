@@ -23,7 +23,7 @@ import { PointerLockControls } from 'three/addons/controls/PointerLockControls.j
 const raycaster = new THREE.Raycaster();
 const playerHeight = 1.6;
 const collisionDistance = 0.2; // distancia mínima antes de chocar
-
+let objLoader = null
 function checkCollision(dirVector) {
     const playerPos = controls.object.position.clone();
     playerPos.y -= playerHeight / 2; // poner ray desde los pies
@@ -57,7 +57,7 @@ async function init() {
     scene.add(camera);
 
     // Cargar OBJ
-    const objLoader = new OBJLoader().setPath('./');
+    objLoader = new OBJLoader().setPath('./');
     object = await objLoader.loadAsync('map.obj');
     object.position.y = -0.95;
     object.scale.setScalar(0.01);
@@ -159,7 +159,7 @@ function animate() {
     renderer.render(scene, camera);
 }
 connect()
-function process_action(action){
+async function process_action(action){
     console.log(action)
     switch(action.type_action){
         case 'camera':
@@ -181,6 +181,14 @@ function process_action(action){
             }
             directionKeys = action.value_action
             move_model();
+        break;
+        case 'spawn':
+            const bot = object2.clone(true);
+            bot.position.y = action.value_action.y / 100 //ingame z
+            bot.position.x = action.value_action.x / 100
+            bot.position.z = action.value_action.z / 100
+            bot.scale.setScalar(1);
+            scene.add(bot);
         break;
     }
 }

@@ -22,7 +22,7 @@ module.exports = class BotService{
         this.bot_helper = bot_helper
         this.#ip_server = ip_server
         this.#port_server = port_server
-        console.log(`${bot_number}`.padStart(2, '0'))
+        //console.log(`${bot_number}`.padStart(2, '0'))
         this.buffer_session = (this.buffer_session + `${bot_number}`.padStart(2, '0'))
         this.user_bot = Buffer.from(('Bot'+`${bot_number}`.padStart(2, "0")), 'ascii')
     }
@@ -37,10 +37,10 @@ module.exports = class BotService{
                 if (err) {
                     console.error(`Error al clientHello: ${err.message}`);
                 } else {
-                    console.log(`clientHello enviada: ${this.#ip_server}:${this.#port_server}`);
+                    //console.log(`clientHello enviada: ${this.#ip_server}:${this.#port_server}`);
                     
                 }
-                console.log(`------FIN DEL clientHello------`);
+                //console.log(`------FIN DEL clientHello------`);
             });
         });
         this.#server.on('message', (msg, rinfo) => {
@@ -108,14 +108,12 @@ module.exports = class BotService{
                 return action_response
             break;
             case 0x7f00:
-                //console.log('msg: session: ', '0x7f00', replace_name_map(Buffer.from(("3f000302000058656e646f00000000000000000000000b02000000000000000000000806000000004d505f444f5f504c415a41000000000070b5190090b51900be000000b0b4190001000000010000000500000074b31900c7932b5380b3190001000000102d6903").replace(user_name.toString('hex'), user_bot.toString('hex')), 'hex'), party.mapName).toString('hex'))
                 //this.dpnid = msg.slice(164, 167)
                 const before_name = Buffer.from("3f0003020000",'hex')
                 const name = Buffer.from(this.user_bot.toString('hex').padEnd(this.max_name_byte * 2, "0"), 'hex')
                 const after_name_before_map_name = Buffer.from('0b0200000000000000000000080600000003', 'hex')
                 
                 const map_name = Buffer.from(this.party.mapNameBuff.toString('hex').padEnd(this.max_map_name_byte * 2, "0"), 'hex')//Buffer.from("000000034d505f444d545f5645525449474f0000000000",'hex')
-                console.log(map_name)
                 const after_map_name = Buffer.from('90b51900be000000b0b4190001000000010000000500000074b31900c7932b5380b3190001000000102d6903','hex')
                 return this.replace_name_map((Buffer.concat([before_name, name, after_name_before_map_name, map_name, after_map_name])), this.party.mapName)
                 
@@ -273,9 +271,9 @@ module.exports = class BotService{
         
                     
     }
-convertirHP(msg) {
-    return msg.readUInt8(10);
-}
+    convertirHP(msg) {
+        return msg.readUInt8(10);
+    }
 
     users_actions(msg){
         const action = msg.readUInt8(5) //action player byte
@@ -294,7 +292,7 @@ convertirHP(msg) {
                     console.log(`${this.user_bot} ha sido impactado por: other user. `)
                     console.log(`${this.user_bot} vida restante: `, msg.readUInt8(10))
                     if(msg.readUInt8(10) === 0){
-                        console.log(`${msg.readUInt8(10)}: ha muerto. `)
+                        console.log(`ha muerto: ${this.user_bot}`)
                         const pj_setup = Buffer.from('3f001376030e0000261370c522beb644d58c1dc614ae473f010b0610'.replace('261370c5', this.buffer_session.toString('hex')), 'hex')
                         pj_setup.writeUInt8(this.bot_number, 4) //byte ultimo numero de jugadores en partida 0x00
                         pj_setup.writeUInt8(0x02, 25) //modelo byte 0x00 torrente 0x0b yonki
@@ -309,7 +307,7 @@ convertirHP(msg) {
                             console.log(`------FIN DEL BOTDIE------`);
                         });
                         const buff2 = Buffer.from('3f00314a100510788359e5c50038ed4020aa83c5','hex')
-                         buff2.writeUInt8(this.bot_number, 4) //byte ultimo numero de jugadores en partida 0x00
+                        buff2.writeUInt8(this.bot_number, 4) //byte ultimo numero de jugadores en partida 0x00
                         this.#server.send(buff2, this.#port_server, this.#ip_server, (err) => {
                             if (err) {
                                 console.error(`Error al BOTDIE2: ${err.message}`);
@@ -331,7 +329,8 @@ convertirHP(msg) {
                 break;
             case 0x0e:
                 if(this.bot_number === 0){
-                    console.log('respawn any player')
+                    console.log('respawn any player: ', msg.toString('hex'), this.extractRespawnXZR(msg) )
+                    this.bot_helper.send_event(JSON.stringify({type_action: 'spawn', value_action: this.extractRespawnXZR(msg)}))
                 }
                 break;
             case 0x26:
@@ -341,7 +340,28 @@ convertirHP(msg) {
                 break;
         }
     }
-    
+    extractRespawnXZR(buffer) {
+
+        // Delimitador final del bloque de respawn
+        const marker = Buffer.from('0610', 'hex');
+        const markerIndex = buffer.indexOf(marker)-2;
+
+        if (markerIndex < -1 || markerIndex < 16) {
+            console.error('Bloque de respawn no encontrado')
+        }
+
+        // Inicio del bloque X Y Z R
+        const baseOffset = markerIndex - 16;
+
+        const x = buffer.readFloatLE(baseOffset);
+        const y = buffer.readFloatLE(baseOffset + 4);
+        const z = buffer.readFloatLE(baseOffset + 8);
+        const r = buffer.readFloatLE(baseOffset + 12);
+        const bot = buffer.readUInt8(4)
+        return { x, y, z, r, bot };
+
+    }
+
     user_move(msg){
         const pressed_key= msg.readUInt8(6) //pressed key
         this.obj_key_press.pressed_key = null
@@ -402,7 +422,7 @@ convertirHP(msg) {
     }
     user_camera(msg){
         const moviment= msg.readUInt8(6) //pressed key
-        console.log('any user move camera: ',msg.readUInt16LE(6),msg.readUInt8(6), msg.readUInt8(7) ,msg)
+        //console.log('any user move camera: ',msg.readUInt16LE(6),msg.readUInt8(6), msg.readUInt8(7) ,msg)
         
         this.bot_helper.send_event(JSON.stringify({type_action: 'camera', value_action:((msg.readUInt8(7) / 255) * 360) * (Math.PI / 180)}))
 
