@@ -279,8 +279,11 @@ module.exports = class BotService{
         const action = msg.readUInt8(5) //action player byte
         switch(action){
             case 0x0c:
+                if(this.bot_number === 0){
+                    this.user_move(msg)
+                }                
                 //console.log('any user mov')
-                //this.user_move(msg)
+                //
             break;
             case 0x0a:
                 //this.user_camera(msg)
@@ -330,7 +333,8 @@ module.exports = class BotService{
             case 0x0e:
                 if(this.bot_number === 0){
                     console.log('respawn any player: ', msg.toString('hex'), this.extractRespawnXZR(msg) )
-                    this.bot_helper.send_event(JSON.stringify({type_action: 'spawn', value_action: this.extractRespawnXZR(msg)}))
+                    const bot = buffer.readUInt8(4)
+                    this.bot_helper.send_event(JSON.stringify({type_action: 'spawn', value_action: this.extractRespawnXZR(msg), id_bot: bot}))
                 }
                 break;
             case 0x26:
@@ -357,13 +361,14 @@ module.exports = class BotService{
         const y = buffer.readFloatLE(baseOffset + 4);
         const z = buffer.readFloatLE(baseOffset + 8);
         const r = buffer.readFloatLE(baseOffset + 12);
-        const bot = buffer.readUInt8(4)
+        
         return { x, y, z, r, bot };
 
     }
 
     user_move(msg){
         const pressed_key= msg.readUInt8(6) //pressed key
+        const id_bot = msg.readUInt8(4)
         this.obj_key_press.pressed_key = null
         this.obj_key_press.pressed_key = false
         switch(pressed_key){
@@ -418,11 +423,9 @@ module.exports = class BotService{
                 console.log('key not recognice: ', pressed_key )
                 break;
         }
-        this.bot_helper.send_event(JSON.stringify({type_action: 'move', value_action: this.obj_key_press.pressed_key}))
+        this.bot_helper.send_event(JSON.stringify({type_action: 'move', value_action: this.obj_key_press.pressed_key, id_bot: id_bot}))
     }
     user_camera(msg){
-        const moviment= msg.readUInt8(6) //pressed key
-        //console.log('any user move camera: ',msg.readUInt16LE(6),msg.readUInt8(6), msg.readUInt8(7) ,msg)
         
         this.bot_helper.send_event(JSON.stringify({type_action: 'camera', value_action:((msg.readUInt8(7) / 255) * 360) * (Math.PI / 180)}))
 
