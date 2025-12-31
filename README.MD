@@ -7,3 +7,4 @@ features: </br>
 por defecto </br>
 let ip_server = '192.168.1.134' </br>
 let port_server = 8888 </br>
+
