@@ -8,3 +8,4 @@ por defecto </br>
 let ip_server = '192.168.1.134' </br>
 let port_server = 8888 </br>
 
+![imagen de los bots](https://github.com/srXendo/torrente_online_bot/blob/master/public/image.jpg?raw=true)
