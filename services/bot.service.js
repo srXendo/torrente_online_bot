@@ -296,20 +296,21 @@ module.exports = class BotService{
                     console.log(`${this.user_bot} vida restante: `, msg.readUInt8(10))
                     if(msg.readUInt8(10) === 0){
                         console.log(`ha muerto: ${this.user_bot}`)
-                        const pj_setup = Buffer.from('3f001376030e0000261370c522beb644d58c1dc614ae473f010b0610'.replace('261370c5', this.buffer_session.toString('hex')), 'hex')
-                        pj_setup.writeUInt8(this.bot_number, 4) //byte ultimo numero de jugadores en partida 0x00
-                        pj_setup.writeUInt8(0x02, 25) //modelo byte 0x00 torrente 0x0b yonki
-                        pj_setup.writeUInt8(0x02, 24) //equipo byte 0x02 random 0x01 amarillo 0x00 rojo
-                        this.#server.send(pj_setup, this.#port_server, this.#ip_server, (err) => {
-                            if (err) {
-                                console.error(`Error al BOTDIE: ${err.message}`);
-                            } else {
-                                console.log(`BOTDIE enviada: ${this.#ip_server}:${this.#port_server}`);
-                                
-                            }
-                            console.log(`------FIN DEL BOTDIE------`);
-                        });
-                        const buff2 = Buffer.from('3f00314a100510788359e5c50038ed4020aa83c5','hex')
+                        
+                            const pj_setup = Buffer.from('3f001d0a010e000000000000000000000363011070b21900021c0610', 'hex')
+                            pj_setup.writeUInt8(this.bot_number, 4) //byte ultimo numero de jugadores en partida 0x00
+                            this.#server.send(pj_setup, this.#port_server, this.#ip_server, (err) => {
+                                if (err) {
+                                    console.error(`Error al BOTDIE: ${err.message}`);
+                                } else {
+                                    console.log(`BOTDIE enviada: ${this.#ip_server}:${this.#port_server}`);
+                                    
+                                }
+                                console.log(`------FIN DEL BOTDIE------`);
+                            });
+                        
+
+                        /*const buff2 = Buffer.from('3f00314a100510788359e5c50038ed4020aa83c5','hex')
                         buff2.writeUInt8(this.bot_number, 4) //byte ultimo numero de jugadores en partida 0x00
                         this.#server.send(buff2, this.#port_server, this.#ip_server, (err) => {
                             if (err) {
@@ -319,7 +320,7 @@ module.exports = class BotService{
                                 
                             }
                             console.log(`------FIN DEL BOTDIE------`);
-                        });               
+                        });         */      
                     }
                     
                 }
@@ -332,9 +333,9 @@ module.exports = class BotService{
                 break;
             case 0x0e:
                 if(this.bot_number === 0){
-                    console.log('respawn any player: ', msg.toString('hex'), this.extractRespawnXZR(msg) )
-                    const bot = buffer.readUInt8(4)
-                    this.bot_helper.send_event(JSON.stringify({type_action: 'spawn', value_action: this.extractRespawnXZR(msg), id_bot: bot}))
+                    //console.log('respawn any player: ', msg.toString('hex'), this.extractRespawnXZR(msg) )
+                    //const bot = buffer.readUInt8(4)
+                    //this.bot_helper.send_event(JSON.stringify({type_action: 'spawn', value_action: this.extractRespawnXZR(msg), id_bot: bot}))
                 }
                 break;
             case 0x26:
@@ -437,7 +438,7 @@ module.exports = class BotService{
         client action:  <Buffer 3f 01 dd 0e 00 02>
         client action:  <Buffer 3f 08 de 0e>
         */
-        this.#server.send(Buffer.from('3f08e60f', 'hex'), this.#port_server, this.#ip_server, (err) => {
+        this.#server.send(Buffer.from('3f08f618', 'hex'), this.#port_server, this.#ip_server, (err) => {
             if (err) {
                 console.error(`Error al clientDisconnect: ${err.message}`);
             } else {
@@ -446,7 +447,7 @@ module.exports = class BotService{
             }
             console.log(`------FIN DEL clientDisconnect------`);
         });
-        this.#server.send('3f08fc89',this.#port_server, this.#ip_server, (err) => {
+        this.#server.send('3f08f618',this.#port_server, this.#ip_server, (err) => {
             if (err) {
                 console.error(`Error al clientDisconnect: ${err.message}`);
             } else {
