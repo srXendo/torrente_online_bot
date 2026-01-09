@@ -7,11 +7,19 @@ const c_apis = require('./apis/index.api')
 const apis = new c_apis(bot_helper)
 const BotService = require('./services/bot.service')
 const bots = []
-for(let i = 0; i< 30; i++){
+let first = true
+for(let i = 1; i< 31; i++){
     setTimeout(()=>{
-        bots.push(new BotService(ip_server, port_server, i, bot_helper))
 
-        bots[i].connect()
+        const bot = new BotService(ip_server, port_server, i, bot_helper, first)
+        bot.connect()
+        bots.push(bot)
+
+        setInterval(()=>{
+            //console.log('bot start_move')
+            bots[i-1].start_move()
+        }, 200)
+        first = false
     }, 300*i)
 }
 

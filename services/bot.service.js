@@ -17,7 +17,10 @@ module.exports = class BotService{
     bot_helper = null
     user_bot = null
     bot_number = null 
-    constructor(ip_server, port_server, bot_number, bot_helper){
+    move = false;
+    bot_master = null;
+    constructor(ip_server, port_server, bot_number, bot_helper, bot_master){
+        this.bot_master = bot_master
         this.bot_number = bot_number
         this.bot_helper = bot_helper
         this.#ip_server = ip_server
@@ -246,8 +249,8 @@ module.exports = class BotService{
 
             return ping
         }else{
-            
-            return this.arr_actions.shift(0);
+            const returned = this.arr_actions.shift(0);
+            return returned
         }
     }
 
@@ -279,7 +282,7 @@ module.exports = class BotService{
         const action = msg.readUInt8(5) //action player byte
         switch(action){
             case 0x0c:
-                if(this.bot_number === 0){
+                if(this.bot_master){
                     this.user_move(msg)
                 }                
                 //console.log('any user mov')
@@ -296,19 +299,22 @@ module.exports = class BotService{
                     console.log(`${this.user_bot} vida restante: `, msg.readUInt8(10))
                     if(msg.readUInt8(10) === 0){
                         console.log(`ha muerto: ${this.user_bot}`)
-                        
-                            const pj_setup = Buffer.from('3f001d0a010e000000000000000000000363011070b21900021c0610', 'hex')
-                            pj_setup.writeUInt8(this.bot_number, 4) //byte ultimo numero de jugadores en partida 0x00
-                            this.#server.send(pj_setup, this.#port_server, this.#ip_server, (err) => {
-                                if (err) {
-                                    console.error(`Error al BOTDIE: ${err.message}`);
-                                } else {
-                                    console.log(`BOTDIE enviada: ${this.#ip_server}:${this.#port_server}`);
-                                    
-                                }
-                                console.log(`------FIN DEL BOTDIE------`);
-                            });
-                        
+                        const pj_setup = Buffer.from('3f001376030e0000261370c522beb644d58c1dc614ae473f010b0610'.replace('261370c5', this.buffer_session.toString('hex')), 'hex')
+                        pj_setup.writeUInt8(this.bot_number, 4) //byte ultimo numero de jugadores en partida 0x00
+                        pj_setup.writeUInt8(0x02, 25) //modelo byte 0x00 torrente 0x0b yonki
+                        pj_setup.writeUInt8(0x02, 24) //equipo byte 0x02 random 0x01 amarillo 0x00 rojo
+                        //pj_setup.writeUInt8(0x02, pj_setup.length- 10) //numero de jugador 0x01 jugador 1 0x02 jugador 2
+
+                        this.start = true
+                        const pj_response = Buffer.from('3f00800d000d1000010000e55e1d465c55b244ba37d045f6a30000'.replace('261370c5', this.buffer_session.toString('hex')), 'hex')
+                        //pj_response.writeUInt8(this.bot_number+1, 4)
+
+
+                        pj_setup.writeUInt8(this.bot_number, 4) //byte ultimo numero de jugadores en partida 0x00
+                        this.arr_actions.push(pj_setup)
+                        this.arr_actions.push(pj_response)
+
+                    
 
                         /*const buff2 = Buffer.from('3f00314a100510788359e5c50038ed4020aa83c5','hex')
                         buff2.writeUInt8(this.bot_number, 4) //byte ultimo numero de jugadores en partida 0x00
@@ -327,16 +333,18 @@ module.exports = class BotService{
                 
                 break;
             case 0xed:
-                if(this.bot_number === 0){
+                if(this.bot_master){
                     console.log('any player death')
                 }
                 break;
             case 0x0e:
-                if(this.bot_number === 0){
-                    //console.log('respawn any player: ', msg.toString('hex'), this.extractRespawnXZR(msg) )
-                    //const bot = buffer.readUInt8(4)
-                    //this.bot_helper.send_event(JSON.stringify({type_action: 'spawn', value_action: this.extractRespawnXZR(msg), id_bot: bot}))
-                }
+                const bot = msg.readUInt8(4)
+                console.log('respawn any player: ', msg.toString('hex'), this.extractRespawnXZR(msg, bot) )
+
+                    
+                    
+                    this.bot_helper.send_event(JSON.stringify({type_action: 'spawn', value_action: this.extractRespawnXZR(msg, bot), id_bot: bot}))
+
                 break;
             case 0x26:
                // console.log('shot air', msg)    
@@ -345,7 +353,7 @@ module.exports = class BotService{
                 break;
         }
     }
-    extractRespawnXZR(buffer) {
+    extractRespawnXZR(buffer, bot) {
 
         // Delimitador final del bloque de respawn
         const marker = Buffer.from('0610', 'hex');
@@ -438,7 +446,9 @@ module.exports = class BotService{
         client action:  <Buffer 3f 01 dd 0e 00 02>
         client action:  <Buffer 3f 08 de 0e>
         */
-        this.#server.send(Buffer.from('3f08f618', 'hex'), this.#port_server, this.#ip_server, (err) => {
+        this.arr_actions.push(Buffer.from('3f08f618', 'hex'))
+
+        /*this.#server.send(Buffer.from('3f08f618', 'hex'), this.#port_server, this.#ip_server, (err) => {
             if (err) {
                 console.error(`Error al clientDisconnect: ${err.message}`);
             } else {
@@ -455,6 +465,23 @@ module.exports = class BotService{
                 
             }
             console.log(`------FIN DEL clientDisconnect------`);
-        });
+        });*/
+    }
+    start_move(){
+
+        let msg = null
+
+        if(this.move){
+            const pj_3 = Buffer.from('3f00b91b030c0d', 'hex')
+            pj_3.writeUInt8(this.bot_number, 4)
+            this.arr_actions.push(pj_3)
+        }else{
+            const pj_3 = Buffer.from('3f00b91b030c0c', 'hex')
+            pj_3.writeUInt8(this.bot_number, 4)
+            this.arr_actions.push(pj_3)
+        }
+
+        this.move = !this.move
+
     }
 }
