@@ -1,9 +1,9 @@
 const dgram = require('dgram');
 const server = dgram.createSocket('udp4');
 let n_msg = {}
-let ip_server = '90.77.110.70'
+let ip_server = '192.168.1.135'
 let ip_client
-let port_server = 8889
+let port_server = 8888
 let port_client
 counter = 0;
 server.on('message', (msg, rinfo) => {

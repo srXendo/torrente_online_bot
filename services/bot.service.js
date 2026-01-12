@@ -19,65 +19,76 @@ module.exports = class BotService{
     bot_number = null 
     move = false;
     bot_master = null;
-    constructor(ip_server, port_server, bot_number, bot_helper, bot_master){
+    constructor(ip_server, port_server, bot_helper, bot_master){
         this.bot_master = bot_master
-        this.bot_number = bot_number
+
         this.bot_helper = bot_helper
         this.#ip_server = ip_server
         this.#port_server = port_server
         //console.log(`${bot_number}`.padStart(2, '0'))
-        this.buffer_session = (this.buffer_session + `${bot_number}`.padStart(2, '0'))
-        this.user_bot = Buffer.from(('Bot'+`${bot_number}`.padStart(2, "0")), 'ascii')
+
     }
-    connect(){
-        this.#server = dgram.createSocket('udp4');
-        const helloClient = Buffer.from("00026128011242191fb8bb154e4401763631007932","hex")
-        this.#server.on('listening', () => {
-            const address = this.#server.address();
-            //console.log(`Servidor UDP escuchando en ${address.address}:${address.port}`);
-            //console.log(`------INICIO DE LA ESCUCHA------`);
-            this.#server.send(helloClient, this.#port_server, this.#ip_server, (err) => {
-                if (err) {
-                    console.error(`Error al clientHello: ${err.message}`);
-                } else {
-                    //console.log(`clientHello enviada: ${this.#ip_server}:${this.#port_server}`);
-                    
-                }
-                //console.log(`------FIN DEL clientHello------`);
-            });
-        });
-        this.#server.on('message', (msg, rinfo) => {
-            //console.log(`Mensaje recibido: ${rinfo.address}:${rinfo.port}\n${msg.toString('hex')}`);
-            //console.log('handler_message')
-            const response = this.handler_message(msg, rinfo)
-            if(response){
-
-
-                this.#server.send(response, this.#port_server, this.#ip_server, (err) => {
-                if (err) {
-                    console.error(`Error al enviar la respuesta: ${err.message}`);
-                } else {
-                    //console.log(`Respuesta enviada: ${ip_server}:${port_server}`);
-                    
-                }
-                
-                //console.log(`------FIN DEL MENSAJE------`);
+    connect(bot_number){
+        this.bot_number = bot_number
+        this.buffer_session = (this.buffer_session + `${bot_number}`.padStart(2, '0'))
+        this.user_bot = Buffer.from(('Bot'+`${bot_number}`.padStart(2, "0")), 'ascii')        
+        return new Promise((resolve, reject)=>{
+            this.#server = dgram.createSocket('udp4');
+            const helloClient = Buffer.from("00026128011242191fb8bb154e4401763631007932","hex")
+            this.#server.on('listening', () => {
+                const address = this.#server.address();
+                //console.log(`Servidor UDP escuchando en ${address.address}:${address.port}`);
+                //console.log(`------INICIO DE LA ESCUCHA------`);
+                this.#server.send(helloClient, this.#port_server, this.#ip_server, (err) => {
+                    if (err) {
+                        console.error(`Error al clientHello: ${err.message}`);
+                    } else {
+                        //console.log(`clientHello enviada: ${this.#ip_server}:${this.#port_server}`);
+                        
+                    }
+                    //console.log(`------FIN DEL clientHello------`);
                 });
-            }
-        });
-        this.#server.on('error', (err) => {
-            console.error(`Error en el servidor: ${err.message}`);
-            this.#server.close();
-        });
-        const HOST = '0.0.0.0';
-        this.#server.bind(HOST);
+            });
+            this.#server.on('message', (msg, rinfo) => {
+                //console.log(`Mensaje recibido: ${rinfo.address}:${rinfo.port}\n${msg.toString('hex')}`);
+                //console.log('handler_message')
+                const response = this.handler_message(msg, rinfo)
+                if(response){
+
+
+                    this.#server.send(response, this.#port_server, this.#ip_server, (err) => {
+                    if (err) {
+                        console.error(`Error al enviar la respuesta: ${err.message}`);
+                    } else {
+                        //console.log(`Respuesta enviada: ${ip_server}:${port_server}`);
+                        
+                    }
+                    
+                    //console.log(`------FIN DEL MENSAJE------`);
+                    });
+                }
+            });
+            this.#server.on('error', (err) => {
+                console.error(`Error en el servidor: ${err.message}`);
+                this.#server.close();
+            });
+            const HOST = '0.0.0.0';
+            this.#server.bind(HOST);
+        })
+        
     }
     handler_message(msg, rinfo){
+        //console.log('new msg: ', msg)
         const headers = msg.readUInt16BE(0)
         switch(headers){
+            case 0x3f09:
+                this.disconnect()
+                break;
             case 0x3f08:
                 //disconnect
-                console.log('disconnected bot ')
+
+                this.server_down()
+                console.log('server is down');
                 break;
             case 0x3700:
                 //console.log('msg: No uknow: ', '0x3700')
@@ -105,7 +116,7 @@ module.exports = class BotService{
 
             case 0x8006:
                 //console.log('msg: main bucle: ', '0x8006')
-                const action_response = this.get_action()
+                const action_response = this.get_action(msg)
                 action_response.writeUint8(msg.readUint8(5), 2)
                 action_response.writeUint8(msg.readUint8(4), 3)
                 return action_response
@@ -115,7 +126,7 @@ module.exports = class BotService{
                 const before_name = Buffer.from("3f0003020000",'hex')
                 const name = Buffer.from(this.user_bot.toString('hex').padEnd(this.max_name_byte * 2, "0"), 'hex')
                 const after_name_before_map_name = Buffer.from('0b0200000000000000000000080600000003', 'hex')
-                
+                this.arr_actions.push(Buffer.from("7f000202c3000000", 'hex'))
                 const map_name = Buffer.from(this.party.mapNameBuff.toString('hex').padEnd(this.max_map_name_byte * 2, "0"), 'hex')//Buffer.from("000000034d505f444d545f5645525449474f0000000000",'hex')
                 const after_map_name = Buffer.from('90b51900be000000b0b4190001000000010000000500000074b31900c7932b5380b3190001000000102d6903','hex')
                 return this.replace_name_map((Buffer.concat([before_name, name, after_name_before_map_name, map_name, after_map_name])), this.party.mapName)
@@ -239,10 +250,15 @@ module.exports = class BotService{
             pj_setup.writeUInt8(0x02, 25) //modelo byte 0x00 torrente 0x0b yonki
             pj_setup.writeUInt8(0x02, 24) //equipo byte 0x02 random 0x01 amarillo 0x00 rojo
             //pj_setup.writeUInt8(0x02, pj_setup.length- 10) //numero de jugador 0x01 jugador 1 0x02 jugador 2
-            this.arr_actions.push(pj_setup)
+
             this.start = true
             const pj_response = Buffer.from('3f00800d000d1000010000e55e1d465c55b244ba37d045f6a30000'.replace('261370c5', this.buffer_session.toString('hex')), 'hex')
             //pj_response.writeUInt8(this.bot_number+1, 4)
+            pj_response.writeUInt8(this.bot_number, 4) //byte ultimo numero de jugadores en partida 0x00
+            //
+            setTimeout(()=>{
+                this.arr_actions.push(pj_setup)
+            }, 1000*this.bot_number)
             this.arr_actions.push(pj_response)
             return ping
         }else if(this.arr_actions.length === 0){
@@ -279,14 +295,25 @@ module.exports = class BotService{
     }
 
     users_actions(msg){
+        //console.log('new userActions: ', msg)
+        const bot = msg.readUInt8(4)
         const action = msg.readUInt8(5) //action player byte
         switch(action){
+            case 0x0d:
+                console.log('player change gun ', bot, this.bot_number)    
+            break;
             case 0x0c:
-                if(this.bot_master){
+                /*if(this.bot_master){
                     this.user_move(msg)
-                }                
+                }
+                //this is human id
+                if(msg.readUint8(4) === 0){
+                    const pj_3 = Buffer.from('3f00b91b030a20', 'hex')
+                    pj_3.writeUInt8(this.bot_number, 4)
+                    this.arr_actions.push(pj_3)
+                }     
                 //console.log('any user mov')
-                //
+                //*/
             break;
             case 0x0a:
                 //this.user_camera(msg)
@@ -311,6 +338,7 @@ module.exports = class BotService{
 
 
                         pj_setup.writeUInt8(this.bot_number, 4) //byte ultimo numero de jugadores en partida 0x00
+                        pj_response.writeUInt8(this.bot_number, 4) //byte ultimo numero de jugadores en partida 0x00
                         this.arr_actions.push(pj_setup)
                         this.arr_actions.push(pj_response)
 
@@ -332,49 +360,99 @@ module.exports = class BotService{
                 }
                 
                 break;
+            case 0xfe:
+                
+                const pj_response = Buffer.from('3f020504e03f74a0'.replace('e03f74a0', this.buffer_session.toString('hex')), 'hex')
+                //pj_response.writeUInt8(this.bot_number+1, 4)
+
+
+                this.arr_actions.push(pj_response)
+                break;
             case 0xed:
                 if(this.bot_master){
                     console.log('any player death')
                 }
                 break;
             case 0x0e:
-                const bot = msg.readUInt8(4)
-                console.log('respawn any player: ', msg.toString('hex'), this.extractRespawnXZR(msg, bot) )
 
-                    
-                    
-                    this.bot_helper.send_event(JSON.stringify({type_action: 'spawn', value_action: this.extractRespawnXZR(msg, bot), id_bot: bot}))
+                if(bot === 0){
+                    console.log('player respawn: ', msg)
+                    this.player_cords = this.extractRespawnXZR(msg, 0)
+                    //this.start_move()
+                }
+
+                if(bot == this.bot_number){
+                    this.start_move()
+                    //const pj_response = Buffer.from('3f00800d000d1000010000e55e1d465c55b244ba37d045f6a30000'.replace('261370c5', this.buffer_session.toString('hex')), 'hex')
+                    //pj_response.writeUInt8(this.bot_number+1, 4)
+                    //this.arr_actions.push(pj_response)
+                    console.log(`bot_${bot} spawn: `,this.extractRespawnXZR(msg, bot))
+                    this.bot_cords = this.extractRespawnXZR(msg, bot)
+                }
+                this.bot_helper.send_event(JSON.stringify({type_action: 'spawn', value_action: this.extractRespawnXZR(msg, bot), id_bot: bot}))
 
                 break;
             case 0x26:
                // console.log('shot air', msg)    
             break;
-            default:
+            case 0x01:
+
+                if(bot===0){
+                    //console.log('sync player bot number: ', msg)
+                    this.player_cords = this.extractRespawnXZR(msg, 0)
+                    //this.follow_cam()
+                }
+                /*if(bot == this.bot_number){
+                    console.log('sync bot')
+                    //const pj_response = Buffer.from('3f00800d000d1000010000e55e1d465c55b244ba37d045f6a30000'.replace('261370c5', this.buffer_session.toString('hex')), 'hex')
+                    //pj_response.writeUInt8(this.bot_number+1, 4)
+                    //this.arr_actions.push(pj_response)
+                    console.log(`bot_${bot} spawn: `,this.extractRespawnXZR(msg, bot))
+                    this.bot_cords = this.extractRespawnXZR(msg, bot)
+                }*/
                 break;
+            default:
+
+            break;
         }
     }
     extractRespawnXZR(buffer, bot) {
 
-        // Delimitador final del bloque de respawn
-        const marker = Buffer.from('0610', 'hex');
-        const markerIndex = buffer.indexOf(marker)-2;
-
-        if (markerIndex < -1 || markerIndex < 16) {
-            console.error('Bloque de respawn no encontrado')
-        }
-
         // Inicio del bloque X Y Z R
-        const baseOffset = markerIndex - 16;
+        const baseOffset = 8;
 
         const x = buffer.readFloatLE(baseOffset);
-        const y = buffer.readFloatLE(baseOffset + 4);
-        const z = buffer.readFloatLE(baseOffset + 8);
+        const z = buffer.readFloatLE(baseOffset + 4);
+        const y = buffer.readFloatLE(baseOffset + 8);
         const r = buffer.readFloatLE(baseOffset + 12);
         
         return { x, y, z, r, bot };
 
     }
+    follow_cam(){
+        //console.log(this.bot_cords, this.player_cords)
+        if(this.bot_cords  && this.player_cords){
+            const view = this.angleToTarget(this.bot_cords.x, this.bot_cords.y, this.player_cords.x, this.player_cords.y)
+            //console.log('bot view to: ', view)
+            const row = Buffer.from('3f002e1d000a77b3d60a','hex')
+            row.writeUInt8(this.bot_number, 4)
+            //row.writeUint16LE( Math.floor(Math.random() * 180) , 8)
+            row.writeUint8(view , 7)
+            this.arr_actions.push(row)
 
+        }
+
+    }
+    angleToTarget(botX, botY, targetX, targetY) {
+        const dx =  botX - targetX
+        const dy = targetY - botY
+
+        let angleDeg = Math.atan2(dy, dx) * 180 / Math.PI
+        if (angleDeg < 0) angleDeg += 360
+        angleDeg = (angleDeg + 270) % 360;
+        const packed = Math.floor(angleDeg / 360 * 255)
+        return packed;
+    }
     user_move(msg){
         const pressed_key= msg.readUInt8(6) //pressed key
         const id_bot = msg.readUInt8(4)
@@ -439,6 +517,11 @@ module.exports = class BotService{
         this.bot_helper.send_event(JSON.stringify({type_action: 'camera', value_action:((msg.readUInt8(7) / 255) * 360) * (Math.PI / 180)}))
 
     }
+    server_down(){
+        this.arr_actions.push(Buffer.from('3f001f170102', 'hex'))
+        this.arr_actions.push(Buffer.from('3f08f618', 'hex'))
+        
+    }
     disconnect(){
         this.bot_helper.send_event(JSON.stringify({bye: 'bot'}))
         /*
@@ -471,7 +554,7 @@ module.exports = class BotService{
 
         let msg = null
 
-        if(this.move){
+        /*if(this.move){
             const pj_3 = Buffer.from('3f00b91b030c0d', 'hex')
             pj_3.writeUInt8(this.bot_number, 4)
             this.arr_actions.push(pj_3)
@@ -479,8 +562,12 @@ module.exports = class BotService{
             const pj_3 = Buffer.from('3f00b91b030c0c', 'hex')
             pj_3.writeUInt8(this.bot_number, 4)
             this.arr_actions.push(pj_3)
-        }
-
+        }*/
+        setInterval(()=>{
+            //console.log('bot start_move')
+            this.follow_cam()
+        }, 200)
+        
         this.move = !this.move
 
     }

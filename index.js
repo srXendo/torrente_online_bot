@@ -8,19 +8,19 @@ const apis = new c_apis(bot_helper)
 const BotService = require('./services/bot.service')
 const bots = []
 let first = true
-for(let i = 1; i< 31; i++){
-    setTimeout(()=>{
+for(let i = 1; i< 14; i++){
 
-        const bot = new BotService(ip_server, port_server, i, bot_helper, first)
-        bot.connect()
-        bots.push(bot)
 
-        setInterval(()=>{
-            //console.log('bot start_move')
-            bots[i-1].start_move()
-        }, 200)
-        first = false
-    }, 300*i)
+    const bot = new BotService(ip_server, port_server, bot_helper, first)
+    bot.connect(i)
+    bots.push(bot)
+
+    /*setInterval(()=>{
+        //console.log('bot start_move')
+        bots[i-1].start_move()
+    }, 200)*/
+    first = false
+
 }
 
 process.on('SIGINT', () => {
