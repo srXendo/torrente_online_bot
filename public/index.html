@@ -40,7 +40,7 @@ function checkCollision(dirVector) {
 let camera, scene, renderer, controls, object;
 const move = { forward: false, backward: false, left: false, right: false };
 const speed = 1;
-let object2
+
 init();
 function gameToThree(x, y, z) {
   return new THREE.Vector3(
@@ -51,8 +51,8 @@ function gameToThree(x, y, z) {
 }
 
 async function init() {
-    camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 9999999);
-    camera.position.set(0, 1, 2.5);
+    camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 2, 9999999);
+    camera.position.set(2, 5, 2.5);
 
     scene = new THREE.Scene();
 
@@ -66,16 +66,22 @@ async function init() {
     // Cargar OBJ
     objLoader = new OBJLoader().setPath('./');
     object = await objLoader.loadAsync('map.obj');
-    object.position.y = -200;
+    object.position.y = -1;
     object.scale.setScalar(1);
+    
+    // Recorrer todos los meshes dentro del objeto
+    object.traverse((child) => {
+        if (child.isMesh) {
+            child.material = wireMaterial;
+        }
+    });
     scene.add(object);
-
-    object2 = await objLoader.loadAsync('model.bot.obj');
-    object2.position.y = -0;
-    object2.position.x = 0;
-    object2.position.z = 0;
-    object2.scale.setScalar(10);
-    scene.add(object2);
+    players[0] = await objLoader.loadAsync('model.bot.obj')
+    players[0].position.y = -0;
+    players[0].position.x = 0;
+    players[0].position.z = 0;
+    players[0].scale.setScalar(100);
+    scene.add(players[0]);
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
@@ -166,39 +172,48 @@ function animate() {
 
     renderer.render(scene, camera);
 }
-const CAMERA_OFFSET = new THREE.Vector3(0, 20, 7);
+const CAMERA_OFFSET = new THREE.Vector3(40, 20, 7);
+const modelHeight = 1 * 100; // ajustar según tu modelo real
 function updateCameraFollow() {
-    if (!object2) return;
+    if (!players[0]) return;
 
-    // Punto al que mirar: altura de ojos/cabeza del bot
-    const LOOK_HEIGHT = 1.6; // ajusta según tu modelo
-    const target = object2.position.clone();
+    const player = players[0];
+
+    // Altura de ojos relativa a la base del modelo
+    const modelHeight = 1 * 100; // ajustar según tu escala real
+    const LOOK_HEIGHT = modelHeight * 0.9;
+
+    // Punto hacia donde mira la cámara (ojos)
+    const target = player.position.clone();
     target.y += LOOK_HEIGHT;
 
-    // Offset de cámara relativo al bot
-    const CAMERA_OFFSET = new THREE.Vector3(0, 1.6, 3); // altura y distancia
+    // Offset de cámara (detrás y arriba del jugador)
+    const CAMERA_OFFSET = new THREE.Vector3(0, LOOK_HEIGHT, 200); // x, y, z
     const offset = CAMERA_OFFSET.clone();
 
-    // Rotar el offset según la rotación Y (yaw) del bot
-    const Y_AXIS = new THREE.Vector3(0, 1, 0);
-    offset.applyAxisAngle(Y_AXIS, object2.rotation.y);
+    // Rotar offset según la rotación Y del jugador
+    offset.applyAxisAngle(new THREE.Vector3(0,1,0), player.rotation.y);
 
     // Posición final de la cámara
-    const desiredCameraPos = object2.position.clone().add(offset);
-    camera.position.copy(desiredCameraPos);
+    const cameraPos = player.position.clone().add(offset);
+    camera.position.copy(cameraPos);
 
-    // La cámara mira hacia el punto de los ojos del bot
     camera.lookAt(target);
 }
 function yaw255ToRadians(r) {
   return (r / 256) * Math.PI * 2;
 }
+const wireMaterial = new THREE.MeshBasicMaterial({
+    color: 0x00ff00,  // color de las líneas
+    wireframe: true
+});
 connect()
+const players = {}; // key = playerId, value = THREE.Mesh
 async function process_action(action){
 
     switch(action.type_action){
         case 'camera':
-            move_camera(action.value_action)
+            //move_camera(action.value_action)
         break;
         case 'move':
             botMoving = !action.value_action ? false : true
@@ -218,24 +233,39 @@ async function process_action(action){
             //move_model();
         break;
         case 'spawn':
-            /*const bot = object2.clone(true);
-            bot.position.y =action.value_action.z / 100
-            bot.position.x = action.value_action.x / 100
-            bot.position.z =  action.value_action.y / 100 //ingame z
-            bot.scale.setScalar(1);
-            scene.add(bot);*/
+            if(action.id_bot !== 0){
+                console.log('spàwn', action)
+                const bot = players[0].clone(true);
+                bot.position.y =  action.value_action.z
+                bot.position.x = action.value_action.x
+                bot.position.z = -action.value_action.y //ingame z
+                bot.scale.setScalar(100);
+                scene.add(bot);
+                
+                players[action.id_bot] = bot;
+            }
             break;
         case 'sync':
-            console.log("action.value_action.x, action.value_action.z, action.value_action.y, action.value_action.r", action.value_action.x, action.value_action.z, action.value_action.y, action.value_action.r)
-            if (!object2) return;
-            
-            const p = gameToThree(action.value_action.x, action.value_action.z, -action.value_action.y);
-            object2.position.copy(p);
+            //console.log('sync', action)
+            const obj = players[action.id_bot];
+            if (!obj) return; // No existe, quizá no ha spawn
+
+            // Convertir coordenadas
+            const p = gameToThree(
+                action.value_action.x,
+                action.value_action.z ,
+                -action.value_action.y
+            );
+            obj.position.copy(p);
+
             if (typeof action.value_action.r === 'number') {
-                object2.rotation.y = -yaw255ToRadians(action.value_action.r);
+                obj.rotation.y = -yaw255ToRadians(action.value_action.r);
             }
 
-              updateCameraFollow();
+            if (action.id_bot === 0) {
+                updateCameraFollow();
+            }
+              
         break;
     }
 }
@@ -248,7 +278,7 @@ function move_model() {
         return;
     }else{
         
-        if (!object2) return;
+        if (!players[0]) return;
 
 
 
@@ -256,22 +286,22 @@ function move_model() {
 
         // Vector de dirección basado en la rotación del modelo
         const forward = new THREE.Vector3(
-            Math.sin(object2.rotation.y),
+            Math.sin(players[0].rotation.y),
             0,
-            Math.cos(object2.rotation.y)
+            Math.cos(players[0].rotation.y)
         ).normalize();
 
         const right = new THREE.Vector3(
-            Math.sin(object2.rotation.y + Math.PI / 2),
+            Math.sin(players[0].rotation.y + Math.PI / 2),
             0,
-            Math.cos(object2.rotation.y + Math.PI / 2)
+            Math.cos(players[0].rotation.y + Math.PI / 2)
         ).normalize();
 
         // Movimiento según las teclas
-        if (directionKeys.includes("w")) object2.position.add(forward.clone().multiplyScalar(-speed));
-        if (directionKeys.includes("s")) object2.position.add(forward.clone().multiplyScalar(speed));
-        if (directionKeys.includes("d")) object2.position.add(right.clone().multiplyScalar(speed));
-        if (directionKeys.includes("a")) object2.position.add(right.clone().multiplyScalar(-speed));
+        if (directionKeys.includes("w")) players[0].position.add(forward.clone().multiplyScalar(-speed));
+        if (directionKeys.includes("s")) players[0].position.add(forward.clone().multiplyScalar(speed));
+        if (directionKeys.includes("d")) players[0].position.add(right.clone().multiplyScalar(speed));
+        if (directionKeys.includes("a")) players[0].position.add(right.clone().multiplyScalar(-speed));
 
         // Renderizamos después de mover
         renderer.render(scene, camera);
@@ -290,7 +320,7 @@ function move_model() {
 
 
 function move_camera(y){
-     object2.rotation.y = y
+     players[0].rotation.y = y
 }
 </script>
 </body>

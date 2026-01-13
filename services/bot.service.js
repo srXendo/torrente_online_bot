@@ -398,14 +398,21 @@ module.exports = class BotService{
             break;
             case 0x01:
 
-                if(bot===0 && this.bot_master){
+                if(this.bot_master){
                     //console.log('sync player bot number: ', msg)
-                    this.player_cords = this.extractRespawnXZR(msg, 0)
                     //this.follow_cam()
                     this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: this.extractRespawnXZR(msg, bot), id_bot: bot}))
                     
                 }
+                if(bot===0){
+                    //console.log('sync player bot number: ', msg)
+                    this.player_cords = this.extractRespawnXZR(msg, 0)
+                    //-this.follow_cam()
+
+                    
+                }
                 if(bot == this.bot_number){
+                    
                     //const pj_response = Buffer.from('3f00800d000d1000010000e55e1d465c55b244ba37d045f6a30000'.replace('261370c5', this.buffer_session.toString('hex')), 'hex')
                     //pj_response.writeUInt8(this.bot_number+1, 4)
                     //this.arr_actions.push(pj_response)
@@ -441,6 +448,7 @@ module.exports = class BotService{
             //row.writeUint16LE( Math.floor(Math.random() * 180) , 8)
             row.writeUint8(view , 7)
             this.arr_actions.push(row)
+            this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: {bot: this.bot_number, x: this.bot_cords.x, y: this.bot_cords.y, z: this.bot_cords.z, r: view}, id_bot: this.bot_number}))
 
         }
 
