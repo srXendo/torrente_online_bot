@@ -39,12 +39,19 @@ function checkCollision(dirVector) {
 }
 let camera, scene, renderer, controls, object;
 const move = { forward: false, backward: false, left: false, right: false };
-const speed = 0.05;
+const speed = 1;
 let object2
 init();
+function gameToThree(x, y, z) {
+  return new THREE.Vector3(
+    x,
+    y, // altura
+    z
+  );
+}
 
 async function init() {
-    camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 9999999);
     camera.position.set(0, 1, 2.5);
 
     scene = new THREE.Scene();
@@ -59,15 +66,15 @@ async function init() {
     // Cargar OBJ
     objLoader = new OBJLoader().setPath('./');
     object = await objLoader.loadAsync('map.obj');
-    object.position.y = -0.0;
-    object.scale.setScalar(0.01);
+    object.position.y = -200;
+    object.scale.setScalar(1);
     scene.add(object);
 
     object2 = await objLoader.loadAsync('model.bot.obj');
     object2.position.y = -0;
     object2.position.x = 0;
     object2.position.z = 0;
-    object2.scale.setScalar(1);
+    object2.scale.setScalar(10);
     scene.add(object2);
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -124,7 +131,7 @@ function connect(){
 
         let res_json = null 
         try{
-            console.log('new msg: ')
+
             res_json = JSON.parse(msg.data)
             process_action(res_json)
         }catch(err){
@@ -151,17 +158,44 @@ function animate() {
 
         const obj = controls.object;
 
-        if (move.forward && !checkCollision(dir)) obj.position.add(dir.clone().multiplyScalar(speed));
-        if (move.backward && !checkCollision(dir.clone().multiplyScalar(-1))) obj.position.add(dir.clone().multiplyScalar(-speed));
-        if (move.left && !checkCollision(right.clone().multiplyScalar(-1))) obj.position.add(right.clone().multiplyScalar(-speed));
-        if (move.right && !checkCollision(right)) obj.position.add(right.clone().multiplyScalar(speed));
+        if (move.forward) obj.position.add(dir.clone().multiplyScalar(speed));
+        if (move.backward) obj.position.add(dir.clone().multiplyScalar(-speed));
+        if (move.left) obj.position.add(right.clone().multiplyScalar(-speed));
+        if (move.right) obj.position.add(right.clone().multiplyScalar(speed));
     }
 
     renderer.render(scene, camera);
 }
+const CAMERA_OFFSET = new THREE.Vector3(0, 20, 7);
+function updateCameraFollow() {
+    if (!object2) return;
+
+    // Punto al que mirar: altura de ojos/cabeza del bot
+    const LOOK_HEIGHT = 1.6; // ajusta según tu modelo
+    const target = object2.position.clone();
+    target.y += LOOK_HEIGHT;
+
+    // Offset de cámara relativo al bot
+    const CAMERA_OFFSET = new THREE.Vector3(0, 1.6, 3); // altura y distancia
+    const offset = CAMERA_OFFSET.clone();
+
+    // Rotar el offset según la rotación Y (yaw) del bot
+    const Y_AXIS = new THREE.Vector3(0, 1, 0);
+    offset.applyAxisAngle(Y_AXIS, object2.rotation.y);
+
+    // Posición final de la cámara
+    const desiredCameraPos = object2.position.clone().add(offset);
+    camera.position.copy(desiredCameraPos);
+
+    // La cámara mira hacia el punto de los ojos del bot
+    camera.lookAt(target);
+}
+function yaw255ToRadians(r) {
+  return (r / 256) * Math.PI * 2;
+}
 connect()
 async function process_action(action){
-    console.log(action)
+
     switch(action.type_action){
         case 'camera':
             move_camera(action.value_action)
@@ -181,15 +215,27 @@ async function process_action(action){
                 return false
             }
             directionKeys = action.value_action
-            move_model();
+            //move_model();
         break;
         case 'spawn':
-            const bot = object2.clone(true);
-            bot.position.y = action.value_action.y / 100 //ingame z
+            /*const bot = object2.clone(true);
+            bot.position.y =action.value_action.z / 100
             bot.position.x = action.value_action.x / 100
-            bot.position.z = action.value_action.z / 100
+            bot.position.z =  action.value_action.y / 100 //ingame z
             bot.scale.setScalar(1);
-            scene.add(bot);
+            scene.add(bot);*/
+            break;
+        case 'sync':
+            console.log("action.value_action.x, action.value_action.z, action.value_action.y, action.value_action.r", action.value_action.x, action.value_action.z, action.value_action.y, action.value_action.r)
+            if (!object2) return;
+            
+            const p = gameToThree(action.value_action.x, action.value_action.z, -action.value_action.y);
+            object2.position.copy(p);
+            if (typeof action.value_action.r === 'number') {
+                object2.rotation.y = -yaw255ToRadians(action.value_action.r);
+            }
+
+              updateCameraFollow();
         break;
     }
 }
@@ -206,7 +252,7 @@ function move_model() {
 
 
 
-        const speed = 0.05;
+        const speed = 200*100;
 
         // Vector de dirección basado en la rotación del modelo
         const forward = new THREE.Vector3(

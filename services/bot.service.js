@@ -388,8 +388,9 @@ module.exports = class BotService{
                     //this.arr_actions.push(pj_response)
                     console.log(`bot_${bot} spawn: `,this.extractRespawnXZR(msg, bot))
                     this.bot_cords = this.extractRespawnXZR(msg, bot)
+                    this.bot_helper.send_event(JSON.stringify({type_action: 'spawn', value_action: this.extractRespawnXZR(msg, bot), id_bot: bot}))
                 }
-                this.bot_helper.send_event(JSON.stringify({type_action: 'spawn', value_action: this.extractRespawnXZR(msg, bot), id_bot: bot}))
+                
 
                 break;
             case 0x26:
@@ -397,19 +398,20 @@ module.exports = class BotService{
             break;
             case 0x01:
 
-                if(bot===0){
+                if(bot===0 && this.bot_master){
                     //console.log('sync player bot number: ', msg)
                     this.player_cords = this.extractRespawnXZR(msg, 0)
                     //this.follow_cam()
+                    this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: this.extractRespawnXZR(msg, bot), id_bot: bot}))
+                    
                 }
-                /*if(bot == this.bot_number){
-                    console.log('sync bot')
+                if(bot == this.bot_number){
                     //const pj_response = Buffer.from('3f00800d000d1000010000e55e1d465c55b244ba37d045f6a30000'.replace('261370c5', this.buffer_session.toString('hex')), 'hex')
                     //pj_response.writeUInt8(this.bot_number+1, 4)
                     //this.arr_actions.push(pj_response)
-                    console.log(`bot_${bot} spawn: `,this.extractRespawnXZR(msg, bot))
-                    this.bot_cords = this.extractRespawnXZR(msg, bot)
-                }*/
+                    //this.bot_cords = this.extractRespawnXZR(msg, bot)
+                    //this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: this.extractRespawnXZR(msg, bot), id_bot: bot}))
+                }
                 break;
             default:
 
@@ -424,7 +426,7 @@ module.exports = class BotService{
         const x = buffer.readFloatLE(baseOffset);
         const z = buffer.readFloatLE(baseOffset + 4);
         const y = buffer.readFloatLE(baseOffset + 8);
-        const r = buffer.readFloatLE(baseOffset + 12);
+        const r = buffer.readUInt8(baseOffset + 13);
         
         return { x, y, z, r, bot };
 
