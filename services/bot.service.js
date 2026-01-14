@@ -19,6 +19,7 @@ module.exports = class BotService{
     bot_number = null 
     move = false;
     bot_master = null;
+    bot_spawn = false;
     constructor(ip_server, port_server, bot_helper, bot_master){
         this.bot_master = bot_master
 
@@ -109,8 +110,8 @@ module.exports = class BotService{
 
             break;
             case 0x3f01:
-                //console.log('msg: No uknow2: ', '0x3f001')
-                return //Buffer.from('800601000606000076758a00', 'hex')
+                const action_response2 = Buffer.from('8006010006060000'+this.buffer_session, 'hex')
+                return action_response2
                 break;
 
 
@@ -256,8 +257,18 @@ module.exports = class BotService{
             //pj_response.writeUInt8(this.bot_number+1, 4)
             pj_response.writeUInt8(this.bot_number, 4) //byte ultimo numero de jugadores en partida 0x00
             //
-            setTimeout(()=>{
-                this.arr_actions.push(pj_setup)
+            let trys = 200
+            this.bot_interv = setInterval(()=>{
+                if(this.bot_spawn || trys <= 0){
+                    clearInterval(this.bot_interv)
+                    return
+                }else{
+                    trys = trys - 1
+                    this.arr_actions.push(pj_setup)
+                    
+                    
+                }
+            
             }, 1000*this.bot_number)
             this.arr_actions.push(pj_response)
             return ping
@@ -382,11 +393,13 @@ module.exports = class BotService{
                 }
 
                 if(bot == this.bot_number){
+                    this.bot_spawn = true
                     this.start_move()
                     //const pj_response = Buffer.from('3f00800d000d1000010000e55e1d465c55b244ba37d045f6a30000'.replace('261370c5', this.buffer_session.toString('hex')), 'hex')
                     //pj_response.writeUInt8(this.bot_number+1, 4)
                     //this.arr_actions.push(pj_response)
                     console.log(`bot_${bot} spawn: `,this.extractRespawnXZR(msg, bot))
+                    
                     this.bot_cords = this.extractRespawnXZR(msg, bot)
                     this.bot_helper.send_event(JSON.stringify({type_action: 'spawn', value_action: this.extractRespawnXZR(msg, bot), id_bot: bot}))
                 }
