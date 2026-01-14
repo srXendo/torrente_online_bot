@@ -29,7 +29,8 @@ module.exports = class BotService{
         //console.log(`${bot_number}`.padStart(2, '0'))
 
     }
-    connect(bot_number){
+    connect(bot_number, callby){
+        this.cb_spawn = callby
         this.bot_number = bot_number
         this.buffer_session = (this.buffer_session + `${bot_number}`.padStart(2, '0'))
         this.user_bot = Buffer.from(('Bot'+`${bot_number}`.padStart(2, "0")), 'ascii')        
@@ -246,7 +247,7 @@ module.exports = class BotService{
                 
         if(!this.start){
             this.start = true
-            const pj_setup = Buffer.from('3f001376030e0000261370c522beb644d58c1dc614ae473f010b0610'.replace('261370c5', this.buffer_session.toString('hex')), 'hex')
+            const pj_setup = Buffer.from('3f001376030e0000261370c522beb644d58c1dc614ae473f010b0610'.replace('12312312312312312', this.buffer_session.toString('hex')), 'hex')
             pj_setup.writeUInt8(this.bot_number, 4) //byte ultimo numero de jugadores en partida 0x00
             pj_setup.writeUInt8(0x02, 25) //modelo byte 0x00 torrente 0x0b yonki
             pj_setup.writeUInt8(0x02, 24) //equipo byte 0x02 random 0x01 amarillo 0x00 rojo
@@ -257,20 +258,21 @@ module.exports = class BotService{
             //pj_response.writeUInt8(this.bot_number+1, 4)
             pj_response.writeUInt8(this.bot_number, 4) //byte ultimo numero de jugadores en partida 0x00
             //
-            let trys = 200
+           
+
             this.bot_interv = setInterval(()=>{
-                if(this.bot_spawn || trys <= 0){
+                if(this.bot_spawn){
                     clearInterval(this.bot_interv)
                     return
                 }else{
-                    trys = trys - 1
                     this.arr_actions.push(pj_setup)
+                    
                     
                     
                 }
             
-            }, 1000*this.bot_number)
-            this.arr_actions.push(pj_response)
+            }, 1000)
+            //this.arr_actions.push(pj_response)
             return ping
         }else if(this.arr_actions.length === 0){
 
@@ -394,6 +396,7 @@ module.exports = class BotService{
 
                 if(bot == this.bot_number){
                     this.bot_spawn = true
+                    this.cb_spawn(true)
                     this.start_move()
                     //const pj_response = Buffer.from('3f00800d000d1000010000e55e1d465c55b244ba37d045f6a30000'.replace('261370c5', this.buffer_session.toString('hex')), 'hex')
                     //pj_response.writeUInt8(this.bot_number+1, 4)

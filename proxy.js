@@ -1,7 +1,7 @@
 const dgram = require('dgram');
 const server = dgram.createSocket('udp4');
 let n_msg = {}
-let ip_server = '192.168.1.135'
+let ip_server = '192.168.1.134'
 let ip_client
 let port_server = 8888
 let port_client
@@ -65,6 +65,6 @@ server.on('error', (err) => {
 });
 
 // Configuración del servidor
-const PORT = 8888;
+const PORT = 2222;
 const HOST = '0.0.0.0';
 server.bind(PORT, HOST);
