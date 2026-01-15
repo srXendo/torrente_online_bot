@@ -450,8 +450,8 @@ module.exports = class BotService{
         const z = buffer.readFloatLE(baseOffset + 4);
         const y = buffer.readFloatLE(baseOffset + 8);
         const r = buffer.readUInt8(baseOffset + 13);
-        
-        return { x, y, z, r, bot };
+        const ry = buffer.readUInt8(baseOffset + 14);
+        return { x, y, z, ry, r, bot, buffer };
 
     }
     follow_cam(){

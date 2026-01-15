@@ -75,12 +75,19 @@ async function init() {
     object = await objLoader.loadAsync('map.obj');
     object.position.y = -1;
     object.scale.setScalar(1);
-
+    object.updateMatrixWorld(true);
     // Recorrer todos los meshes dentro del objeto
     object.traverse((child) => {
         if (child.isMesh) {
             child.material = wireMaterial;
-            mapMeshes.push(child); // solo geometría del mapa
+
+                    // CLAVE
+            child.material.side = THREE.DoubleSide;
+
+            child.geometry.computeBoundingBox();
+            child.geometry.computeBoundingSphere();
+
+            mapMeshes.push(child);
         }
     });
     scene.add(object);
@@ -220,54 +227,47 @@ const wireMaterial = new THREE.MeshBasicMaterial({
 connect()
 const players = {}; // key = playerId, value = THREE.Mesh
 let mapMeshes = [];
-const FORWARD_OFFSET = 30; // ajusta según el tamaño del modelo
+const FORWARD_OFFSET = 30;
+const LENGTH = 400;
+const SENSOR_HEIGHT = 100;
+
 function updateForwardLine(bot, line, raycaster) {
-    const modelHeight = 1 * 100;
-    
-const forward = new THREE.Vector3(0, 0, -1)
-    .applyAxisAngle(new THREE.Vector3(0,1,0), bot.rotation.y)
-    .normalize();
+    const forward = new THREE.Vector3();
+    bot.getWorldDirection(forward);
 
-const origin = bot.position.clone()
-    origin.y = 50    
-origin.add(forward.clone().multiplyScalar(FORWARD_OFFSET));
+    // Ajustar dirección si el modelo apunta al revés
+    forward.multiplyScalar(-1);
 
-    const LENGTH = 400;
+    forward.normalize();
+
+    const origin = bot.position.clone();
+    origin.y += SENSOR_HEIGHT;
+    origin.add(forward.clone().multiplyScalar(FORWARD_OFFSET));
+
     const end = origin.clone().add(forward.clone().multiplyScalar(LENGTH));
 
     line.geometry.setFromPoints([origin, end]);
+    line.geometry.attributes.position.needsUpdate = true;
 
-    const hitsWall = botHitsWall(bot, raycaster);
+    const hitsWall = botHitsWall(origin, forward, raycaster);
 
-    // Colores:
-    // naranja → libre
-    // azul → pared
     line.material.color.set(hitsWall ? 0x0000ff : 0xff8800);
 }
 
-function botHitsWall(bot, raycaster) {
-
-    // Dirección forward del bot
-    const forward = new THREE.Vector3(0, 0, 1)
-        .applyAxisAngle(new THREE.Vector3(0,1,0), bot.rotation.y)
-        .normalize();
-
-    // Origen desplazado hacia delante (evita autocolisión)
-    const FORWARD_OFFSET = 30;
-    const origin = bot.position.clone()
-        .add(forward.clone().multiplyScalar(FORWARD_OFFSET));
-
-    // Longitud del rayo
-    const LENGTH = 500;
-
+function botHitsWall(origin, forward, raycaster) {
     raycaster.near = 0;
     raycaster.far = LENGTH;
     raycaster.set(origin, forward);
 
     const intersects = raycaster.intersectObjects(mapMeshes, true);
 
-    return intersects.length > 0;
+    if (intersects.length === 0) return false;
+
+    const hit = intersects[0];
+
+    return hit.distance <= LENGTH;
 }
+
 async function process_action(action){
 
     switch(action.type_action){

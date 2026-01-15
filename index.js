@@ -11,7 +11,7 @@ const PartyService = require('./services/game.service')
 
 const bots = []
 let first = true
-const partyService = new PartyService(ip_server, port_server, 14)
+const partyService = new PartyService(ip_server, port_server, 20)
 partyService.start_game(bot_helper).then(()=>{
     console.log('connect bot end')
 })
