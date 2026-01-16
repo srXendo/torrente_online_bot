@@ -1,31 +1,101 @@
-
-let ip_server = '192.168.1.134'
-let port_server = 8888
-const c_bot_helper = require('./helpers/bot.helper')
-const bot_helper = new c_bot_helper()
-const c_apis = require('./apis/index.api')
-const apis = new c_apis(bot_helper)
+const dgram = require('dgram');
 const BotService = require('./services/bot.service')
-const PartyService = require('./services/game.service')
+let ip_server = '192.168.1.134';
+let port_server = 8888;
+
+const num_bots = 2;
+let mapper = {}
+let id_bot_mapper = {}
+async function start_bots(){
+    const ports_bots_map = {}
+    for(let i = 1; i < num_bots; i++){
+        const obj_starter = await get_server_and_port()
+        ports_bots_map[obj_starter.port] = {
+            server: obj_starter.server,
+            number_bot: i,
+            port_bot: obj_starter.port,
+            bot: new BotService(i)
+        }
+        id_bot_mapper[i] = obj_starter.port,
+        ports_bots_map[obj_starter.port].server.on('message', handler_message)
+
+    }
+
+    return ports_bots_map
+}
+function send_package_to_server(id_bot, buf){
+    return new Promise((resolve, reject)=>{
+        mapper[id_bot_mapper[id_bot]].server.send(buf, port_server, ip_server, (err) => {
+            if (err) {
+                console.error(`Error al clientHello: ${err.message}`);
+                resolve(false)
+            } else {
+                //console.log(`Mensaje enviado: \n${buf.toString('hex')}`);
+                //console.log('handler_message')
+                resolve(true)
+                
+            }
+        });
+    })
+
+}
+function get_server_and_port(){
+    return new Promise(async (resolve, reject)=>{
+
+        const server = dgram.createSocket('udp4');
+
+        server.on('listening', () => {
+            const address = server.address();
+            resolve({server: server, port: address.port})
+            
+        });
+        server.on('error', (err) => {
+            console.error(`Error en el servidor: ${err.message}`);
+            server.close();
+        });
+        const HOST = '0.0.0.0';
+        server.bind(HOST);
+    })
+}
+
+async function handler_message(msg, rconf){
+    //console.log(`Mensaje recibido: \n${msg.toString('hex')}`);
+    //console.log('handler_message')
+    const responses = mapper[this.address().port].bot.handler_message(msg, rconf)
+    const id_bot = mapper[this.address().port].number_bot
+    if(!responses){
+        console.error(new Error(`[handler_message]: bot nº ${id_bot} msg not recognize`))
+        return
+    }
+    for(let msg_to_server of responses){
+        if(!msg_to_server.is_external){
+            await send_package_to_server(id_bot, msg_to_server)
+        }else{
+            for(let respawn of msg_to_server.arr_respawns){
+                const bot_port = id_bot_mapper[respawn.bot]
+                mapper[bot_port].bot.spawn(respawn.cords)
+            }
+        }
+    }
+    
+}
 
 
-const bots = []
-let first = true
-const partyService = new PartyService(ip_server, port_server, 20)
-partyService.start_game(bot_helper).then(()=>{
-    console.log('connect bot end')
+start_bots().then(async(arr_bots)=>{
+    mapper = arr_bots
+    for(let bot of Object.values(arr_bots)){
+        const helloClient = Buffer.from("00026128011242191fb8bb154e4401763631007932","hex")
+        const hello_response = await send_package_to_server(bot.number_bot, helloClient)
+    }
+
 })
-/*for(let i = 1; i< 14; i++){
-    const bot = new BotService(ip_server, port_server, bot_helper, first)
-    bot.connect(i)
-    bots.push(bot)
-    first = false
-}*/
-
-process.on('SIGINT', () => {
-    partyService.disconect_bots();
+process.on('SIGINT', async() => {
+    for(let bot of Object.values(mapper)){
+        const responses = bot.bot.disconnect()
+        send_package_to_server(bot.number_bot, responses[0])
+        send_package_to_server(bot.number_bot, responses[1])
+    }
     setTimeout(()=>{
         process.exit(0)
-    }, 600)
+    }, 2600)
 })
-//<Buffer 3f 00 1f 7a 00 0a 27 c2 e4 02>
