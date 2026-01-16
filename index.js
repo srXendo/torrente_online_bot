@@ -9,6 +9,7 @@ let id_bot_mapper = {}
 async function start_bots(){
     const ports_bots_map = {}
     for(let i = 1; i < num_bots; i++){
+    
         const obj_starter = await get_server_and_port()
         ports_bots_map[obj_starter.port] = {
             server: obj_starter.server,
@@ -73,7 +74,10 @@ async function handler_message(msg, rconf){
         }else{
             for(let respawn of msg_to_server.arr_respawns){
                 const bot_port = id_bot_mapper[respawn.bot]
-                mapper[bot_port].bot.spawn(respawn.cords)
+                if(!mapper[bot_port].bot.in_game){
+                    mapper[bot_port].bot.spawn(respawn.cords)
+                }
+                
             }
         }
     }
