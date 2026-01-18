@@ -6,14 +6,15 @@ const c_bot_helper = require('./helpers/bot.helper')
 const bot_helper = new c_bot_helper()
 const c_apis = require('./apis/index.api')
 const apis = new c_apis(bot_helper)
-const num_bots = 3;
+const num_bots = 22;
 let mapper = {}
 let id_bot_mapper = {}
 async function start_bots(){
     const ports_bots_map = {}
-    for(let i = 1; i < num_bots; i++){
-    
+    for(let i = 1; i < num_bots+1; i++){
+        
         const obj_starter = await get_server_and_port()
+        console.log(`new bot: id_bot${i} port: ${obj_starter.port}`);
         ports_bots_map[obj_starter.port] = {
             server: obj_starter.server,
             number_bot: i,
@@ -34,8 +35,8 @@ function send_package_to_server(id_bot, buf){
                 console.error(`Error al clientHello: ${err.message}`);
                 resolve(false)
             } else {
-                //console.log(`Mensaje enviado: \n${buf.toString('hex')}`);
-                //console.log('handler_message')
+                console.log(`Mensaje enviado: id_bot: ${id_bot} ${id_bot_mapper[id_bot]} \n${buf.toString('hex')}`);
+                console.log('handler_message')
                 resolve(true)
                 
             }
@@ -63,8 +64,8 @@ function get_server_and_port(){
 }
 
 async function handler_message(msg, rconf){
-    //console.log(`Mensaje recibido: \n${msg.toString('hex')}`);
-    //console.log('handler_message')
+    console.log(`Mensaje recibido: id_bot: ${mapper[this.address().port].number_bot} ${this.address().port} \n${msg.toString('hex')}`);
+    console.log('handler_message')
     const responses = mapper[this.address().port].bot.handler_message(msg, rconf)
     const id_bot = mapper[this.address().port].number_bot
     if(!responses){
