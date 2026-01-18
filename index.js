@@ -2,8 +2,11 @@ const dgram = require('dgram');
 const BotService = require('./services/bot.service')
 let ip_server = '192.168.1.134';
 let port_server = 8888;
-
-const num_bots = 2;
+const c_bot_helper = require('./helpers/bot.helper')
+const bot_helper = new c_bot_helper()
+const c_apis = require('./apis/index.api')
+const apis = new c_apis(bot_helper)
+const num_bots = 3;
 let mapper = {}
 let id_bot_mapper = {}
 async function start_bots(){
@@ -15,7 +18,7 @@ async function start_bots(){
             server: obj_starter.server,
             number_bot: i,
             port_bot: obj_starter.port,
-            bot: new BotService(i)
+            bot: new BotService(i, bot_helper)
         }
         id_bot_mapper[i] = obj_starter.port,
         ports_bots_map[obj_starter.port].server.on('message', handler_message)

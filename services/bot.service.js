@@ -12,7 +12,9 @@ module.exports = class BotService{
     start = false
     arr_actions = []
     in_game = false
-    constructor(number_bot){
+    bot_helper = null
+    constructor(number_bot, bot_helper){
+        this.bot_helper = bot_helper
         this.#number_bot = number_bot
         this.buffer_session = (this.buffer_session + `${number_bot}`.padStart(2, '0'))
         this.user_bot = Buffer.from(('Bot'+`${number_bot}`.padStart(2, "0")), 'ascii') 
@@ -152,8 +154,10 @@ module.exports = class BotService{
                     console.log('bot spawn ', bot)
                     this.in_game = true
                     this.start = true
-                    const pj_response = Buffer.from('3f00800d000d1000010000e55e1d465c55b244ba37d045f6a30000'.replace('261370c5', this.buffer_session.toString('hex')), 'hex')
-                    
+                    const pj_response = Buffer.from('3f00800d010d1000010000e55e1d465c55b244ba37d045f6a30000'.replace('261370c5', this.buffer_session.toString('hex')), 'hex')
+                    this.bot_cords = this.extractRespawnXZR(msg, bot)
+                    this.bot_helper.send_event(JSON.stringify({type_action: 'spawn', value_action: this.bot_cords, id_bot: bot}))
+                
                     this.arr_actions.push(pj_response)
                     //this.spawn(that_bot.cords)
                     //const all_players = this.extractAllPlayers(msg)
