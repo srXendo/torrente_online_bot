@@ -15,7 +15,10 @@ module.exports = class BotService{
     bot_helper = null
     last_byte_send= null
     last_byte_send_next = null
-    constructor(number_bot, bot_helper){
+    bot_master = null
+    constructor(number_bot, bot_helper, bot_master){
+        this.bot_master = bot_master
+
         setTimeout(()=>{
             if(!this.in_game){
                 this.in_game = true
@@ -103,14 +106,13 @@ module.exports = class BotService{
         }
     }
     users_actions(msg){
-        //console.log('new userActions: ', msg)
-        const ok2 = Buffer.from("3f020404"+this.buffer_session, 'hex')
-        ok2.writeUint8(msg.readUint8(3), 2)
-        ok2.writeUint8(msg.readUint8(2), 3)
+
         const bot = msg.readUInt8(4)
         const action = msg.readUInt8(5) //action player byte
         let responses = []
-        
+        const ok2 = Buffer.from("3f020404"+this.buffer_session, 'hex')
+        ok2.writeUint8(msg.readUint8(3), 2)
+        ok2.writeUint8(msg.readUint8(2), 3)
         //console.log('action, bot: ', action, this.#number_bot)
         switch(action){
             case 0xfb:
@@ -133,21 +135,13 @@ module.exports = class BotService{
                     console.log(`${this.user_bot} vida restante: `, msg.readUInt8(10))
                     if(msg.readUInt8(10) === 0){
                         console.log(`ha muerto: ${this.user_bot}`)
-                        const pj_setup = Buffer.from('3f001376030e0000261370c522beb644d58c1dc614ae473f010b0610'.replace('261370c5', this.buffer_session.toString('hex')), 'hex')
-                        pj_setup.writeUInt8(this.#number_bot, 4) //byte ultimo numero de jugadores en partida 0x00
-                        pj_setup.writeUInt8(0x02, 25) //modelo byte 0x00 torrente 0x0b yonki
-                        pj_setup.writeUInt8(0x02, 24) //equipo byte 0x02 random 0x01 amarillo 0x00 rojo
-                        //pj_setup.writeUInt8(0x02, pj_setup.length- 10) //numero de jugador 0x01 jugador 1 0x02 jugador 2
+                        responses.push(this.try_other_spawn())
 
-                        this.start = true
-                        const pj_response = Buffer.from('3f00800d000d1000010000e55e1d465c55b244ba37d045f6a30000'.replace('261370c5', this.buffer_session.toString('hex')), 'hex')
-                        //pj_response.writeUInt8(this.#number_bot+1, 4)
+                    }
+                    if(msg.readUInt8(10) === 255){
+                        console.log(`ha muerto: ${this.user_bot}`)
+                        responses.push(this.try_other_spawn())
 
-
-                        pj_setup.writeUInt8(this.#number_bot, 4) //byte ultimo numero de jugadores en partida 0x00
-                        pj_response.writeUInt8(this.#number_bot, 4) //byte ultimo numero de jugadores en partida 0x00
-                        responses.push(pj_setup)
-                        responses.push(pj_response)
                     }
                     
                 }
@@ -172,54 +166,68 @@ module.exports = class BotService{
                 if(player_respawn){
                     
                     console.log('player spawn ', bot)
-                    //this.player_cords = this.extractRespawnXZR(msg, 0)
+                    this.player_cords = player_respawn
                     //this.start_move()
                 }
                 
                 if(that_bot){
-                    console.log('bot spawn ', bot)
+                    console.log('bot spawn ', this.#number_bot, that_bot)
                     this.in_game = true
                     this.start = true
                     const pj_response = Buffer.from('3f00800d010d1000010000e55e1d465c55b244ba37d045f6a30000'.replace('261370c5', this.buffer_session.toString('hex')), 'hex')
                     pj_response.writeInt8(this.#number_bot, 4)
-                    this.bot_cords = this.extractRespawnXZR(msg, bot)
-                    this.bot_helper.send_event(JSON.stringify({type_action: 'spawn', value_action: this.bot_cords, id_bot: bot}))
+                    this.bot_cords = that_bot
+                    this.bot_helper.send_event(JSON.stringify({type_action: 'spawn', value_action: that_bot, id_bot: this.#number_bot}))
                 
                     this.arr_actions.push(pj_response)
                     //this.spawn(that_bot.cords)
                     //const all_players = this.extractAllPlayers(msg)
 
                     //this.cb_spawn(all_players)
-                        responses.push({is_external: true, arr_respawns: arr_respawns})
-                        ok2.writeUint8(msg.readUint8(2), 3)
+                    //responses.push({is_external: true, arr_respawns: arr_respawns})
+                    ok2.writeUint8(msg.readUint8(2), 3)
                 }
-    
+                
                 break;
             case 0x26:
                // console.log('shot air', msg)    
             break;
             case 0x01:
+                const bot_cords = this.extractRespawnXZR(msg, bot)
 
-                if(this.bot_master){
-                    //console.log('sync player bot number: ', msg)
-                    this.follow_cam()
-                    this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: this.extractRespawnXZR(msg, bot), id_bot: bot}))
-                    
-                }
                 if(bot===0){
                     //console.log('sync player bot number: ', msg)
-                    this.player_cords = this.extractRespawnXZR(msg, 0)
+                    
+
+                    
                     //-this.follow_cam()
 
                     
                 }
-                if(bot == this.#number_bot){
+                if( bot==0 ){
+                    //console.log('sync player bot number: ', msg)
+                    this.player_cords = this.extractRespawnXZR(msg, 0)
+                    this.follow_cam()
 
-                    this.in_game = true
-                    //this.bot_cords = this.extractRespawnXZR(msg, bot)
-                    this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: this.extractRespawnXZR(msg, bot), id_bot: bot}))
                 }
+                if(msg.readUInt16LE(6) === 0){
+                    console.log('bot spawn in other bot')
+                }
+                console.log('sync package: ', this.#number_bot, bot, this.bot_master, msg)
+                if(this.bot_master){
+                    
+                    this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: {bot: bot, x: bot_cords.x, y: bot_cords.y, z: bot_cords.z, r: bot_cords.r}, id_bot: bot}))
+                }
+                if(bot == this.#number_bot){
+                    
+                    this.in_game = true
+                    this.bot_cords = this.extractRespawnXZR(msg, bot)
+                    
 
+                    //this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: this.extractRespawnXZR(msg, bot), id_bot: this.#number_bot}))
+                    
+                }
+                
                 break;
             case 0xce:
 
@@ -263,6 +271,32 @@ module.exports = class BotService{
         //pj_setup.writeUInt8(0x02, pj_setup.length- 10) //numero de jugador 0x01 jugador 1 0x02 jugador 2
         return pj_setup
     }
+    follow_cam(){
+        //console.log(this.bot_cords, this.player_cords)
+        if(this.bot_cords  && this.player_cords){
+            const view = -this.angleToTarget(this.bot_cords.x, this.bot_cords.y, this.player_cords.x, this.player_cords.y)
+            //console.log('bot view to: ', view)
+            const row = Buffer.from('3f002e1d000a77b3d60a','hex')
+            row.writeUInt8(this.#number_bot, 4)
+            //row.writeUint16LE( Math.floor(Math.random() * 180) , 8)
+            row.writeUint8(view , 7)
+            this.arr_actions.push(row)
+            this.bot_cords.r = view
+            this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: {bot: this.#number_bot, x: this.bot_cords.x, y: this.bot_cords.y, z: this.bot_cords.z, r: view}, id_bot: this.#number_bot}))
+            
+        }
+
+    }
+    angleToTarget(botX, botY, targetX, targetY) {
+        const dx =  botX - targetX
+        const dy = targetY - botY
+
+        let angleDeg = Math.atan2(dy, dx) * 180 / Math.PI
+        if (angleDeg < 0) angleDeg += 360
+        angleDeg = (angleDeg + 270) % 360;
+        const packed = Math.floor(angleDeg / 360 * 255)
+        return packed;
+    }
     extractAllPlayers(buffer){
         const arr = this.splitBuffer(buffer, Buffer.from([0x0e, 0x00, 0x00]))
         const first_ele = arr.shift();
@@ -286,12 +320,12 @@ module.exports = class BotService{
     spawn(cords){
         console.log('bot spawn: ', this.#number_bot)
         this.start = true
-        this.bot_cords = cords
-        const pj_response = Buffer.from('3f00800d000d1000010000e55e1d465c55b244ba37d045f6a30000'.replace('261370c5', this.buffer_session.toString('hex')), 'hex')
+        //this.bot_cords = cords
+        //const pj_response = Buffer.from('3f00800d000d1000010000e55e1d465c55b244ba37d045f6a30000'.replace('261370c5', this.buffer_session.toString('hex')), 'hex')
         //pj_response.writeUInt8(this.bot_number+1, 4)
 
-        pj_response.writeUInt8(this.#number_bot, 4) //byte ultimo numero de jugadores en partida 0x00
-        this.arr_actions.push(pj_response)
+        //pj_response.writeUInt8(this.#number_bot, 4) //byte ultimo numero de jugadores en partida 0x00
+        //this.arr_actions.push(pj_response)
         //this.bot_helper.send_event(JSON.stringify({type_action: 'spawn', value_action: cords, id_bot: this.#number_bot}))
     }
     extractRespawnXZR(buffer, bot, baseOffset = 8) {
@@ -325,7 +359,7 @@ module.exports = class BotService{
         for(let idx = 0; idx < arr.length; idx++){
             const row = arr[idx]
             if(!row.is_external){
-                if( count_prev+idx > 255){
+                if( next_prev+idx > 255){
                     row.writeUint8(next_prev, 2)
 
                 }else{

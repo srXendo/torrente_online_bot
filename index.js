@@ -6,21 +6,26 @@ const c_bot_helper = require('./helpers/bot.helper')
 const bot_helper = new c_bot_helper()
 const c_apis = require('./apis/index.api')
 const apis = new c_apis(bot_helper)
-const num_bots = 22;
+const num_bots = 30;
 let mapper = {}
 let id_bot_mapper = {}
+let loggin = true
+let bot_master = true
 async function start_bots(){
     const ports_bots_map = {}
     for(let i = 1; i < num_bots+1; i++){
         
         const obj_starter = await get_server_and_port()
-        console.log(`new bot: id_bot${i} port: ${obj_starter.port}`);
+        if(loggin){
+            console.log(`new bot: id_bot${i} port: ${obj_starter.port}`);
+        }
         ports_bots_map[obj_starter.port] = {
             server: obj_starter.server,
             number_bot: i,
             port_bot: obj_starter.port,
-            bot: new BotService(i, bot_helper)
+            bot: new BotService(i, bot_helper, bot_master)
         }
+        bot_master = false
         id_bot_mapper[i] = obj_starter.port,
         ports_bots_map[obj_starter.port].server.on('message', handler_message)
 
@@ -35,8 +40,11 @@ function send_package_to_server(id_bot, buf){
                 console.error(`Error al clientHello: ${err.message}`);
                 resolve(false)
             } else {
-                console.log(`Mensaje enviado: id_bot: ${id_bot} ${id_bot_mapper[id_bot]} \n${buf.toString('hex')}`);
-                console.log('handler_message')
+                if(loggin){
+                    console.log(`Mensaje enviado: id_bot: ${id_bot} ${id_bot_mapper[id_bot]} \n${buf.toString('hex')}`);
+                
+                    console.log('handler_message')
+                }
                 resolve(true)
                 
             }
@@ -64,8 +72,11 @@ function get_server_and_port(){
 }
 
 async function handler_message(msg, rconf){
-    console.log(`Mensaje recibido: id_bot: ${mapper[this.address().port].number_bot} ${this.address().port} \n${msg.toString('hex')}`);
-    console.log('handler_message')
+    if(loggin){
+        console.log(`Mensaje recibido: id_bot: ${mapper[this.address().port].number_bot} ${this.address().port} \n${msg.toString('hex')}`);
+    
+        console.log('handler_message')
+    }
     const responses = mapper[this.address().port].bot.handler_message(msg, rconf)
     const id_bot = mapper[this.address().port].number_bot
     if(!responses){
@@ -79,7 +90,8 @@ async function handler_message(msg, rconf){
             for(let respawn of msg_to_server.arr_respawns){
                 const bot_port = id_bot_mapper[respawn.bot]
                 if(!mapper[bot_port].bot.in_game){
-                    mapper[bot_port].bot.spawn(respawn.cords)
+                    console.log(`bot no spawn: ${mapper[bot_port].bot}`)
+                    //mapper[bot_port].bot.spawn(respawn.cords)
                 }
                 
             }
