@@ -12,7 +12,7 @@ class apis{
       ...publicApi.router.get_routes(),
       //...roomApi.get_routes(),
     ];
-
+    this.publicApi = publicApi
     // 🔹 Crear servidor HTTP/2 seguro
     const server = http2.createSecureServer(
       {
@@ -72,7 +72,8 @@ class apis{
 
           try {
             const aux = await row_route_api.funct(stream, headers, params);
-            if (aux) {
+            console.log(aux)
+            if (aux && (aux.isError || aux.status || aux.message || aux.newCookie)) {
               const [isError, status, message, newCookie] = aux;
 
               response[":status"] = status;
@@ -118,6 +119,10 @@ class apis{
     });
 
     this.server = server
+  }
+  disconnect(){
+
+    return this.publicApi.disconnect()
   }
 }
 module.exports = apis;

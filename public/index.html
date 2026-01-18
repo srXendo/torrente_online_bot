@@ -227,6 +227,7 @@ const wireMaterial = new THREE.MeshBasicMaterial({
 connect()
 const players = {}; // key = playerId, value = THREE.Mesh
 let mapMeshes = [];
+const botMeshes = [];
 const FORWARD_OFFSET = 30;
 const LENGTH = 400;
 const SENSOR_HEIGHT = 100;
@@ -259,7 +260,10 @@ function botHitsWall(origin, forward, raycaster) {
     raycaster.far = LENGTH;
     raycaster.set(origin, forward);
 
-    const intersects = raycaster.intersectObjects(mapMeshes, true);
+    const intersects = raycaster.intersectObjects([
+        ...mapMeshes,
+        ...botMeshes
+    ], true);
 
     if (intersects.length === 0) return false;
 
@@ -302,12 +306,15 @@ async function process_action(action){
                 scene.add(bot);
                 
                 players[action.id_bot] = bot;
+                botMeshes.push(bot);
                 createBotRaycaster(action.id_bot);
                 createForwardLine(action.id_bot);
             }
             break;
         case 'sync':
             //console.log('sync', action)
+            
+                console.log(action)
             
             const obj = players[action.id_bot];
             if (!obj) return; // No existe, quizá no ha spawn

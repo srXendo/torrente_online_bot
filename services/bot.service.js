@@ -274,7 +274,7 @@ module.exports = class BotService{
     follow_cam(){
         //console.log(this.bot_cords, this.player_cords)
         if(this.bot_cords  && this.player_cords){
-            const view = -this.angleToTarget(this.bot_cords.x, this.bot_cords.y, this.player_cords.x, this.player_cords.y)
+            const view = this.angleToTarget(this.bot_cords.x, this.bot_cords.y, this.player_cords.x, this.player_cords.y)
             //console.log('bot view to: ', view)
             const row = Buffer.from('3f002e1d000a77b3d60a','hex')
             row.writeUInt8(this.#number_bot, 4)
@@ -458,6 +458,8 @@ module.exports = class BotService{
         client action:  <Buffer 3f 01 dd 0e 00 02>
         client action:  <Buffer 3f 08 de 0e>
         */
+       this.arr_actions.push(Buffer.from('3f001f170102', 'hex'))
+       this.arr_actions.push(Buffer.from('3f08f618', 'hex'))
         return [Buffer.from('3f001f170102', 'hex'),
         Buffer.from('3f08f618', 'hex')]
     }
