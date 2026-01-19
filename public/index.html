@@ -1,18 +1,19 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-    <title>three.js FPS / Strafe</title>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>THREE FPS + Bots Raycast</title>
+    <style>body { margin:0; overflow:hidden; background:#000; }</style>
 </head>
 <body>
 
 <script type="importmap">
 {
-"imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
-}
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/"
+  }
 }
 </script>
 
@@ -20,417 +21,253 @@
 import * as THREE from 'three';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-const raycaster = new THREE.Raycaster();
-const playerHeight = 1.6;
-const collisionDistance = 0.2; // distancia mínima antes de chocar
-let objLoader = null
 
-let camera, scene, renderer, controls, object;
+let camera, scene, renderer, controls;
+let mapMeshes = [];
+let botMeshes = [];
+let players = {};
+let forwardLines = {};
+let botRaycasters = {};
+let botPrototype;
+
+const wireMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
+const wireMaterialBot = new THREE.MeshBasicMaterial({ color: 0x00c8ff, wireframe: true });
+
 const move = { forward: false, backward: false, left: false, right: false };
-const speed = 1;
+const playerSpeed = 0.25;
+
+const SENSOR_HEIGHT    = 80;
+const FORWARD_OFFSET   = 30;
+const SENSOR_LENGTH    = 400 * 8;
+
+const COLOR_FREE = new THREE.Color(0xff8800);
+const COLOR_WALL  = new THREE.Color(0xff0000);
+const COLOR_BOT   = new THREE.Color(0x0000ff);
 
 init();
-function gameToThree(x, y, z) {
-  return new THREE.Vector3(
-    x,
-    y, // altura
-    z
-  );
-}
-const botRaycasters = {}; // key = botId, value = THREE.Raycaster
-function createBotRaycaster(botId) {
-    botRaycasters[botId] = new THREE.Raycaster();
-}
-const forwardLines = {}; // key = botId, value = THREE.Line
-function createForwardLine(botId) {
-    const points = [new THREE.Vector3(), new THREE.Vector3()];
-    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    const material = new THREE.LineBasicMaterial({
-        color: 0xff0000,
-        linewidth: 10,
-        depthTest: false
-    });
 
-    const line = new THREE.Line(geometry, material);
-    line.frustumCulled = false;
-    line.userData.type = 'bot';
-    scene.add(line);
-    forwardLines[botId] = line;
-}
-function getHitType(object) {
-    let obj = object;
-    while (obj) {
-        if (obj.userData && obj.userData.type) {
-            return obj.userData.type;
-        }
-        obj = obj.parent;
-    }
-    return null;
-}
 async function init() {
-    camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 9999999);
+    camera = new THREE.PerspectiveCamera(90, innerWidth / innerHeight, 0.1, 999999);
     camera.position.set(2, 5, 2.5);
 
     scene = new THREE.Scene();
 
-    const ambientLight = new THREE.AmbientLight(0xffffff);
-    scene.add(ambientLight);
-
-    const pointLight = new THREE.PointLight(0xffffff, 1);
-    camera.add(pointLight);
+    scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+    const pl = new THREE.PointLight(0xffffff, 1);
+    camera.add(pl);
     scene.add(camera);
 
-    // Cargar OBJ
-    objLoader = new OBJLoader().setPath('./');
-    object = await objLoader.loadAsync('map.obj');
-
-    object.position.y = -1;
-    object.scale.setScalar(1);
-    object.updateMatrixWorld(true);
-    // Recorrer todos los meshes dentro del objeto
-    object.traverse((child) => {
-        if (child.isMesh) {
-            child.material = wireMaterial;
-
-                    // CLAVE
-            child.material.side = THREE.DoubleSide;
-
-            child.geometry.computeBoundingBox();
-            child.geometry.computeBoundingSphere();
-            child.userData.type = 'wall';
-
-            mapMeshes.push(child);
-        }
-    });
-    scene.add(object);
-    players[0] = await objLoader.loadAsync('model.bot.obj')
-    players[0].position.y = -0;
-    players[0].position.x = 0;
-    players[0].position.z = 0;
-    players[0].scale.setScalar(100);
-    scene.add(players[0]);
-    createBotRaycaster(0);
-    createForwardLine(0);
     renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setPixelRatio(devicePixelRatio);
     document.body.appendChild(renderer.domElement);
 
-    // PointerLockControls
     controls = new PointerLockControls(camera, renderer.domElement);
-    scene.add(controls); // agregar el objeto de controles directamente
+    document.addEventListener('click', () => controls.lock());
 
-    // Click sobre canvas para activar pointer lock
-    renderer.domElement.addEventListener('click', () => controls.lock());
+    const loader = new OBJLoader().setPath('./');
 
-    // Teclado
-    document.addEventListener('keydown', onKeyDown);
-    document.addEventListener('keyup', onKeyUp);
+    // Mapa
+    try {
+        const mapObj = await loader.loadAsync('map.obj');
+        mapObj.position.y = -1;
+        mapObj.traverse(child => {
+            if (child.isMesh) {
+                child.material = wireMaterial;
+                child.material.side = THREE.DoubleSide;
+                child.userData.type = 'wall';
+                mapMeshes.push(child);
+            }
+        });
+        scene.add(mapObj);
+    } catch(e) { console.warn("map.obj no cargado", e); }
 
-    window.addEventListener('resize', onWindowResize);
+    // Prototipo bot
+    try {
+        botPrototype = await loader.loadAsync('model.bot.obj');
+        botPrototype.scale.setScalar(100);
+        botPrototype.traverse(c => {
+            if (c.isMesh) {
+                c.material = wireMaterialBot;
+                c.userData.type = 'bot';
+            }
+        });
+    } catch(e) { console.warn("model.bot.obj no cargado", e); }
 
+    // Bot 0 (jugador local)
+    if (botPrototype) {
+        const bot0 = botPrototype.clone();
+        bot0.position.set(0, 0, 0);
+        scene.add(bot0);
+        players[0] = bot0;
+        botMeshes.push(bot0);
+        createBotSensor(0);
+    }
+
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('resize', onResize);
+
+    connectSSE();
     animate();
-
 }
 
-function onKeyDown(event) {
-    switch(event.code) {
-        case 'KeyW': move.forward = true; break;
+function createBotSensor(id) {
+    botRaycasters[id] = new THREE.Raycaster();
+
+    const line = new THREE.Line(
+        new THREE.BufferGeometry(),
+        new THREE.LineBasicMaterial({ color: 0xffffff })
+    );
+    line.frustumCulled = false;
+    scene.add(line);
+    forwardLines[id] = line;
+}
+
+function onKeyDown(e) {
+    switch(e.code){
+        case 'KeyW': move.forward  = true; break;
         case 'KeyS': move.backward = true; break;
-        case 'KeyA': move.left = true; break;
-        case 'KeyD': move.right = true; break;
+        case 'KeyA': move.left     = true; break;
+        case 'KeyD': move.right    = true; break;
     }
 }
 
-function onKeyUp(event) {
-    switch(event.code) {
-        case 'KeyW': move.forward = false; break;
+function onKeyUp(e) {
+    switch(e.code){
+        case 'KeyW': move.forward  = false; break;
         case 'KeyS': move.backward = false; break;
-        case 'KeyA': move.left = false; break;
-        case 'KeyD': move.right = false; break;
+        case 'KeyA': move.left     = false; break;
+        case 'KeyD': move.right    = false; break;
     }
 }
 
-function onWindowResize() {
-    camera.aspect = window.innerWidth / window.innerHeight;
+function onResize() {
+    camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(innerWidth, innerHeight);
 }
-function connect(){
-    const source  = new EventSource('/api/connect')
 
-    source.onerror = (err)=>{
-        console.error(new Error(err.stack))
-    }
-    source.onmessage = (msg)=>{
+function updatePlayerMovement() {
+    if (!controls.isLocked || !players[0]) return;
 
-        let res_json = null 
-        try{
+    const dir = new THREE.Vector3();
+    controls.getDirection(dir);
+    dir.y = 0; dir.normalize();
 
-            res_json = JSON.parse(msg.data)
-            process_action(res_json)
-        }catch(err){
-            console.log(msg)
-            console.error(new Error('sse stream msg not a json'))
-            console.error(new Error(err))
-        }
-    }
-    source.onopen = (msg)=>{
-        console.log('open sse')
-    }
+    const right = new THREE.Vector3().crossVectors(camera.up, dir).normalize();
+
+    if (move.forward)  players[0].position.addScaledVector(dir,   playerSpeed);
+    if (move.backward) players[0].position.addScaledVector(dir,  -playerSpeed);
+    if (move.left)     players[0].position.addScaledVector(right, -playerSpeed);
+    if (move.right)    players[0].position.addScaledVector(right,  playerSpeed);
+
+    updateCameraFollow();
 }
-function animate() {
-    requestAnimationFrame(animate);
 
-    if (controls.isLocked) {
-        const dir = new THREE.Vector3();
-        controls.getDirection(dir);
-        dir.y = 0;
-        dir.normalize();
-
-        const right = new THREE.Vector3();
-        right.crossVectors(dir, camera.up).normalize();
-
-        const obj = controls.object;
-
-        if (move.forward) obj.position.add(dir.clone().multiplyScalar(speed));
-        if (move.backward) obj.position.add(dir.clone().multiplyScalar(-speed));
-        if (move.left) obj.position.add(right.clone().multiplyScalar(-speed));
-        if (move.right) obj.position.add(right.clone().multiplyScalar(speed));
-    }
-
-    renderer.render(scene, camera);
-}
-const CAMERA_OFFSET = new THREE.Vector3(40, 20, 7);
-const modelHeight = 1 * 100; // ajustar según tu modelo real
 function updateCameraFollow() {
     if (!players[0]) return;
-
-    const player = players[0];
-
-    // Altura de ojos relativa a la base del modelo
-    const modelHeight = 1 * 100; // ajustar según tu escala real
-    const LOOK_HEIGHT = modelHeight * 0.9;
-
-    // Punto hacia donde mira la cámara (ojos)
-    const target = player.position.clone();
-    target.y += LOOK_HEIGHT;
-
-    // Offset de cámara (detrás y arriba del jugador)
-    const CAMERA_OFFSET = new THREE.Vector3(0, LOOK_HEIGHT, 200); // x, y, z
-    const offset = CAMERA_OFFSET.clone();
-
-    // Rotar offset según la rotación Y del jugador
-    offset.applyAxisAngle(new THREE.Vector3(0,1,0), player.rotation.y);
-
-    // Posición final de la cámara
-    const cameraPos = player.position.clone().add(offset);
-    camera.position.copy(cameraPos);
-
-    camera.lookAt(target);
+    const p = players[0].position.clone();
+    const rot = players[0].rotation.y;
+    const offset = new THREE.Vector3(0, 40, 120); // ajusta si es necesario
+    offset.applyAxisAngle(new THREE.Vector3(0,1,0), rot);
+    camera.position.copy(p).add(offset);
+    camera.lookAt(p.x, p.y + 30, p.z);
 }
-function yaw255ToRadians(r) {
-  return (r / 256) * Math.PI * 2;
-}
-const wireMaterial = new THREE.MeshBasicMaterial({
-    color: 0x00ff00,  // color de las líneas
-    wireframe: true
-});
-const wireMaterialBot = new THREE.MeshBasicMaterial({
-    color: 0x00c8ff,  // color de las líneas
-    wireframe: true
-});
-connect()
-const players = {}; // key = playerId, value = THREE.Mesh
-let mapMeshes = [];
-const botMeshes = [];
-const FORWARD_OFFSET = 30;
-const LENGTH = 400 * 8;
-const SENSOR_HEIGHT = 115 ;
 
-function updateForwardLine(bot, line, raycaster) {
-    const forward = new THREE.Vector3();
-    bot.getWorldDirection(forward);
-    forward.multiplyScalar(-1);
-    forward.normalize();
+function updateAllSensors() {
+    for (const id in players) {
+        const bot = players[id];
+        const ray = botRaycasters[id];
+        const line = forwardLines[id];
 
-    const origin = bot.position.clone();
-    origin.y += SENSOR_HEIGHT;
-    origin.add(forward.clone().multiplyScalar(FORWARD_OFFSET));
+        const origin = bot.position.clone();
+        origin.y += SENSOR_HEIGHT;
 
-    const end = origin.clone().add(forward.clone().multiplyScalar(LENGTH));
+        const forward = new THREE.Vector3();
+        bot.getWorldDirection(forward);
+        forward.y = 0;
+        forward.normalize();
+        forward.multiplyScalar(-1);
+        const start = origin.clone().addScaledVector(forward, FORWARD_OFFSET);
+        const end = start.clone().addScaledVector(forward, SENSOR_LENGTH);
 
-    line.geometry.setFromPoints([origin, end]);
-    line.geometry.attributes.position.needsUpdate = true;
+        line.geometry.setFromPoints([start, end]);
+        line.geometry.attributes.position.needsUpdate = true;
 
-    const hitType = botRaycast(origin, forward, raycaster, bot);
+        ray.set(start, forward);
+        const hits = ray.intersectObjects([...mapMeshes, ...botMeshes.filter(b => b !== bot)], true);
 
-    if (hitType === 'wall') {
-        line.material.color.set(0xff0000);
-    } else if (hitType === 'bot') {
-        line.material.color.set(0x0000ff);
-    } else {
-        line.material.color.set(0xff8800);
+        let color = COLOR_FREE.clone();
+        if (hits.length > 0) {
+            const hit = hits[0];
+            if (hit.distance < SENSOR_LENGTH) {
+                const type = hit.object.userData?.type;
+                if (type === 'wall') color = COLOR_WALL.clone();
+                if (type === 'bot')  color = COLOR_BOT.clone();
+            }
+        }
+        line.material.color.copy(color);
     }
 }
 
-function botRaycast(origin, forward, raycaster, selfBot) {
-    raycaster.near = 0;
-    raycaster.far = LENGTH;
-    raycaster.set(origin, forward);
-
-    const intersects = raycaster.intersectObjects(
-        [...mapMeshes, ...botMeshes.filter(b => b !== selfBot)],
-        true
-    );
-
-    if (intersects.length === 0) return null;
-
-    intersects.sort((a, b) => a.distance - b.distance);
-
-
-    const hit = intersects[0];
-    if (hit.distance > LENGTH) return null;
-
-    return getHitType(hit.object);
+function animate() {
+    requestAnimationFrame(animate);
+    updatePlayerMovement();
+    updateAllSensors();
+    renderer.render(scene, camera);
 }
 
+// SSE
+function connectSSE() {
+    const source = new EventSource('/api/connect');
+    source.onmessage = e => {
+        try {
+            const action = JSON.parse(e.data);
+            processAction(action);
+        } catch(err) {
+            console.error("SSE parse error", err);
+        }
+    };
+    source.onerror = () => console.log("SSE error/reconnecting...");
+}
 
-
-async function process_action(action){
-
-    switch(action.type_action){
-        case 'camera':
-            //move_camera(action.value_action)
-        break;
-        case 'move':
-            botMoving = !action.value_action ? false : true
-            if(action.value_action === 'a' && directionKeys === 'd'){
-                return false
-            }
-            if(action.value_action === 'd' && directionKeys === 'a'){
-                return false
-            }
-            if(action.value_action === 'w' && directionKeys === 's'){
-                return false
-            }
-            if(action.value_action === 's' && directionKeys === 'w'){
-                return false
-            }
-            directionKeys = action.value_action
-            //move_model();
-        break;
+function processAction(action) {
+    switch(action.type_action) {
         case 'spawn':
-            if(action.id_bot !== 0){
-                console.log('spàwn', action)
-                const bot = players[0].clone(true);
-                bot.position.y =  action.value_action.z
-                bot.position.x = action.value_action.x
-                bot.position.z = -action.value_action.y //ingame z
-                bot.scale.setScalar(100);
-                
-                scene.add(bot);
-                bot.userData.type = 'bot';
+            if (action.id_bot == 0) return;
+            if (!botPrototype) return;
 
-                bot.traverse(child => {
-                    if (child.isMesh) {
-                        child.material = wireMaterialBot;
-                        child.userData.type = 'bot';
-                        botMeshes.push(child);
-                    }
-                });
-                players[action.id_bot] = bot;
-                
-                botMeshes.push(bot);
-                createBotRaycaster(action.id_bot);
-                createForwardLine(action.id_bot);
-            }
-            break;
-        case 'sync':
-            //console.log('sync', action)
-            
-            console.log(action)
-            
-            const obj = players[action.id_bot];
-            if (!obj) return; // No existe, quizá no ha spawn
-            const line = forwardLines[action.id_bot];
-            const raycaster = botRaycasters[action.id_bot];
-            // Convertir coordenadas
-            const p = gameToThree(
+            const bot = botPrototype.clone();
+            bot.position.set(
                 action.value_action.x,
                 action.value_action.z,
                 -action.value_action.y
             );
-            obj.position.copy(p);
-            
+            scene.add(bot);
+            players[action.id_bot] = bot;
+            botMeshes.push(bot);
+            createBotSensor(action.id_bot);
+            break;
+
+        case 'sync':
+            const bot2 = players[action.id_bot];
+            if (!bot2) return;
+
+            bot2.position.set(
+                action.value_action.x,
+                action.value_action.z,
+                -action.value_action.y
+            );
+
             if (typeof action.value_action.r === 'number') {
-                if(action.id_bot === 0){
-                    obj.rotation.y = -yaw255ToRadians(action.value_action.r);
-                }else{
-                    obj.rotation.y = +yaw255ToRadians(action.value_action.r)  + Math.PI;
-                }
+                const rot = (action.value_action.r / 256) * Math.PI * 2;
+                bot2.rotation.y = -rot;  // Unificado para todos: -rot para mirar en la misma dirección
             }
 
-            updateForwardLine(obj, line, raycaster);
-            if (action.id_bot === 0) {
-                updateCameraFollow();
-            }
-            
-        break;
+            if (action.id_bot === 0) updateCameraFollow();
+            break;
     }
-}
-let botMoving = false; // indica si el bot está en movimiento
-let directionKeys = false
-function move_model() {
-        // Si directionKeys es null, detenemos el movimiento
-    if (!directionKeys || !botMoving) {
-        botMoving = false;
-        return;
-    }else{
-        
-        if (!players[0]) return;
-
-
-
-        const speed = 200*100;
-
-        // Vector de dirección basado en la rotación del modelo
-        const forward = new THREE.Vector3(
-            Math.sin(players[0].rotation.y),
-            0,
-            Math.cos(players[0].rotation.y)
-        ).normalize();
-
-        const right = new THREE.Vector3(
-            Math.sin(players[0].rotation.y + Math.PI / 2),
-            0,
-            Math.cos(players[0].rotation.y + Math.PI / 2)
-        ).normalize();
-
-        // Movimiento según las teclas
-        if (directionKeys.includes("w")) players[0].position.add(forward.clone().multiplyScalar(-speed));
-        if (directionKeys.includes("s")) players[0].position.add(forward.clone().multiplyScalar(speed));
-        if (directionKeys.includes("d")) players[0].position.add(right.clone().multiplyScalar(speed));
-        if (directionKeys.includes("a")) players[0].position.add(right.clone().multiplyScalar(-speed));
-
-        // Renderizamos después de mover
-        renderer.render(scene, camera);
-        setTimeout(()=>{
-            if(!directionKeys || !botMoving){
-                return
-            }else{
-                move_model(directionKeys)
-            }
-        },1)
-        
-    }
-
-}
-
-
-
-function move_camera(y){
-     players[0].rotation.y = y
 }
 </script>
 </body>
