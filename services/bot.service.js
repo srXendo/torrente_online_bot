@@ -121,7 +121,8 @@ module.exports = class BotService{
                 console.log('player change gun ', bot, this.#number_bot)    
             break;
             case 0x0c:
-
+                this.follow_cam()
+                console.log("move any", msg)
             break;
             case 0x0a:
                 //this.user_camera(msg)
@@ -214,7 +215,7 @@ module.exports = class BotService{
                     console.log('bot spawn in other bot')
                 }
                 console.log('sync package: ', this.#number_bot, bot, this.bot_master, msg)
-                if(this.bot_master){
+                if(this.bot_master && bot==0 ){
                     
                     this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: {bot: bot, x: bot_cords.x, y: bot_cords.y, z: bot_cords.z, r: bot_cords.r}, id_bot: bot}))
                 }
@@ -222,7 +223,7 @@ module.exports = class BotService{
                     
                     this.in_game = true
                     this.bot_cords = this.extractRespawnXZR(msg, bot)
-                    
+                   
 
                     //this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: this.extractRespawnXZR(msg, bot), id_bot: this.#number_bot}))
                     
@@ -282,7 +283,7 @@ module.exports = class BotService{
             row.writeUint8(view , 7)
             this.arr_actions.push(row)
             this.bot_cords.r = view
-            this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: {bot: this.#number_bot, x: this.bot_cords.x, y: this.bot_cords.y, z: this.bot_cords.z, r: view}, id_bot: this.#number_bot}))
+            this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: {bot: this.#number_bot, x: this.bot_cords.x, y: this.bot_cords.y, z: this.bot_cords.z, r: this.bot_cords.r}, id_bot: this.#number_bot}))
             
         }
 
@@ -294,7 +295,7 @@ module.exports = class BotService{
         let angleDeg = Math.atan2(dy, dx) * 180 / Math.PI
         if (angleDeg < 0) angleDeg += 360
         angleDeg = (angleDeg + 270) % 360;
-        const packed = Math.floor(angleDeg / 360 * 255)
+        const packed = Math.floor(angleDeg / 360 * 256)
         return packed;
     }
     extractAllPlayers(buffer){

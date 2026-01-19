@@ -47,15 +47,25 @@ function createForwardLine(botId) {
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
     const material = new THREE.LineBasicMaterial({
         color: 0xff0000,
-        linewidth: 2,
+        linewidth: 10,
         depthTest: false
     });
 
     const line = new THREE.Line(geometry, material);
     line.frustumCulled = false;
-
+    line.userData.type = 'bot';
     scene.add(line);
     forwardLines[botId] = line;
+}
+function getHitType(object) {
+    let obj = object;
+    while (obj) {
+        if (obj.userData && obj.userData.type) {
+            return obj.userData.type;
+        }
+        obj = obj.parent;
+    }
+    return null;
 }
 async function init() {
     camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 9999999);
@@ -73,6 +83,7 @@ async function init() {
     // Cargar OBJ
     objLoader = new OBJLoader().setPath('./');
     object = await objLoader.loadAsync('map.obj');
+
     object.position.y = -1;
     object.scale.setScalar(1);
     object.updateMatrixWorld(true);
@@ -86,6 +97,7 @@ async function init() {
 
             child.geometry.computeBoundingBox();
             child.geometry.computeBoundingSphere();
+            child.userData.type = 'wall';
 
             mapMeshes.push(child);
         }
@@ -224,21 +236,22 @@ const wireMaterial = new THREE.MeshBasicMaterial({
     color: 0x00ff00,  // color de las líneas
     wireframe: true
 });
+const wireMaterialBot = new THREE.MeshBasicMaterial({
+    color: 0x00c8ff,  // color de las líneas
+    wireframe: true
+});
 connect()
 const players = {}; // key = playerId, value = THREE.Mesh
 let mapMeshes = [];
 const botMeshes = [];
 const FORWARD_OFFSET = 30;
-const LENGTH = 400;
-const SENSOR_HEIGHT = 100;
+const LENGTH = 400 * 8;
+const SENSOR_HEIGHT = 115 ;
 
 function updateForwardLine(bot, line, raycaster) {
     const forward = new THREE.Vector3();
     bot.getWorldDirection(forward);
-
-    // Ajustar dirección si el modelo apunta al revés
     forward.multiplyScalar(-1);
-
     forward.normalize();
 
     const origin = bot.position.clone();
@@ -250,27 +263,39 @@ function updateForwardLine(bot, line, raycaster) {
     line.geometry.setFromPoints([origin, end]);
     line.geometry.attributes.position.needsUpdate = true;
 
-    const hitsWall = botHitsWall(origin, forward, raycaster);
+    const hitType = botRaycast(origin, forward, raycaster, bot);
 
-    line.material.color.set(hitsWall ? 0x0000ff : 0xff8800);
+    if (hitType === 'wall') {
+        line.material.color.set(0xff0000);
+    } else if (hitType === 'bot') {
+        line.material.color.set(0x0000ff);
+    } else {
+        line.material.color.set(0xff8800);
+    }
 }
 
-function botHitsWall(origin, forward, raycaster) {
+function botRaycast(origin, forward, raycaster, selfBot) {
     raycaster.near = 0;
     raycaster.far = LENGTH;
     raycaster.set(origin, forward);
 
-    const intersects = raycaster.intersectObjects([
-        ...mapMeshes,
-        ...botMeshes
-    ], true);
+    const intersects = raycaster.intersectObjects(
+        [...mapMeshes, ...botMeshes.filter(b => b !== selfBot)],
+        true
+    );
 
-    if (intersects.length === 0) return false;
+    if (intersects.length === 0) return null;
+
+    intersects.sort((a, b) => a.distance - b.distance);
+
 
     const hit = intersects[0];
+    if (hit.distance > LENGTH) return null;
 
-    return hit.distance <= LENGTH;
+    return getHitType(hit.object);
 }
+
+
 
 async function process_action(action){
 
@@ -303,9 +328,19 @@ async function process_action(action){
                 bot.position.x = action.value_action.x
                 bot.position.z = -action.value_action.y //ingame z
                 bot.scale.setScalar(100);
-                scene.add(bot);
                 
+                scene.add(bot);
+                bot.userData.type = 'bot';
+
+                bot.traverse(child => {
+                    if (child.isMesh) {
+                        child.material = wireMaterialBot;
+                        child.userData.type = 'bot';
+                        botMeshes.push(child);
+                    }
+                });
                 players[action.id_bot] = bot;
+                
                 botMeshes.push(bot);
                 createBotRaycaster(action.id_bot);
                 createForwardLine(action.id_bot);
@@ -314,7 +349,7 @@ async function process_action(action){
         case 'sync':
             //console.log('sync', action)
             
-                console.log(action)
+            console.log(action)
             
             const obj = players[action.id_bot];
             if (!obj) return; // No existe, quizá no ha spawn
@@ -323,14 +358,19 @@ async function process_action(action){
             // Convertir coordenadas
             const p = gameToThree(
                 action.value_action.x,
-                action.value_action.z ,
+                action.value_action.z,
                 -action.value_action.y
             );
             obj.position.copy(p);
-
+            
             if (typeof action.value_action.r === 'number') {
-                obj.rotation.y = -yaw255ToRadians(action.value_action.r);
+                if(action.id_bot === 0){
+                    obj.rotation.y = -yaw255ToRadians(action.value_action.r);
+                }else{
+                    obj.rotation.y = +yaw255ToRadians(action.value_action.r)  + Math.PI;
+                }
             }
+
             updateForwardLine(obj, line, raycaster);
             if (action.id_bot === 0) {
                 updateCameraFollow();
