@@ -8,5 +8,5 @@ process.on('SIGINT', async() => {
     await apis.disconnect()
     setTimeout(()=>{
         process.exit(0)
-    }, 2600)
+    }, 300)
 })

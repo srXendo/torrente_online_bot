@@ -99,6 +99,9 @@ module.exports = class BotService{
                 this.party = this.extract_data(msg)
                 return [Buffer.from("8801000006000100"+this.buffer_session+"c2091002", 'hex')]
             break;
+            case 0x3f08:
+                return []
+            break;
             default:
                 console.log("err: msg not recognice: ",msg)
                 return false
@@ -214,7 +217,9 @@ module.exports = class BotService{
                 if(msg.readUInt16LE(6) === 0){
                     console.log('bot spawn in other bot')
                 }
-                console.log('sync package: ', this.#number_bot, bot, this.bot_master, msg)
+                if(this.loggin){
+                    console.log('sync package: ', this.#number_bot, bot, this.bot_master, msg)
+                }
                 if(this.bot_master && bot==0 ){
                     
                     this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: {bot: bot, x: bot_cords.x, y: bot_cords.y, z: bot_cords.z, r: bot_cords.r}, id_bot: bot}))

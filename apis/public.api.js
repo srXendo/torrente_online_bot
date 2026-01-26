@@ -1,8 +1,10 @@
 const routerApi = require("./router.api");
 const fs = require('fs')
-const html = fs.readFileSync('./public/index.html');
-const map = fs.readFileSync('./public/map.obj');
-const model = fs.readFileSync('./public/model.bot.obj');
+
+
+
+
+
 let AUsers = null
 const dgram = require('dgram');
 const BotService = require('./../services/bot.service')
@@ -25,6 +27,8 @@ class publicApi {
   registerRoutes() {
     // index
     this.router.set_route("GET", "/", this.get_index.bind(this));
+    this.router.set_route("GET", "/index.js", this.get_index_js.bind(this));
+    this.router.set_route("GET", "/styles.css", this.get_styles_css.bind(this));
     this.router.set_route("GET", "/map.obj", this.get_map.bind(this));
     this.router.set_route("GET", "/model.bot.obj", this.get_model.bind(this));
     this.router.set_route("GET", "/api/connect", this.connect_client.bind(this));
@@ -41,9 +45,39 @@ class publicApi {
       'content-type': 'text/html; charset=utf-8',
       ":status": 200,
     }
-
+    const html = fs.readFileSync('./public/index.html');
     stream.respond(response)
     stream.write(html)
+    stream.end()
+    return null
+  }
+  async get_styles_css(stream, headers, params){
+    const response =  {
+      "access-control-allow-origin": `${process.env.PROT_FRONT}://${process.env.DOMAIN_FRONT}:${process.env.PORT_FRONT}`,
+      "access-control-allow-methods": "GET,POST,OPTIONS,PUT",
+      'Access-Control-Allow-Credentials': true,
+      "access-control-allow-headers": "Content-Type, Cookies",
+      'content-type': 'text/css; charset=utf-8',
+      ":status": 200,
+    }
+    const style_css = fs.readFileSync('./public/styles.css');
+    stream.respond(response)
+    stream.write(style_css)
+    stream.end()
+    return null
+  }
+  async get_index_js(stream, headers, params){
+    const response =  {
+      "access-control-allow-origin": `${process.env.PROT_FRONT}://${process.env.DOMAIN_FRONT}:${process.env.PORT_FRONT}`,
+      "access-control-allow-methods": "GET,POST,OPTIONS,PUT",
+      'Access-Control-Allow-Credentials': true,
+      "access-control-allow-headers": "Content-Type, Cookies",
+      'content-type': 'text/javascript; charset=utf-8',
+      ":status": 200,
+    }
+    const index_js = fs.readFileSync('./public/index.js');
+    stream.respond(response)
+    stream.write(index_js)
     stream.end()
     return null
   }
@@ -56,6 +90,7 @@ class publicApi {
       'content-type': 'text/html; charset=utf-8',
       ":status": 200,
     }
+    const map = fs.readFileSync('./public/map.obj');
     stream.respond(response)
     stream.write(map)
     stream.end()
@@ -70,7 +105,7 @@ class publicApi {
       'content-type': 'text/html; charset=utf-8',
       ":status": 200,
     }
-
+    const model = fs.readFileSync('./public/model.bot.obj');
     stream.respond(response)
     stream.write(model)
     stream.end()
@@ -108,12 +143,9 @@ class publicApi {
       this.num_bots = body.num_bots;
       this.mapper = {}
       this.id_bot_mapper = {}
-      this.loggin = true
+
       this.bot_master = true
       
-
-
-
 
       const arr_bots = await this.start_bots()
       this.mapper = arr_bots
@@ -143,12 +175,7 @@ class publicApi {
               port_bot: obj_starter.port,
               bot: new BotService(i, this.bot, this.bot_master)
           }
-          ports_bots_map[obj_starter.port] = {
-              server: obj_starter.server,
-              number_bot: i,
-              port_bot: obj_starter.port,
-              bot: new BotService(i, this.bot, this.bot_master)
-          }
+          ports_bots_map[obj_starter.port] = this.mapper[obj_starter.port]
           this.bot_master = false
           this.id_bot_mapper[i] = obj_starter.port,
           ports_bots_map[obj_starter.port].server.on('message', (msg, rconf)=>this.handler_message(msg, rconf, obj_starter))

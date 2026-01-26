@@ -51,7 +51,6 @@ class apis{
       for (let row_route_api of routes) {
         let params = {};
 
-        // Convertir "/add_video/:id_video" a regex => ^/add_video/([^/]+)$
         const paramNames = [];
         const regexPath = new RegExp(
           "^" +
