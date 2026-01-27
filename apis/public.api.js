@@ -33,6 +33,7 @@ class publicApi {
     this.router.set_route("GET", "/model.bot.obj", this.get_model.bind(this));
     this.router.set_route("GET", "/api/connect", this.connect_client.bind(this));
     this.router.set_route("POST", "/api/recive_start", this.recive_start.bind(this))
+    this.router.set_route("POST", "/api/action_bot", this.action_bot.bind(this))
     this.router.set_route("GET", "/api/disconnect", this.disconnect_from_api.bind(this))
   }
  
@@ -135,7 +136,7 @@ class publicApi {
       }
 
       const body = await this.get_body(stream)
-      console.log('test')
+
       this.ip_server = body.ip_server;
       this.port_server = body.port_server;
 
@@ -159,6 +160,34 @@ class publicApi {
       stream.write('')
       stream.end()
       console.log("body", body)
+      return Promise.resolve([false, 204])
+  }
+  async action_bot(stream, headers, params){
+
+      const body = await this.get_body(stream)
+      if(body.state_bot === 'attack'){
+        const header = Buffer.from('3F00831001FBFF', 'hex')
+        const text = Buffer.from(`Hola soy el bot ${body.id_bot}: te voy a matar`, 'ascii')
+        const end_buf = Buffer.from('001F71DA0C01000000020000004022250CA436061000000000','hex')
+        const chat = Buffer.concat([header, text, end_buf])
+        
+        chat.writeUInt8(body.id_bot, 4)
+        await this.send_package_to_server(body.id_bot, chat)
+        const change_gun = Buffer.from('3f006f0c000d05', 'hex')
+        change_gun.writeInt8(body.id_bot, 4)
+        await this.send_package_to_server(body.id_bot, change_gun)
+        //const shot = Buffer.from('3f00f2320101803f104620c65b55b244608c08c64507f013','hex')
+        for(let i = 0; i < 15; i++){
+          const shot = Buffer.from('3f00790e00262602714ea644f91e2143860ed745','hex')
+          shot.writeUInt8(body.id_bot, 4)
+          await this.send_package_to_server(body.id_bot, shot)
+        }
+
+      }
+      //stream.respond(response)
+      stream.write('')
+      stream.end()
+
       return Promise.resolve([false, 204])
   }
   async start_bots(){

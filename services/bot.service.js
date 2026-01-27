@@ -175,6 +175,7 @@ module.exports = class BotService{
                 }
                 
                 if(that_bot){
+
                     console.log('bot spawn ', this.#number_bot, that_bot)
                     this.in_game = true
                     this.start = true
@@ -184,6 +185,7 @@ module.exports = class BotService{
                     this.bot_helper.send_event(JSON.stringify({type_action: 'spawn', value_action: that_bot, id_bot: this.#number_bot}))
                 
                     this.arr_actions.push(pj_response)
+
                     //this.spawn(that_bot.cords)
                     //const all_players = this.extractAllPlayers(msg)
 

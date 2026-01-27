@@ -23,11 +23,16 @@ import * as THREE from 'three';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-
+const BOT_STATES = {
+    ATTACK: 'attack',
+    NO_ATTACK: 'no_attack'
+};
 let camera, scene, renderer, controls;
 let mapMeshes = [];
 let botMeshes = [];
 let players = {};
+let state_bots = {
+}
 let forwardLines = {};
 let botRaycasters = {};
 let botPrototype;
@@ -111,7 +116,7 @@ async function init() {
         scene.add(bot0);
         players[0] = bot0;
         botMeshes.push(bot0);
-        createBotSensor(0);
+        //createBotSensor(0);
     }
 
     document.addEventListener('keydown', onKeyDown);
@@ -167,40 +172,54 @@ function updatePlayerMovement() {
 
 function updateAllSensors() {
     for (const id in players) {
-        const bot = players[id];
-        const ray = botRaycasters[id];
-        const line = forwardLines[id];
+        if(id == 0){
+            updatePlayerMovement();
+            continue;
+        }else{
+            const bot = players[id];
+            const ray = botRaycasters[id];
+            const line = forwardLines[id];
 
-        const origin = bot.position.clone();
-        origin.y += SENSOR_HEIGHT;
+            const origin = bot.position.clone();
+            origin.y += SENSOR_HEIGHT;
 
-        const forward = new THREE.Vector3();
-        bot.getWorldDirection(forward);
-        forward.y = 0;
-        forward.normalize().multiplyScalar(-1);
+            const forward = new THREE.Vector3();
+            bot.getWorldDirection(forward);
+            forward.y = 0;
+            forward.normalize().multiplyScalar(-1);
 
-        const start = origin.clone().addScaledVector(forward, FORWARD_OFFSET);
-        const end = start.clone().addScaledVector(forward, SENSOR_LENGTH);
+            const start = origin.clone().addScaledVector(forward, FORWARD_OFFSET);
+            const end = start.clone().addScaledVector(forward, SENSOR_LENGTH);
 
-        line.geometry.setFromPoints([start, end]);
+            line.geometry.setFromPoints([start, end]);
 
-        ray.set(start, forward);
-        const hits = ray.intersectObjects([...mapMeshes, ...botMeshes.filter(b => b !== bot)], true);
+            ray.set(start, forward);
+            const hits = ray.intersectObjects([...mapMeshes, ...botMeshes.filter(b => b !== bot)], true);
 
-        let color = COLOR_FREE.clone();
-        if (hits.length > 0) {
-            const t = hits[0].object.userData?.type;
-            if (t === 'wall') color = COLOR_WALL.clone();
-            if (t === 'bot')  color = COLOR_BOT.clone();
+            let color = COLOR_FREE.clone();
+            if (hits.length > 0) {
+                const t = hits[0].object.userData?.type;
+                if (t === 'wall'){
+                    color = COLOR_WALL.clone();
+                    console.log('bot pierde vision')
+                    
+                    process_state(id, BOT_STATES.NO_ATTACK)
+                }
+                if (t === 'bot'){
+                    process_state(id, BOT_STATES.ATTACK)
+                    console.log('bot pide disparar a jugador')
+                    color = COLOR_BOT.clone();
+                }
+            }
+            line.material.color.copy(color);
         }
-        line.material.color.copy(color);
     }
 }
 
 function animate() {
     requestAnimationFrame(animate);
 
-    updatePlayerMovement();
+    
     updateAllSensors();
     controls.update();
 
@@ -229,6 +248,7 @@ function processAction(action) {
         bot.position.set(action.value_action.x, action.value_action.z, -action.value_action.y);
         scene.add(bot);
         players[action.id_bot] = bot;
+        process_state(action.id_bot, BOT_STATES.NO_ATTACK)
         botMeshes.push(bot);
         createBotSensor(action.id_bot);
     }
@@ -242,7 +262,40 @@ function processAction(action) {
         if (typeof action.value_action.r === 'number') {
             bot.rotation.y = -(action.value_action.r / 256) * Math.PI * 2;
         }
+        //percebir()
+        //decidir
+        //actuar
+        
     }
+}
+
+async function process_state(id_bot, state){
+    state_bots[id_bot] = state
+    switch(state_bots[id_bot]){
+        case BOT_STATES.ATTACK:
+            console.log('attack')
+            await send_action(id_bot, BOT_STATES.ATTACK)
+        break;
+        case BOT_STATES.NO_ATTACK:
+            console.log('no attack')
+        break;
+        default: 
+        break;
+    }
+
+}
+async function send_action(id_bot, action){
+        const response_connection = await fetch('/api/action_bot',{
+        method: 'POST',
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            id_bot: id_bot,
+            state_bot: action 
+        }),
+
+    })
 }
 </script>
 
@@ -261,6 +314,7 @@ function processAction(action) {
 </div>
 
 <script src="index.js"></script>
+
 <div id="ocultar" style="display: none;"></div>
 </body>
 </html>
