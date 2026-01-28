@@ -50,6 +50,7 @@ server.on('error', (err) => {
 });
 
 // Configuración del servidor
-const PORT = 2222;
+const input_port = parseInt(process.argv[2])
+const PORT =  input_port === NaN ? 2222 : input_port;
 const HOST = '0.0.0.0';
 server.bind(PORT, HOST);

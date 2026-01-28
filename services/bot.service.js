@@ -185,7 +185,9 @@ module.exports = class BotService{
                     this.bot_helper.send_event(JSON.stringify({type_action: 'spawn', value_action: that_bot, id_bot: this.#number_bot}))
                 
                     this.arr_actions.push(pj_response)
-
+                    const change_gun = Buffer.from('3f006f0c000d05', 'hex')
+                    change_gun.writeInt8(this.#number_bot, 4)
+                    this.arr_actions.push(change_gun)
                     //this.spawn(that_bot.cords)
                     //const all_players = this.extractAllPlayers(msg)
 
