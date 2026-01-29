@@ -462,6 +462,19 @@ module.exports = class BotService{
 
         return copy
     }
+    async shot(){
+        const baseOffset = 8;
+        console.log('shot bot')
+        for(let i = 0; i < 1; i++){
+            setTimeout(()=>{
+                const shot = Buffer.from('3f00790e00262602714ea644f91e2143860ed745 ','hex')
+                shot.writeUInt8(this.#number_bot, 4)
+                shot.writeFloatLE(this.player_cords.x, 8);
+                shot.writeFloatLE(this.player_cords.y, 8 + 8);
+                this.arr_actions.push(shot)
+            }, i * 1000)
+        }
+    }
     disconnect(){
         /*
         client action:  <Buffer 3f 03 dc 0e e1 db 66 1e>

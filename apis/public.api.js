@@ -177,14 +177,9 @@ class publicApi {
         change_gun.writeInt8(body.id_bot, 4)
         await this.send_package_to_server(body.id_bot, change_gun)
         //const shot = Buffer.from('3f00f2320101803f104620c65b55b244608c08c64507f013','hex')
-        for(let i = 0; i < 15; i++){
-          //const shot = Buffer.from('3f00790e00262602714ea644f91e2143860ed745','hex')
-          const shot = Buffer.from('3f009ef8000a7440e4b1','hex')
-          shot.writeUInt8(body.id_bot, 4)
-          
-          await this.send_package_to_server(body.id_bot, shot)
-        }
 
+        const bot_port = this.id_bot_mapper[body.id_bot]
+        await this.mapper[bot_port].bot.shot()
       }
       //stream.respond(response)
       stream.write('')
