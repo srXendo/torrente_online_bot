@@ -467,10 +467,11 @@ module.exports = class BotService{
         console.log('shot bot')
         for(let i = 0; i < 1; i++){
             setTimeout(()=>{
-                const shot = Buffer.from('3f00790e00262602714ea644f91e2143860ed745 ','hex')
+                //const shot = Buffer.from('3f00790e00262602714ea644f91e2143860ed745','hex')
+                const shot = Buffer.from('3f005cb001fc0e080c06001905','hex')
                 shot.writeUInt8(this.#number_bot, 4)
-                shot.writeFloatLE(this.player_cords.x, 8);
-                shot.writeFloatLE(this.player_cords.y, 8 + 8);
+                //shot.writeFloatLE(this.player_cords.x, 8);
+                //shot.writeFloatLE(this.player_cords.y, 8 + 8);
                 this.arr_actions.push(shot)
             }, i * 1000)
         }
