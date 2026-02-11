@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>THREE Orbit + Bots Raycast</title>
+    <title>Torrente online bots</title>
     <link rel="stylesheet" href="styles.css">
     <style>body { margin:0 }</style>
 </head>
@@ -46,7 +46,7 @@ const playerSpeed = 0.25;
 
 const SENSOR_HEIGHT  = 80;
 const FORWARD_OFFSET = 30;
-const SENSOR_LENGTH  = 400 * 8;
+const SENSOR_LENGTH  = 400 * 3;
 
 const COLOR_FREE = new THREE.Color(0xff8800);
 const COLOR_WALL = new THREE.Color(0xff0000);
@@ -201,13 +201,13 @@ function updateAllSensors() {
                 const t = hits[0].object.userData?.type;
                 if (t === 'wall'){
                     color = COLOR_WALL.clone();
-                    console.log('bot pierde vision')
+                    //console.log('bot pierde vision')
                     
                     process_state(id, BOT_STATES.NO_ATTACK)
                 }
                 if (t === 'bot'){
                     process_state(id, BOT_STATES.ATTACK)
-                    console.log('bot pide disparar a jugador')
+                    //console.log('bot pide disparar a jugador')
                     color = COLOR_BOT.clone();
                 }
             }
@@ -215,12 +215,18 @@ function updateAllSensors() {
         }
     }
 }
-
+const SENSOR_DT = 1; // 100 ms = 10 Hz
+let acc = 0;
+const clock = new THREE.Clock();
 function animate() {
     requestAnimationFrame(animate);
 
-    
-    updateAllSensors();
+    acc += clock.getDelta();
+
+    if(acc >= SENSOR_DT){
+        updateAllSensors();
+        acc = 0;
+    }
     controls.update();
 
     renderer.render(scene, camera);
@@ -238,7 +244,9 @@ function connectSSE() {
     source.onmessage = e => {
         try {
             processAction(JSON.parse(e.data));
-        } catch {}
+        } catch(err) {
+            console.error(new Error(err))
+        }
     };
 }
 
@@ -267,14 +275,44 @@ function processAction(action) {
         //actuar
         
     }
+    
+    if (action.type_action === 'die' && action.id_bot !== 0) {
+        
+        const id = action.id_bot;
+        console.log('boy die: ', id)
+        const bot = players[id];
+
+        if (!bot) return;
+
+        scene.remove(bot);
+
+        const i = botMeshes.indexOf(bot);
+        if (i !== -1) botMeshes.splice(i, 1);
+
+        if (forwardLines[id]) {
+            scene.remove(forwardLines[id]);
+            forwardLines[id].geometry.dispose();
+            forwardLines[id].material.dispose();
+            delete forwardLines[id];
+        }
+
+        delete botRaycasters[id];
+
+        delete players[id];
+
+    }
 }
 
 async function process_state(id_bot, state){
+    const last_state = state_bots[id_bot]
     state_bots[id_bot] = state
+    
     switch(state_bots[id_bot]){
         case BOT_STATES.ATTACK:
-            console.log('attack')
-            await send_action(id_bot, BOT_STATES.ATTACK)
+            if(last_state !== BOT_STATES.ATTACK){
+                console.log('attack')
+                await send_action(id_bot, BOT_STATES.ATTACK)
+            }
         break;
         case BOT_STATES.NO_ATTACK:
             console.log('no attack')
@@ -305,7 +343,7 @@ async function send_action(id_bot, action){
 <div class="formulario">
     <div class="tituloformulario"><span>CONECTAR BOTS</span></div>
     <div class="datosformulario">
-        <label>Dirección IP:<br><input type="text" id="ipv4" value="192.168.1.134"></label>
+        <label>Dirección IP:<br><input type="text" id="ipv4" value="192.168.1.130"></label>
         <label>Puerto:<br><input type="number" id="puerto" value="8888"></label>
         <label>Número de bots:<br><input type="number" id="numbots" max="32" value="15"></label>
         <input id="boton" type="button" value="Conectar" onclick="btnocultar()">

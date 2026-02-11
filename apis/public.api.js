@@ -241,19 +241,22 @@ class publicApi {
           console.error(new Error(`[handler_message]: bot nº ${id_bot} msg not recognize`))
           return
       }
-      for(let msg_to_server of responses){
-          if(!msg_to_server.is_external){
-              await this.send_package_to_server(id_bot, msg_to_server)
-          }else{
-              for(let respawn of msg_to_server.arr_respawns){
+      if(this.mapper[addr.port].bot.can_response ){
+        for(let msg_to_server of responses){
+            if(!msg_to_server.is_external){
+                await this.send_package_to_server(id_bot, msg_to_server)
+            }else{
+                for(let respawn of msg_to_server.arr_respawns){
                   const bot_port = this.id_bot_mapper[respawn.bot]
                   if(!this.mapper[bot_port].bot.in_game){
                       console.log(`bot no spawn: ${this.mapper[bot_port].bot}`)
                       //mapper[bot_port].bot.spawn(respawn.cords)
                   }
-                  
-              }
-          }
+                    
+                }
+            }
+
+        }
       }
       
   }
@@ -293,20 +296,20 @@ class publicApi {
     console.log('!disconnect all bots')
     
     for(let bot of Object.values(this.mapper)){
-        const responses = bot.bot.disconnect()
+        const responses = await bot.bot.disconnect()
 
 
     }
     stream.write('')
     stream.end()
+    
     return []
   }
   async disconnect(stream, headers, params){
     
       for(let bot of Object.values(this.mapper)){
-          const responses = bot.bot.disconnect()
-          this.send_package_to_server(bot.number_bot, responses[0])
-          this.send_package_to_server(bot.number_bot, responses[1])
+          const responses = await bot.bot.disconnect()
+
       }
 
 

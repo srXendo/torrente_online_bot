@@ -16,9 +16,11 @@ module.exports = class BotService{
     last_byte_send= null
     last_byte_send_next = null
     bot_master = null
+    can_shot = false
+    can_response = true
     constructor(number_bot, bot_helper, bot_master){
         this.bot_master = bot_master
-
+        this.can_response = true
         setTimeout(()=>{
             if(!this.in_game){
                 this.in_game = true
@@ -118,6 +120,9 @@ module.exports = class BotService{
         ok2.writeUint8(msg.readUint8(2), 3)
         //console.log('action, bot: ', action, this.#number_bot)
         switch(action){
+            case 0xd8:
+                console.log('bot can shot: ')
+                this.can_shot = true
             case 0xfb:
                 break;
             case 0x0d:
@@ -139,13 +144,19 @@ module.exports = class BotService{
                     console.log(`${this.user_bot} vida restante: `, msg.readUInt8(10))
                     if(msg.readUInt8(10) === 0){
                         console.log(`ha muerto: ${this.user_bot}`)
-                        responses.push(this.try_other_spawn())
+                        responses.push(this.try_die())
+                        //responses.push({is_external: true, die: this.#number_bot})
+                        this.send_signal_die()
+                        this.can_shot = false
+                        
 
                     }
                     if(msg.readUInt8(10) === 255){
                         console.log(`ha muerto: ${this.user_bot}`)
-                        responses.push(this.try_other_spawn())
-
+                        responses.push(this.try_die())
+                        this.send_signal_die()
+                        //responses.push({is_external: true, die: this.#number_bot})
+                        this.can_shot = false
                     }
                     
                 }
@@ -158,6 +169,7 @@ module.exports = class BotService{
                 if(this.bot_master){
                     console.log('any player death')
                 }
+
                 break;
             case 0x0e:
                 //throw new Error('spwan palyer!!!')
@@ -175,7 +187,7 @@ module.exports = class BotService{
                 }
                 
                 if(that_bot){
-
+                    this.can_shot = true
                     console.log('bot spawn ', this.#number_bot, that_bot)
                     this.in_game = true
                     this.start = true
@@ -256,7 +268,11 @@ module.exports = class BotService{
         responses.push(ok2)
         return responses
     }
-    
+    send_signal_die(){
+        console.log('send signal die: ')
+        this.bot_helper.send_event(JSON.stringify({type_action: 'die', id_bot: this.#number_bot}))
+       
+    }
     get_action(msg){
         this.last_byte_send = msg.readUInt8(4)
         this.last_byte_send_next = msg.readUInt8(5)
@@ -280,6 +296,16 @@ module.exports = class BotService{
        
         //pj_setup.writeUInt8(0x02, pj_setup.length- 10) //numero de jugador 0x01 jugador 1 0x02 jugador 2
         return pj_setup
+    }
+    try_die(){
+        const pj_setup = Buffer.from('3f00454c100510786281e7c5209aeb40df8477c5'.replace('123123332323133313213', this.buffer_session.toString('hex')), 'hex')
+        //console.log('send spawn: ', this.#number_bot)
+        pj_setup.writeUInt8(this.#number_bot, 4) //byte ultimo numero de jugadores en partida 0x00
+
+       
+        //pj_setup.writeUInt8(0x02, pj_setup.length- 10) //numero de jugador 0x01 jugador 1 0x02 jugador 2
+        return pj_setup
+        
     }
     follow_cam(){
         //console.log(this.bot_cords, this.player_cords)
@@ -463,28 +489,53 @@ module.exports = class BotService{
         return copy
     }
     async shot(){
-        const baseOffset = 8;
+
         console.log('shot bot')
-        for(let i = 0; i < 1; i++){
-            setTimeout(()=>{
-                //const shot = Buffer.from('3f00790e00262602714ea644f91e2143860ed745','hex')
-                const shot = Buffer.from('3f005cb001fc0e080c06001905','hex')
-                shot.writeUInt8(this.#number_bot, 4)
-                //shot.writeFloatLE(this.player_cords.x, 8);
-                //shot.writeFloatLE(this.player_cords.y, 8 + 8);
-                this.arr_actions.push(shot)
-            }, i * 1000)
-        }
+        //for(let i = 0; i < 1; i++){ 
+        //const shot = Buffer.from('3f00790e00262602714ea644f91e2143860ed745','hex')
+
+        //shot.writeFloatLE(this.player_cords.x, 8);
+        //shot.writeFloatLE(this.player_cords.y, 8 + 8);
+        const dificult = 0.3 //'hen' // 0.00 to 1.00 1.23 is god value
+        const random = Math.random()
+
+            const random_shot =  dificult > random
+            console.log('shot test!', random_shot, random, this.can_shot)
+            if(this.can_shot){
+                if(random_shot){
+                    const shot = Buffer.from('3f00d8af01fc120d1403001905','hex')
+                    shot.writeUInt8(this.#number_bot, 4)
+                    this.arr_actions.push(shot)
+                }else{
+                    const fail_shot = Buffer.from('3f00790e00262602714ea644f91e2143860ed745','hex')
+
+                    fail_shot.writeFloatLE(this.player_cords.x, 8);
+                    fail_shot.writeFloatLE(this.player_cords.y, 8 + 8);
+                    this.arr_actions.push(fail_shot)
+                }
+                this.in_shot ++
+            }
+
+           
+        //}
     }
-    disconnect(){
+    async disconnect(){
         /*
         client action:  <Buffer 3f 03 dc 0e e1 db 66 1e>
         client action:  <Buffer 3f 01 dd 0e 00 02>
         client action:  <Buffer 3f 08 de 0e>
         */
-       this.arr_actions.push(Buffer.from('3f001f170102', 'hex'))
-       this.arr_actions.push(Buffer.from('3f08f618', 'hex'))
-        return [Buffer.from('3f001f170102', 'hex'),
-        Buffer.from('3f08f618', 'hex')]
+        const disconnect = Buffer.from('3f00e80c0002', 'hex')
+        const after_disconnect = Buffer.from('3f08e90d', 'hex')
+        disconnect.writeUint8(this.#number_bot, 4)
+        this.arr_actions.push(disconnect)
+        this.arr_actions.push(after_disconnect)
+        this.can_response = false
+       
+        return [
+            disconnect,
+            after_disconnect
+        ]
+        
     }
 }
