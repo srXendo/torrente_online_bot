@@ -165,6 +165,7 @@ class publicApi {
   async action_bot(stream, headers, params){
 
       const body = await this.get_body(stream)
+      const bot_port = this.id_bot_mapper[body.id_bot]
       if(body.state_bot === 'attack'){
         const header = Buffer.from('3F00831001FBFF', 'hex')
         const text = Buffer.from(`Hola soy el bot ${body.id_bot}: te voy a matar`, 'ascii')
@@ -178,8 +179,16 @@ class publicApi {
         await this.send_package_to_server(body.id_bot, change_gun)
         //const shot = Buffer.from('3f00f2320101803f104620c65b55b244608c08c64507f013','hex')
 
-        const bot_port = this.id_bot_mapper[body.id_bot]
+        
         await this.mapper[bot_port].bot.shot()
+      }
+
+      switch(body.state_bot){
+        case 'forward_move':
+          //await this.mapper[bot_port].bot.forward_move()
+        break;
+        default:
+        break;
       }
       //stream.respond(response)
       stream.write('')
@@ -241,9 +250,10 @@ class publicApi {
           console.error(new Error(`[handler_message]: bot nº ${id_bot} msg not recognize`))
           return
       }
-      if(this.mapper[addr.port].bot.can_response ){
+      
         for(let msg_to_server of responses){
             if(!msg_to_server.is_external){
+              console.log(`bot_${id_bot} response: ${msg_to_server.toString('hex')}`)
                 await this.send_package_to_server(id_bot, msg_to_server)
             }else{
                 for(let respawn of msg_to_server.arr_respawns){
@@ -257,7 +267,7 @@ class publicApi {
             }
 
         }
-      }
+      
       
   }
   send_package_to_server(id_bot, buf){

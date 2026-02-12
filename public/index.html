@@ -23,15 +23,58 @@ import * as THREE from 'three';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-const BOT_STATES = {
-    ATTACK: 'attack',
-    NO_ATTACK: 'no_attack'
-};
+
 let camera, scene, renderer, controls;
 let mapMeshes = [];
 let botMeshes = [];
 let players = {};
 let state_bots = {
+}
+const move_actions = {camera_right: {action_type: "camera_right"}, camera_left: {action_type: "camera_left"}, forward: {action_type: "forward_move"}, backward: {action_type: "backward_move"}, left: {action_type: "left_move"}, right: {action_type: "right_move"}}
+const BOT_STATES = {
+    NO_ATTACK: 'no_attack',
+    PATROL: 'patrol',
+    CHASE: 'chase',
+    ATTACK: 'attack'
+};
+
+const PATROL_CONFIG = {
+    WAYPOINT_RADIUS: 5,
+    WAIT_TIME: 2000,
+    PATROL_SPEED: 0.5,
+    EXPLORATION_RANGE: 20
+};
+const botPatrolData = {};
+function initPatrol(botId, centerX, centerZ, numWaypoints = 4) {
+    botPatrolData[botId] = {
+        state: BOT_STATES.PATROL,
+        waypoints: [],
+        currentWaypointIndex: 0,
+        lastWaypointTime: Date.now(),
+        waiting: false,
+        patrolCenter: { x: centerX, z: centerZ },
+        patrolRadius: PATROL_CONFIG.EXPLORATION_RANGE
+    };
+    
+    for (let i = 0; i < numWaypoints; i++) {
+        const angle = (i / numWaypoints) * Math.PI * 2;
+        const x = centerX + Math.cos(angle) * PATROL_CONFIG.EXPLORATION_RANGE;
+        const z = centerZ + Math.sin(angle) * PATROL_CONFIG.EXPLORATION_RANGE;
+        botPatrolData[botId].waypoints.push({ x, z });
+    }
+}
+
+function setPatrolMode(botId, centerX, centerZ) {
+    initPatrol(botId, centerX, centerZ);
+    if (players[botId]) {
+        process_state(botId, BOT_STATES.PATROL);
+    }
+}
+
+function addWaypoint(botId, x, z) {
+    if (botPatrolData[botId]) {
+        botPatrolData[botId].waypoints.push({ x, z });
+    }
 }
 let forwardLines = {};
 let botRaycasters = {};
@@ -151,8 +194,8 @@ function createBotSensor(id) {
     forwardLines[id] = line;
 }
 
-function updatePlayerMovement() {
-    const bot = players[0];
+function updatePlayerMovement(id = 0) {
+    const bot = players[id];
     if (!bot) return;
 
     const dir = new THREE.Vector3();
@@ -160,7 +203,7 @@ function updatePlayerMovement() {
     dir.y = 0;
     dir.normalize();
 
-    const right = new THREE.Vector3().crossVectors(dir, camera.up).normalize();
+    if(id===0) { const right = new THREE.Vector3().crossVectors(dir, camera.up).normalize(); }
 
     if (move.forward)  bot.position.addScaledVector(dir, playerSpeed);
     if (move.backward) bot.position.addScaledVector(dir, -playerSpeed);
@@ -171,11 +214,13 @@ function updatePlayerMovement() {
 }
 
 function updateAllSensors() {
-    for (const id in players) {
+    for (const id_aux in players) {
+        const id = parseInt(id_aux)
         if(id == 0){
             updatePlayerMovement();
             continue;
         }else{
+            updatePlayerMovement(id);
             const bot = players[id];
             const ray = botRaycasters[id];
             const line = forwardLines[id];
@@ -249,20 +294,28 @@ function connectSSE() {
         }
     };
 }
-
+let last_player = 0
 function processAction(action) {
     if (action.type_action === 'spawn' && botPrototype && action.id_bot !== 0) {
-        const bot = botPrototype.clone();
-        bot.position.set(action.value_action.x, action.value_action.z, -action.value_action.y);
-        scene.add(bot);
-        players[action.id_bot] = bot;
-        process_state(action.id_bot, BOT_STATES.NO_ATTACK)
-        botMeshes.push(bot);
-        createBotSensor(action.id_bot);
+        if(!players[action.id_bot]){
+            const bot = botPrototype.clone();
+            bot.position.set(action.value_action.x, action.value_action.z, -action.value_action.y);
+            scene.add(bot);
+            players[action.id_bot] = bot;
+            process_state(action.id_bot, BOT_STATES.NO_ATTACK)
+            botMeshes.push(bot);
+            createBotSensor(action.id_bot);
+            initPatrol(action.id_bot, action.value_action.x, action.value_action.z);
+        }
     }
 
     if (action.type_action === 'sync') {
+        console.log('Players disponibles:', Object.keys(players)); 
+        if(action.id_bot == 0){
+            last_player = action.value_action.r
+        }
         const bot = players[action.id_bot];
+        console.log(`sync bot: ${action.id_bot}`, !bot,action.value_action.x, action.value_action.z, -action.value_action.y, action.value_action.r )
         if (!bot) return;
 
         bot.position.set(action.value_action.x, action.value_action.z, -action.value_action.y);
@@ -270,10 +323,9 @@ function processAction(action) {
         if (typeof action.value_action.r === 'number') {
             bot.rotation.y = -(action.value_action.r / 256) * Math.PI * 2;
         }
-        //percebir()
-        //decidir
-        //actuar
-        
+
+
+
     }
     
     if (action.type_action === 'die' && action.id_bot !== 0) {
@@ -299,10 +351,78 @@ function processAction(action) {
         delete botRaycasters[id];
 
         delete players[id];
-
+        delete botPatrolData[id]; // LIMPIAR DATOS DE PATRULLAJ
+    }
+}
+function actuar(id_bot){
+    const bot = players[id_bot];
+    if (!bot) return;
+    
+    const patrolData = botPatrolData[id_bot];
+    if (!patrolData || patrolData.state !== BOT_STATES.PATROL) {
+        // DANCE BANANA (tu código original)
+        send_action(id_bot, move_actions.left.action_type)
+        send_action(id_bot, move_actions.right.action_type)
+        return;
+    }
+    
+    const decision = decidir(id_bot);
+    
+    if (decision) {
+        const direction = decision.direction;
+        const targetRotation = Math.atan2(direction.x, direction.z);
+        bot.rotation.y = targetRotation;
+        send_action(id_bot, move_actions.forward.action_type);
     }
 }
 
+function decidir(id_bot) {
+    const bot = players[id_bot];
+    if (!bot) return null;
+    
+    const patrolData = botPatrolData[id_bot];
+    if (!patrolData || patrolData.state !== BOT_STATES.PATROL) {
+        return null;
+    }
+    
+    const currentTime = Date.now();
+    const botPosition = bot.position;
+    
+    if (patrolData.waiting) {
+        if (currentTime - patrolData.lastWaypointTime > PATROL_CONFIG.WAIT_TIME) {
+            patrolData.waiting = false;
+            patrolData.currentWaypointIndex = (patrolData.currentWaypointIndex + 1) % patrolData.waypoints.length;
+        } else {
+            return null;
+        }
+    }
+    
+    if (patrolData.waypoints.length === 0) return null;
+    
+    const targetWaypoint = patrolData.waypoints[patrolData.currentWaypointIndex];
+    
+    const dx = targetWaypoint.x - botPosition.x;
+    const dz = targetWaypoint.z - botPosition.z;
+    const distance = Math.sqrt(dx * dx + dz * dz);
+    
+    if (distance < PATROL_CONFIG.WAYPOINT_RADIUS) {
+        patrolData.waiting = true;
+        patrolData.lastWaypointTime = currentTime;
+        return null;
+    }
+    
+    return {
+        direction: {
+            x: dx / distance,
+            z: dz / distance
+        },
+        distance: distance
+    };
+}
+
+function predict(id_bot){
+    return undefined
+}
 async function process_state(id_bot, state){
     const last_state = state_bots[id_bot]
     state_bots[id_bot] = state

@@ -1,11 +1,6 @@
 
 module.exports = (apis)=>{
-  process.on('SIGINT', async() => {
-    await apis.disconnect()
-    setTimeout(()=>{
-        process.exit(0)
-    }, 300)
-  })
+
   const { app, BrowserWindow } = require('electron/main')
   const path = require('node:path')
   app.commandLine.appendSwitch('ignore-certificate-errors');
@@ -35,9 +30,11 @@ module.exports = (apis)=>{
     if (process.platform !== 'darwin') {
       apis.disconnect().then(()=>{
         setTimeout(()=>{
-            process.exit(0)
+          app.quit()
+          process.exit(0)
+            
         }, 300)
-        app.quit()
+        
       })
 
       

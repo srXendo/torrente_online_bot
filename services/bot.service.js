@@ -129,10 +129,18 @@ module.exports = class BotService{
                 console.log('player change gun ', bot, this.#number_bot)    
             break;
             case 0x0c:
+                //this.follow_cam()
+                console.log("move any: ", msg)
                 this.follow_cam()
-                console.log("move any", msg)
+                if(msg.readUInt8(6) === 0x03 && this.#number_bot === 0){
+                    //this.player_cords = this.predecirMovimientoForward(this.player_cords, 10)
+                    
+                }
+                
             break;
             case 0x0a:
+                console.log('camera any: ', msg)
+
                 //this.user_camera(msg)
             break;
             case 0xfc:
@@ -215,41 +223,39 @@ module.exports = class BotService{
             case 0x01:
                 const bot_cords = this.extractRespawnXZR(msg, bot)
 
-                if(bot===0){
-                    //console.log('sync player bot number: ', msg)
-                    
-
-                    
-                    //-this.follow_cam()
-
-                    
-                }
                 if( bot==0 ){
                     //console.log('sync player bot number: ', msg)
-                    this.player_cords = this.extractRespawnXZR(msg, 0)
+                    this.player_cords = bot_cords
                     this.follow_cam()
-
+                    
                 }
-                if(msg.readUInt16LE(6) === 0){
-                    console.log('bot spawn in other bot')
-                }
-                if(this.loggin){
-                    console.log('sync package: ', this.#number_bot, bot, this.bot_master, msg)
-                }
+                
+                console.log('sync package: ', this.#number_bot, bot, this.bot_master, msg)
+         
                 if(this.bot_master && bot==0 ){
                     
                     this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: {bot: bot, x: bot_cords.x, y: bot_cords.y, z: bot_cords.z, r: bot_cords.r}, id_bot: bot}))
                 }
+                
                 if(bot == this.#number_bot){
                     
                     this.in_game = true
                     this.bot_cords = this.extractRespawnXZR(msg, bot)
+                    this.follow_cam()
+                    
+                    //this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: {bot: bot, x: bot_cords.x, y: bot_cords.y, z: bot_cords.z, r: bot_cords.r}, id_bot: bot}))
+                    
+                    
                    
-
+                   
+                    //this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: {bot: bot, x: bot_cords.x, y: bot_cords.y, z: bot_cords.z, r: bot_cords.r}, id_bot: bot}))
+                    
                     //this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: this.extractRespawnXZR(msg, bot), id_bot: this.#number_bot}))
                     
                 }
+                this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: {bot: bot, x: bot_cords.x, y: bot_cords.y, z: bot_cords.z, r: bot_cords.r}, id_bot: bot}))
                 
+
                 break;
             case 0xce:
 
@@ -267,6 +273,47 @@ module.exports = class BotService{
         }
         responses.push(ok2)
         return responses
+    }
+    generarPaqueteBot(botData) {
+        // Calcular movimiento hacia adelante
+        const speed = 50.0;
+        const radian = (botData.r / 256) * Math.PI * 2;  // O SIN EL NEGATIVO, LO QUE FUNCIONE
+        
+        const newX = botData.x + Math.sin(radian) * speed;
+        const newZ = botData.z;
+        const newY = botData.y + Math.cos(radian) * speed;
+        const newR = botData.r;  // LA MISMA ROTACIÓN
+        
+        // 2. BUFFER DE 26 BYTES
+        const buf = Buffer.from('3f009e7b01017f55b58a1bc5e1ec564493ebe845769ad5d5010ac1927421', 'hex');
+        
+        // X (8-11)
+        buf.writeFloatLE(newX, 8);
+        buf.writeFloatLE(newZ, 12);
+        buf.writeFloatLE(newY, 16);
+        
+        // R (20) - uint8, no float32
+        buf.writeUInt8(newR, 21);
+        this.bot_cords.x = newX;
+        this.bot_cords.y = newY;
+        this.bot_cords.z = newZ;
+        this.bot_cords.r = newR;
+        // 3. ENVIAR JSON CON LAS COORDENADAS NUEVAS
+        this.bot_helper.send_event(JSON.stringify({
+            type_action: 'sync', 
+            value_action: {
+                bot: this.#number_bot, 
+                x: newX,  // ✅ X NUEVA
+                y: newY,  // ✅ Y NUEVA
+                z: newZ,  // ✅ Z NUEVA
+                r: newR   // ✅ R NUEVA
+            }, 
+            id_bot: this.#number_bot
+        }));
+        
+
+        
+        return buf;
     }
     send_signal_die(){
         console.log('send signal die: ')
@@ -312,14 +359,17 @@ module.exports = class BotService{
         if(this.bot_cords  && this.player_cords){
             const view = this.angleToTarget(this.bot_cords.x, this.bot_cords.y, this.player_cords.x, this.player_cords.y)
             //console.log('bot view to: ', view)
+            const before_view = this.bot_cords.r
+            this.bot_cords.r = view
             const row = Buffer.from('3f002e1d000a77b3d60a','hex')
             row.writeUInt8(this.#number_bot, 4)
             //row.writeUint16LE( Math.floor(Math.random() * 180) , 8)
             row.writeUint8(view , 7)
             this.arr_actions.push(row)
-            this.bot_cords.r = view
-            this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: {bot: this.#number_bot, x: this.bot_cords.x, y: this.bot_cords.y, z: this.bot_cords.z, r: this.bot_cords.r}, id_bot: this.#number_bot}))
-            
+
+            this.forward_move()
+
+
         }
 
     }
@@ -373,6 +423,35 @@ module.exports = class BotService{
 
         return { x, y, z, r, bot};
 
+    }
+    predecirMovimientoForward(botData, tiempoMs) {
+        // Velocidad: 9 unidades por segundo
+        const speed = 9.0;
+        const elapsedSec = tiempoMs / 1000;
+        const distance = speed * elapsedSec;
+        
+        // Convertir rotación (0-255) a radianes
+        const radian = -(botData.r / 256) * Math.PI * 2;
+        
+        // Calcular nuevas coordenadas
+        const newX = botData.x + Math.sin(radian) * distance;
+        const newZ = botData.z + Math.cos(radian) * distance;
+        const bot_cords = {
+            x: newX,
+            y: botData.y, // Y no cambia al andar
+            z: newZ,
+            r: botData.r, // Rotación no cambia
+            bot: botData.bot
+        }
+        const view = this.angleToTarget(bot_cords.x, bot_cords.y, this.player_cords.x, this.player_cords.y)
+        // Devolver mismo objeto con coordenadas actualizadas
+        return {
+            x: newX,
+            y: botData.y, // Y no cambia al andar
+            z: newZ,
+            r: -view, // Rotación no cambia
+            bot: botData.bot
+        };
     }
     splitBuffer(buffer, delimiter) {
         const parts = [];
@@ -496,7 +575,7 @@ module.exports = class BotService{
 
         //shot.writeFloatLE(this.player_cords.x, 8);
         //shot.writeFloatLE(this.player_cords.y, 8 + 8);
-        const dificult = 0.3 //'hen' // 0.00 to 1.00 1.23 is god value
+        /*const dificult = 0.3 //'hen' // 0.00 to 1.00 1.23 is god value
         const random = Math.random()
 
             const random_shot =  dificult > random
@@ -508,7 +587,7 @@ module.exports = class BotService{
                     this.arr_actions.push(shot)
                 }else{
                     const fail_shot = Buffer.from('3f00790e00262602714ea644f91e2143860ed745','hex')
-
+                    
                     fail_shot.writeFloatLE(this.player_cords.x, 8);
                     fail_shot.writeFloatLE(this.player_cords.y, 8 + 8);
                     this.arr_actions.push(fail_shot)
@@ -517,7 +596,22 @@ module.exports = class BotService{
             }
 
            
-        //}
+        //}*/
+    }
+    forward_move(){
+
+        /*const buf_forware = Buffer.from('3f008e10000c03','hex')
+        buf_forware.writeUInt8(this.#number_bot, 4)
+        this.arr_actions.push(buf_forware)
+
+        const buf_sforware = Buffer.from('3f009610000c15','hex')
+        buf_sforware.writeUInt8(this.#number_bot, 4)
+        this.arr_actions.push(buf_sforware)*/
+
+        const sync_pack = this.generarPaqueteBot(this.bot_cords)
+        sync_pack.writeUInt8(this.#number_bot, 4)
+        this.arr_actions.push(sync_pack)
+        //this.bot_cords = 
     }
     async disconnect(){
         /*
@@ -525,8 +619,8 @@ module.exports = class BotService{
         client action:  <Buffer 3f 01 dd 0e 00 02>
         client action:  <Buffer 3f 08 de 0e>
         */
-        const disconnect = Buffer.from('3f00e80c0002', 'hex')
-        const after_disconnect = Buffer.from('3f08e90d', 'hex')
+        const disconnect = Buffer.from('3f001f170102', 'hex')
+        const after_disconnect = Buffer.from('3f08f618', 'hex')
         disconnect.writeUint8(this.#number_bot, 4)
         this.arr_actions.push(disconnect)
         this.arr_actions.push(after_disconnect)
