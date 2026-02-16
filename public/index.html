@@ -30,7 +30,7 @@ let botMeshes = [];
 let players = {};
 let state_bots = {
 }
-const move_actions = {camera_right: {action_type: "camera_right"}, camera_left: {action_type: "camera_left"}, forward: {action_type: "forward_move"}, backward: {action_type: "backward_move"}, left: {action_type: "left_move"}, right: {action_type: "right_move"}}
+const move_actions = {camera_right: {action_type: "camera_right"}, camera_left: {action_type: "camera_left"}, forward: {action_type: "forward_move"}}
 const BOT_STATES = {
     NO_ATTACK: 'no_attack',
     PATROL: 'patrol',
@@ -45,37 +45,8 @@ const PATROL_CONFIG = {
     EXPLORATION_RANGE: 20
 };
 const botPatrolData = {};
-function initPatrol(botId, centerX, centerZ, numWaypoints = 4) {
-    botPatrolData[botId] = {
-        state: BOT_STATES.PATROL,
-        waypoints: [],
-        currentWaypointIndex: 0,
-        lastWaypointTime: Date.now(),
-        waiting: false,
-        patrolCenter: { x: centerX, z: centerZ },
-        patrolRadius: PATROL_CONFIG.EXPLORATION_RANGE
-    };
-    
-    for (let i = 0; i < numWaypoints; i++) {
-        const angle = (i / numWaypoints) * Math.PI * 2;
-        const x = centerX + Math.cos(angle) * PATROL_CONFIG.EXPLORATION_RANGE;
-        const z = centerZ + Math.sin(angle) * PATROL_CONFIG.EXPLORATION_RANGE;
-        botPatrolData[botId].waypoints.push({ x, z });
-    }
-}
 
-function setPatrolMode(botId, centerX, centerZ) {
-    initPatrol(botId, centerX, centerZ);
-    if (players[botId]) {
-        process_state(botId, BOT_STATES.PATROL);
-    }
-}
 
-function addWaypoint(botId, x, z) {
-    if (botPatrolData[botId]) {
-        botPatrolData[botId].waypoints.push({ x, z });
-    }
-}
 let forwardLines = {};
 let botRaycasters = {};
 let botPrototype;
@@ -87,9 +58,9 @@ const wireMaterialBot = new THREE.MeshBasicMaterial({ color: 0x00c8ff, wireframe
 const move = { forward: false, backward: false, left: false, right: false };
 const playerSpeed = 0.25;
 
-const SENSOR_HEIGHT  = 80;
+const SENSOR_HEIGHT  = 10;
 const FORWARD_OFFSET = 30;
-const SENSOR_LENGTH  = 400 * 3;
+const SENSOR_LENGTH  = 400 * 2;
 
 const COLOR_FREE = new THREE.Color(0xff8800);
 const COLOR_WALL = new THREE.Color(0xff0000);
@@ -239,28 +210,37 @@ function updateAllSensors() {
             line.geometry.setFromPoints([start, end]);
 
             ray.set(start, forward);
+            ray.far = SENSOR_LENGTH;
             const hits = ray.intersectObjects([...mapMeshes, ...botMeshes.filter(b => b !== bot)], true);
 
             let color = COLOR_FREE.clone();
+            let wallDetected = false;
+
             if (hits.length > 0) {
                 const t = hits[0].object.userData?.type;
                 if (t === 'wall'){
                     color = COLOR_WALL.clone();
-                    //console.log('bot pierde vision')
-                    
-                    process_state(id, BOT_STATES.NO_ATTACK)
+                    wallDetected = true;
+                    send_action(id, move_actions.camera_right.action_type);
+                    process_state(id, BOT_STATES.NO_ATTACK);
                 }
                 if (t === 'bot'){
-                    process_state(id, BOT_STATES.ATTACK)
-                    //console.log('bot pide disparar a jugador')
+                    process_state(id, BOT_STATES.ATTACK);
                     color = COLOR_BOT.clone();
                 }
             }
+
+            // ===== PATRULLA MINIMA =====
+            if (!wallDetected) {
+                send_action(id, move_actions.forward.action_type);
+            } 
+
             line.material.color.copy(color);
         }
     }
 }
-const SENSOR_DT = 1; // 100 ms = 10 Hz
+
+const SENSOR_DT = 0.2; // 100 ms = 10 Hz
 let acc = 0;
 const clock = new THREE.Clock();
 function animate() {
@@ -305,8 +285,11 @@ function processAction(action) {
             process_state(action.id_bot, BOT_STATES.NO_ATTACK)
             botMeshes.push(bot);
             createBotSensor(action.id_bot);
-            initPatrol(action.id_bot, action.value_action.x, action.value_action.z);
+
         }
+    }
+    if(action.id_bot !== 0){
+        //send_action(action.id_bot, move_actions.camera_right.action_type);
     }
 
     if (action.type_action === 'sync') {
@@ -324,7 +307,7 @@ function processAction(action) {
             bot.rotation.y = -(action.value_action.r / 256) * Math.PI * 2;
         }
 
-
+        
 
     }
     
@@ -353,75 +336,6 @@ function processAction(action) {
         delete players[id];
         delete botPatrolData[id]; // LIMPIAR DATOS DE PATRULLAJ
     }
-}
-function actuar(id_bot){
-    const bot = players[id_bot];
-    if (!bot) return;
-    
-    const patrolData = botPatrolData[id_bot];
-    if (!patrolData || patrolData.state !== BOT_STATES.PATROL) {
-        // DANCE BANANA (tu código original)
-        send_action(id_bot, move_actions.left.action_type)
-        send_action(id_bot, move_actions.right.action_type)
-        return;
-    }
-    
-    const decision = decidir(id_bot);
-    
-    if (decision) {
-        const direction = decision.direction;
-        const targetRotation = Math.atan2(direction.x, direction.z);
-        bot.rotation.y = targetRotation;
-        send_action(id_bot, move_actions.forward.action_type);
-    }
-}
-
-function decidir(id_bot) {
-    const bot = players[id_bot];
-    if (!bot) return null;
-    
-    const patrolData = botPatrolData[id_bot];
-    if (!patrolData || patrolData.state !== BOT_STATES.PATROL) {
-        return null;
-    }
-    
-    const currentTime = Date.now();
-    const botPosition = bot.position;
-    
-    if (patrolData.waiting) {
-        if (currentTime - patrolData.lastWaypointTime > PATROL_CONFIG.WAIT_TIME) {
-            patrolData.waiting = false;
-            patrolData.currentWaypointIndex = (patrolData.currentWaypointIndex + 1) % patrolData.waypoints.length;
-        } else {
-            return null;
-        }
-    }
-    
-    if (patrolData.waypoints.length === 0) return null;
-    
-    const targetWaypoint = patrolData.waypoints[patrolData.currentWaypointIndex];
-    
-    const dx = targetWaypoint.x - botPosition.x;
-    const dz = targetWaypoint.z - botPosition.z;
-    const distance = Math.sqrt(dx * dx + dz * dz);
-    
-    if (distance < PATROL_CONFIG.WAYPOINT_RADIUS) {
-        patrolData.waiting = true;
-        patrolData.lastWaypointTime = currentTime;
-        return null;
-    }
-    
-    return {
-        direction: {
-            x: dx / distance,
-            z: dz / distance
-        },
-        distance: distance
-    };
-}
-
-function predict(id_bot){
-    return undefined
 }
 async function process_state(id_bot, state){
     const last_state = state_bots[id_bot]

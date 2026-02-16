@@ -163,7 +163,16 @@ class publicApi {
       return Promise.resolve([false, 204])
   }
   async action_bot(stream, headers, params){
-
+      const response =  {
+        "access-control-allow-origin": `${process.env.PROT_FRONT}://${process.env.DOMAIN_FRONT}:${process.env.PORT_FRONT}`,
+        "access-control-allow-methods": "GET,POST,OPTIONS,PUT",
+        'Access-Control-Allow-Credentials': true,
+        "access-control-allow-headers": "Content-Type, Cookies",
+        'content-type': 'text/html; charset=utf-8',
+        ":status": 200,
+      }
+      stream.respond(response)
+      try{
       const body = await this.get_body(stream)
       const bot_port = this.id_bot_mapper[body.id_bot]
       if(body.state_bot === 'attack'){
@@ -183,18 +192,29 @@ class publicApi {
         await this.mapper[bot_port].bot.shot()
       }
 
-      switch(body.state_bot){
-        case 'forward_move':
-          //await this.mapper[bot_port].bot.forward_move()
-        break;
-        default:
-        break;
+      
+      if('forward_move' === body.state_bot){
+
+        await this.mapper[bot_port].bot.forward_move()
+          
+      }
+
+      if(body.state_bot === "camera_right"){
+
+        await this.mapper[bot_port].bot.camera_right()
+      }
+      if(body.state_bot === "camera_left"){
+
+        await this.mapper[bot_port].bot.camera_left()
       }
       //stream.respond(response)
       stream.write('')
       stream.end()
 
       return Promise.resolve([false, 204])
+    }catch(err){
+      throw new Error(err)
+    }
   }
   async start_bots(){
       const ports_bots_map = {}

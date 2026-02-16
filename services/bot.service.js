@@ -131,7 +131,7 @@ module.exports = class BotService{
             case 0x0c:
                 //this.follow_cam()
                 console.log("move any: ", msg)
-                this.follow_cam()
+                //this.follow_cam()
                 if(msg.readUInt8(6) === 0x03 && this.#number_bot === 0){
                     //this.player_cords = this.predecirMovimientoForward(this.player_cords, 10)
                     
@@ -226,7 +226,7 @@ module.exports = class BotService{
                 if( bot==0 ){
                     //console.log('sync player bot number: ', msg)
                     this.player_cords = bot_cords
-                    this.follow_cam()
+                    //this.follow_cam()
                     
                 }
                 
@@ -241,7 +241,7 @@ module.exports = class BotService{
                     
                     this.in_game = true
                     this.bot_cords = this.extractRespawnXZR(msg, bot)
-                    this.follow_cam()
+                    //this.follow_cam()
                     
                     //this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: {bot: bot, x: bot_cords.x, y: bot_cords.y, z: bot_cords.z, r: bot_cords.r}, id_bot: bot}))
                     
@@ -315,6 +315,92 @@ module.exports = class BotService{
         
         return buf;
     }
+    generate_pack_camera_right(botData){
+        let view = 0        // Calcular movimiento hacia adelante
+        console.log('this.bot_cords.r,', this.bot_cords.r)
+        if(this.bot_cords.r + 2 > 255) {
+            this.bot_cords.r = (this.bot_cords.r + 2) - 255
+        }else{
+            this.bot_cords.r = this.bot_cords.r + 2
+        }
+
+        
+        // 2. BUFFER DE 26 BYTES
+        const buf = Buffer.from('3f009e7b01017f55b58a1bc5e1ec564493ebe845769ad5d5010ac1927421', 'hex');
+        
+        // X (8-11)
+        buf.writeFloatLE(botData.x, 8);
+        buf.writeFloatLE(botData.z, 12);
+        buf.writeFloatLE(botData.y, 16);
+        
+        // R (20) - uint8, no float32
+        buf.writeUInt8( this.bot_cords.r, 21);
+        
+        // 3. ENVIAR JSON CON LAS COORDENADAS NUEVAS
+        this.bot_helper.send_event(JSON.stringify({
+            type_action: 'sync', 
+            value_action: {
+                bot: this.#number_bot, 
+                x: botData.x,  // ✅ X NUEVA
+                y: botData.y,  // ✅ Y NUEVA
+                z: botData.z,  // ✅ Z NUEVA
+                r: this.bot_cords.r   // ✅ R NUEVA
+            }, 
+            id_bot: this.#number_bot
+        }));
+        const row = Buffer.from('3f002e1d000a77b3d60a','hex')
+        row.writeUInt8(this.#number_bot, 4)
+        //row.writeUint16LE( Math.floor(Math.random() * 180) , 8)
+        row.writeUint8( this.bot_cords.r , 7)
+        //this.arr_actions.push(buf)
+    
+
+        
+        return row;
+    }
+    generate_pack_camera_left(botData){
+        let view = 0        // Calcular movimiento hacia adelante
+
+        if(this.bot_cords.r - 2 < 0) {
+            this.bot_cords.r = (this.bot_cords.r - 2) + 255
+        }else{
+            this.bot_cords.r = this.bot_cords.r - 2
+        }
+
+        
+        // 2. BUFFER DE 26 BYTES
+        const buf = Buffer.from('3f009e7b01017f55b58a1bc5e1ec564493ebe845769ad5d5010ac1927421', 'hex');
+        
+        // X (8-11)
+        buf.writeFloatLE(botData.x, 8);
+        buf.writeFloatLE(botData.z, 12);
+        buf.writeFloatLE(botData.y, 16);
+        
+        // R (20) - uint8, no float32
+        buf.writeUInt8( this.bot_cords.r, 21);
+        
+        // 3. ENVIAR JSON CON LAS COORDENADAS NUEVAS
+        this.bot_helper.send_event(JSON.stringify({
+            type_action: 'sync', 
+            value_action: {
+                bot: this.#number_bot, 
+                x: botData.x,  // ✅ X NUEVA
+                y: botData.y,  // ✅ Y NUEVA
+                z: botData.z,  // ✅ Z NUEVA
+                r: this.bot_cords.r   // ✅ R NUEVA
+            }, 
+            id_bot: this.#number_bot
+        }));
+        const row = Buffer.from('3f002e1d000a77b3d60a','hex')
+        row.writeUInt8(this.#number_bot, 4)
+        //row.writeUint16LE( Math.floor(Math.random() * 180) , 8)
+        row.writeUint8( this.bot_cords.r , 7)
+        //this.arr_actions.push(buf)
+    
+
+        
+        return row;
+    }
     send_signal_die(){
         console.log('send signal die: ')
         this.bot_helper.send_event(JSON.stringify({type_action: 'die', id_bot: this.#number_bot}))
@@ -367,7 +453,7 @@ module.exports = class BotService{
             row.writeUint8(view , 7)
             this.arr_actions.push(row)
 
-            this.forward_move()
+            
 
 
         }
@@ -598,7 +684,7 @@ module.exports = class BotService{
            
         //}*/
     }
-    forward_move(){
+    async forward_move(){
 
         /*const buf_forware = Buffer.from('3f008e10000c03','hex')
         buf_forware.writeUInt8(this.#number_bot, 4)
@@ -612,6 +698,20 @@ module.exports = class BotService{
         sync_pack.writeUInt8(this.#number_bot, 4)
         this.arr_actions.push(sync_pack)
         //this.bot_cords = 
+        return
+    }
+    camera_right(){
+
+        const sync_pack = this.generate_pack_camera_right(this.bot_cords)
+        sync_pack.writeUInt8(this.#number_bot, 4)
+        this.arr_actions.push(sync_pack)
+        return 
+    }
+    camera_left(){
+        const sync_pack = this.generate_pack_camera_left(this.bot_cords)
+        sync_pack.writeUInt8(this.#number_bot, 4)
+        this.arr_actions.push(sync_pack)
+        return 
     }
     async disconnect(){
         /*
