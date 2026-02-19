@@ -127,9 +127,15 @@ async function init() {
     if (botPrototype) {
         const bot0 = botPrototype.clone();
         bot0.position.set(0, 0, 0);
+        bot0.traverse(c => {
+            if (c.isMesh) {
+                c.userData.type = 'player';
+            }
+        })
         scene.add(bot0);
         players[0] = bot0;
         botMeshes.push(bot0);
+  
         //createBotSensor(0);
     }
 
@@ -183,8 +189,9 @@ function updatePlayerMovement(id = 0) {
 
     controls.target.copy(bot.position);
 }
-
+const SOUND_SENSOR_RADIUS = 400 * 8
 function updateAllSensors() {
+    const player = players[0];
     for (const id_aux in players) {
         const id = parseInt(id_aux)
         if(id == 0){
@@ -215,7 +222,7 @@ function updateAllSensors() {
 
             let color = COLOR_FREE.clone();
             let wallDetected = false;
-
+            let playerDetected = false
             if (hits.length > 0) {
                 const t = hits[0].object.userData?.type;
                 if (t === 'wall'){
@@ -228,12 +235,24 @@ function updateAllSensors() {
                     process_state(id, BOT_STATES.ATTACK);
                     color = COLOR_BOT.clone();
                 }
+                if(t === 'player'){
+                    playerDetected = true
+                }
             }
+            const botPos = bot.position;
+            const playerPos = player.position;
+            const dx = playerPos.x - botPos.x;
+            const dz = playerPos.z - botPos.z;
 
+            const distSq = dx * dx + dz * dz;
+            const radiusSq = SOUND_SENSOR_RADIUS * SOUND_SENSOR_RADIUS;
+            if (distSq <= radiusSq) {
+                playerDetected = true
+            }
             // ===== PATRULLA MINIMA =====
-            if (!wallDetected) {
+            if (!wallDetected && !playerDetected) {
                 send_action(id, move_actions.forward.action_type);
-            } 
+            }
 
             line.material.color.copy(color);
         }
@@ -279,6 +298,12 @@ function processAction(action) {
     if (action.type_action === 'spawn' && botPrototype && action.id_bot !== 0) {
         if(!players[action.id_bot]){
             const bot = botPrototype.clone();
+            bot.traverse(c => {
+                if (c.isMesh) {
+                
+                    c.userData.type = 'bot';
+                }
+            });
             bot.position.set(action.value_action.x, action.value_action.z, -action.value_action.y);
             scene.add(bot);
             players[action.id_bot] = bot;
@@ -293,12 +318,12 @@ function processAction(action) {
     }
 
     if (action.type_action === 'sync') {
-        console.log('Players disponibles:', Object.keys(players)); 
+        //console.log('Players disponibles:', Object.keys(players)); 
         if(action.id_bot == 0){
             last_player = action.value_action.r
         }
         const bot = players[action.id_bot];
-        console.log(`sync bot: ${action.id_bot}`, !bot,action.value_action.x, action.value_action.z, -action.value_action.y, action.value_action.r )
+        //console.log(`sync bot: ${action.id_bot}`, !bot,action.value_action.x, action.value_action.z, -action.value_action.y, action.value_action.r )
         if (!bot) return;
 
         bot.position.set(action.value_action.x, action.value_action.z, -action.value_action.y);
