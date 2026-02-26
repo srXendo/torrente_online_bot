@@ -110,6 +110,17 @@ async function init() {
             }
         });
         scene.add(mapObj);
+        // Ejecuta esto una vez al inicio
+        const mapBoundingBox = new THREE.Box3();
+        mapMeshes.forEach(mesh => mapBoundingBox.expandByObject(mesh));
+
+        const mapSize = new THREE.Vector3();
+        mapBoundingBox.getSize(mapSize);
+
+        const mapMin = mapBoundingBox.min; // esquina origen
+
+        console.log("Mapa tamaño:", mapSize.x, mapSize.z);
+        console.log("Mapa origen:", mapMin.x, mapMin.z);
     } catch(e) { console.warn("map.glb no cargado", e); }
 
     // BOT PROTOTYPE
@@ -224,13 +235,18 @@ function updateAllSensors() {
             let color = COLOR_FREE.clone();
             let wallDetected = false;
             let playerDetected = false
-            
+            let playerDetected_in_front = false
+            renderMap2D()
             if (hits.length > 0) {
                 const t = hits[0].object.userData?.type;
                 if (t === 'wall'){
                     color = COLOR_WALL.clone();
                     wallDetected = true;
 
+                    // Marcar celda de la pared
+                    const hitPoint = hits[0].point;
+                    markCell(hitPoint.x, hitPoint.z, true);
+                    
                     process_state(id, BOT_STATES.NO_ATTACK);
                 }
                 if (t === 'bot'){
@@ -238,7 +254,7 @@ function updateAllSensors() {
                     color = COLOR_BOT.clone();
                 }
                 if(t === 'player'){
-                    playerDetected = true
+                    playerDetected_in_front = true
                 }
             }
             const botPos = bot.position;
@@ -255,8 +271,6 @@ function updateAllSensors() {
                     y: playerPos.y,
                     z: playerPos.z
                 }
-            }else{
-                playerDetected = false
             }
             // ===== PATRULLA MINIMA =====
             /*if (!wallDetected && !state_bots[id]) {
@@ -266,22 +280,30 @@ function updateAllSensors() {
             if(wallDetected){
                 //send_action(id, move_actions.camera_right.action_type);
             }
-
+            if(!wallDetected){
+                markCell(bot.position.x, bot.position.z, false);
+            }
             if(playerDetected){
                 const new_angle_bot = angleToTarget(botPos.x, botPos.z, playerPos.x, playerPos.z);
                 const target = normalizeAngle(new_angle_bot + Math.PI);
                 const current = normalizeAngle(-bot.rotation.y);
 
-                let diff = target - current;
+                let diff = current - target;
 
-                // Normalizar diferencia entre -PI y PI
                 if (diff > Math.PI) diff -= 2 * Math.PI;
                 if (diff < -Math.PI) diff += 2 * Math.PI;
 
-                if (diff > 0.05) {
+                // Fix oscilación en el punto opuesto (±PI)
+                
+               
+                if (diff > 0.15) {
                     send_action(id, move_actions.camera_left.action_type);
-                } else {
+                } else if (diff < -0.15) {
                     send_action(id, move_actions.camera_right.action_type);
+                } else  {
+                    console.log("✅ Bot mirando al jugador");
+                    send_action(id, move_actions.forward.action_type);
+                    //send_action(id, move_actions.camera_right.action_type); // sigue girando suavemente
                 }
             }
             line.material.color.copy(color);
@@ -296,7 +318,7 @@ function angleToTarget(botX, botZ, targetX, targetZ) {
     const dz = targetZ - botZ;
     
     // Ajuste para que mire hacia el objetivo (eje Z positivo)
-    let angle = Math.atan2(dz, dx) + Math.PI/2; // Solución 1: ajuste fino
+    let angle = Math.atan2(dz, dx) - Math.PI/2;
     
     return angle;
 }
@@ -435,6 +457,74 @@ async function send_action(id_bot, action){
 
     })
 }
+// ---- CONFIGURACIÓN DEL MAPA ----
+const MAP_CELL_SIZE = 500; // ajusta la resolución aquí
+
+const MAP_ORIGIN_X = -59663.0;
+const MAP_ORIGIN_Z = -30040.2;
+const MAP_WIDTH    = 95135.7;
+const MAP_HEIGHT   = 58740.5;
+
+const GRID_COLS = Math.ceil(MAP_WIDTH  / MAP_CELL_SIZE);
+const GRID_ROWS = Math.ceil(MAP_HEIGHT / MAP_CELL_SIZE);
+
+// 0 = libre, 1 = pared, null = desconocido
+const exploredMap = Array.from({ length: GRID_ROWS }, () => 
+    new Array(GRID_COLS).fill(null)
+);
+
+function worldToGrid(x, z) {
+    const col = Math.floor((x - MAP_ORIGIN_X) / MAP_CELL_SIZE);
+    const row = Math.floor((z - MAP_ORIGIN_Z) / MAP_CELL_SIZE);
+    return { col, row };
+}
+
+function markCell(worldX, worldZ, isWall) {
+    const { col, row } = worldToGrid(worldX, worldZ);
+    if (row >= 0 && row < GRID_ROWS && col >= 0 && col < GRID_COLS) {
+        // No sobreescribir pared ya marcada con libre
+        if (exploredMap[row][col] !== 1) {
+            exploredMap[row][col] = isWall ? 1 : 0;
+        }
+    }
+}
+const MAP_CANVAS_SCALE = 3; // píxeles por celda
+
+function renderMap2D() {
+    let container = document.getElementById('map2d');
+    if (!container) return;
+
+    let canvas = container.querySelector('canvas');
+    if (!canvas) {
+        canvas = document.createElement('canvas');
+        canvas.width  = GRID_COLS * MAP_CANVAS_SCALE;
+        canvas.height = GRID_ROWS * MAP_CANVAS_SCALE;
+        canvas.style.border = '1px solid #fff';
+        container.appendChild(canvas);
+    }
+
+    const ctx = canvas.getContext('2d');
+
+    for (let row = 0; row < GRID_ROWS; row++) {
+        for (let col = 0; col < GRID_COLS; col++) {
+            const val = exploredMap[row][col];
+            if      (val === null) ctx.fillStyle = '#111';   // desconocido
+            else if (val === 1)    ctx.fillStyle = '#e74c3c'; // pared
+            else                   ctx.fillStyle = '#2ecc71'; // libre
+            ctx.fillRect(col * MAP_CANVAS_SCALE, row * MAP_CANVAS_SCALE, MAP_CANVAS_SCALE, MAP_CANVAS_SCALE);
+        }
+    }
+
+    // Pintar posición del bot en azul
+    for(let id_player in players ){
+        const player = players[id_player]
+        const pos = player.position
+        const { col, row } = worldToGrid(pos.x, pos.z);
+        ctx.fillStyle = '#3498db';
+        ctx.fillRect(col * MAP_CANVAS_SCALE - 2, row * MAP_CANVAS_SCALE - 2, MAP_CANVAS_SCALE + 4, MAP_CANVAS_SCALE + 4);
+    }
+
+}
 </script>
 
 <div class="welcome"><span>torrenteservidor.es</span></div>
@@ -453,6 +543,10 @@ async function send_action(id_bot, action){
 
 <script src="index.js"></script>
 
-<div id="ocultar" style="display: none;"></div>
+<div id="ocultar" style="display: none;">
+
+    <div id="map2d" style="position:fixed; top:10px; right:10px; z-index:9999;"></div>
+
+</div>
 </body>
 </html>
