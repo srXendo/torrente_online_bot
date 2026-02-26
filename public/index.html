@@ -255,6 +255,8 @@ function updateAllSensors() {
                     y: playerPos.y,
                     z: playerPos.z
                 }
+            }else{
+                playerDetected = false
             }
             // ===== PATRULLA MINIMA =====
             /*if (!wallDetected && !state_bots[id]) {
@@ -265,7 +267,7 @@ function updateAllSensors() {
                 //send_action(id, move_actions.camera_right.action_type);
             }
 
-            if(state_bots[id]){
+            if(playerDetected){
                 const new_angle_bot = angleToTarget(botPos.x, botPos.z, playerPos.x, playerPos.z);
                 const target = normalizeAngle(new_angle_bot + Math.PI);
                 const current = normalizeAngle(-bot.rotation.y);
