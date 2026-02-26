@@ -266,22 +266,28 @@ function updateAllSensors() {
             }
 
             if(state_bots[id]){
-                const new_angle_bot = angleToTarget(botPos.x, botPos.z, playerPos.x, playerPos.z) // Usar X y Z
-                const mach = Math.abs(-new_angle_bot)
-                const context_mach = Math.abs(bot.rotation.y)
-                const result = Math.abs(mach - context_mach)
-                console.log('test: ', )
-                if(result < 0.1){
-                    console.log('bot mirar a jugador')
-                }else{
+                const new_angle_bot = angleToTarget(botPos.x, botPos.z, playerPos.x, playerPos.z);
+                const target = normalizeAngle(new_angle_bot + Math.PI);
+                const current = normalizeAngle(-bot.rotation.y);
+
+                let diff = target - current;
+
+                // Normalizar diferencia entre -PI y PI
+                if (diff > Math.PI) diff -= 2 * Math.PI;
+                if (diff < -Math.PI) diff += 2 * Math.PI;
+
+                if (diff > 0.05) {
+                    send_action(id, move_actions.camera_left.action_type);
+                } else {
                     send_action(id, move_actions.camera_right.action_type);
-                    
                 }
-                
             }
             line.material.color.copy(color);
         }
     }
+}
+function normalizeAngle(a) {
+    return ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
 }
 function angleToTarget(botX, botZ, targetX, targetZ) {
     const dx = targetX - botX;
