@@ -30,6 +30,7 @@ let botMeshes = [];
 let players = {};
 let state_bots = {
 }
+let status_player_bot = {}
 const move_actions = {camera_right: {action_type: "camera_right"}, camera_left: {action_type: "camera_left"}, forward: {action_type: "forward_move"}}
 const BOT_STATES = {
     NO_ATTACK: 'no_attack',
@@ -223,12 +224,13 @@ function updateAllSensors() {
             let color = COLOR_FREE.clone();
             let wallDetected = false;
             let playerDetected = false
+            
             if (hits.length > 0) {
                 const t = hits[0].object.userData?.type;
                 if (t === 'wall'){
                     color = COLOR_WALL.clone();
                     wallDetected = true;
-                    send_action(id, move_actions.camera_right.action_type);
+
                     process_state(id, BOT_STATES.NO_ATTACK);
                 }
                 if (t === 'bot'){
@@ -248,17 +250,48 @@ function updateAllSensors() {
             const radiusSq = SOUND_SENSOR_RADIUS * SOUND_SENSOR_RADIUS;
             if (distSq <= radiusSq) {
                 playerDetected = true
+                state_bots[id] = {
+                    x: playerPos.x,
+                    y: playerPos.y,
+                    z: playerPos.z
+                }
             }
             // ===== PATRULLA MINIMA =====
-            if (!wallDetected && !playerDetected) {
+            /*if (!wallDetected && !state_bots[id]) {
                 send_action(id, move_actions.forward.action_type);
+            }*/
+
+            if(wallDetected){
+                //send_action(id, move_actions.camera_right.action_type);
             }
 
+            if(state_bots[id]){
+                const new_angle_bot = angleToTarget(botPos.x, botPos.z, playerPos.x, playerPos.z) // Usar X y Z
+                const mach = Math.abs(-new_angle_bot)
+                const context_mach = Math.abs(bot.rotation.y)
+                const result = Math.abs(mach - context_mach)
+                console.log('test: ', )
+                if(result < 0.1){
+                    console.log('bot mirar a jugador')
+                }else{
+                    send_action(id, move_actions.camera_right.action_type);
+                    
+                }
+                
+            }
             line.material.color.copy(color);
         }
     }
 }
-
+function angleToTarget(botX, botZ, targetX, targetZ) {
+    const dx = targetX - botX;
+    const dz = targetZ - botZ;
+    
+    // Ajuste para que mire hacia el objetivo (eje Z positivo)
+    let angle = Math.atan2(dz, dx) + Math.PI/2; // Solución 1: ajuste fino
+    
+    return angle;
+}
 const SENSOR_DT = 0.2; // 100 ms = 10 Hz
 let acc = 0;
 const clock = new THREE.Clock();
@@ -369,12 +402,12 @@ async function process_state(id_bot, state){
     switch(state_bots[id_bot]){
         case BOT_STATES.ATTACK:
             if(last_state !== BOT_STATES.ATTACK){
-                console.log('attack')
+                //console.log('attack')
                 await send_action(id_bot, BOT_STATES.ATTACK)
             }
         break;
         case BOT_STATES.NO_ATTACK:
-            console.log('no attack')
+            //console.log('no attack')
         break;
         default: 
         break;

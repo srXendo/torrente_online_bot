@@ -1,7 +1,9 @@
 
+const { app, BrowserWindow } = require('electron/main')
+let apis_external = null
 module.exports = (apis)=>{
 
-  const { app, BrowserWindow } = require('electron/main')
+  apis_external = apis
   const path = require('node:path')
   app.commandLine.appendSwitch('ignore-certificate-errors');
   function createWindow () {
@@ -26,9 +28,11 @@ module.exports = (apis)=>{
     })
   })
 
+
+}
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
-      apis.disconnect().then(()=>{
+      apis_external.disconnect().then(()=>{
         setTimeout(()=>{
           app.quit()
           process.exit(0)
@@ -40,4 +44,3 @@ module.exports = (apis)=>{
       
     }
   })
-}
