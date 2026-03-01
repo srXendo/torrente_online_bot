@@ -404,7 +404,13 @@ module.exports = class BotService{
     send_signal_die(){
         console.log('send signal die: ')
         this.bot_helper.send_event(JSON.stringify({type_action: 'die', id_bot: this.#number_bot}))
-       
+        const drop_gun_to_flor = Buffer.from('3f00f23f00050532dbac9745000000006ef7f9c4', 'hex')
+        //drop_gun_to_flor.writeUint8(this.#number_bot, 4)
+        const baseOffset = 8
+        drop_gun_to_flor.writeFloatLE(this.bot_cords.x, baseOffset);
+        drop_gun_to_flor.writeFloatLE(this.bot_cords.z, baseOffset + 4);
+        drop_gun_to_flor.writeFloatLE(this.bot_cords.y, baseOffset + 8);
+        this.arr_actions.push(drop_gun_to_flor)
     }
     get_action(msg){
         this.last_byte_send = msg.readUInt8(4)

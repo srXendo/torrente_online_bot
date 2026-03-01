@@ -283,7 +283,7 @@ function updateAllSensors() {
             if(!wallDetected){
                 markCell(bot.position.x, bot.position.z, false);
             }
-            if(playerDetected){
+            if(true){
                 const new_angle_bot = angleToTarget(botPos.x, botPos.z, playerPos.x, playerPos.z);
                 const target = normalizeAngle(new_angle_bot + Math.PI);
                 const current = normalizeAngle(-bot.rotation.y);
@@ -445,7 +445,7 @@ async function process_state(id_bot, state){
 
 }
 async function send_action(id_bot, action){
-        const response_connection = await fetch('/api/action_bot',{
+    const response_connection = await fetch('/api/action_bot',{
         method: 'POST',
         headers: {
             "Content-Type": "application/json"
