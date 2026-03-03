@@ -352,6 +352,7 @@ function connectSSE() {
         try {
             processAction(JSON.parse(e.data));
         } catch(err) {
+            console.log('message: ', e)
             console.error(new Error(err))
         }
     };
@@ -359,7 +360,8 @@ function connectSSE() {
 let last_player = 0
 function processAction(action) {
     if (action.type_action === 'spawn' && botPrototype && action.id_bot !== 0) {
-        if(!players[action.id_bot]){
+        console.log('spawn any: ')
+        
             const bot = botPrototype.clone();
             bot.traverse(c => {
                 if (c.isMesh) {
@@ -374,7 +376,7 @@ function processAction(action) {
             botMeshes.push(bot);
             createBotSensor(action.id_bot);
 
-        }
+
     }
     if(action.id_bot !== 0){
         //send_action(action.id_bot, move_actions.camera_right.action_type);

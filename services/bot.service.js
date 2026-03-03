@@ -194,17 +194,18 @@ module.exports = class BotService{
                     //this.start_move()
                 }
                 
-                if(that_bot){
+                if(this.#number_bot === bot){
                     this.can_shot = true
                     console.log('bot spawn ', this.#number_bot, that_bot)
                     this.in_game = true
                     this.start = true
-                    const pj_response = Buffer.from('3f00800d010d1000010000e55e1d465c55b244ba37d045f6a30000'.replace('261370c5', this.buffer_session.toString('hex')), 'hex')
-                    pj_response.writeInt8(this.#number_bot, 4)
-                    this.bot_cords = that_bot
-                    this.bot_helper.send_event(JSON.stringify({type_action: 'spawn', value_action: that_bot, id_bot: this.#number_bot}))
+                    const bot_cords = this.extractRespawnXZR(msg, bot)
+                    //const pj_response = Buffer.from('3f00800d010d1000010000e55e1d465c55b244ba37d045f6a30000', 'hex')
+                    //pj_response.writeInt8(this.#number_bot, 4)
+                    this.bot_cords = bot_cords
+                    this.bot_helper.send_event(JSON.stringify({type_action: 'spawn', value_action: bot_cords, id_bot: this.#number_bot}))
                 
-                    this.arr_actions.push(pj_response)
+                    //this.arr_actions.push(pj_response)
                     const change_gun = Buffer.from('3f006f0c000d05', 'hex')
                     change_gun.writeInt8(this.#number_bot, 4)
                     this.arr_actions.push(change_gun)
@@ -404,13 +405,21 @@ module.exports = class BotService{
     send_signal_die(){
         console.log('send signal die: ')
         this.bot_helper.send_event(JSON.stringify({type_action: 'die', id_bot: this.#number_bot}))
+        // 3f00bd30000c15000d1000017f554004254690571541062da5c5bbb2d5d5
+        this.send_signal_drop_gun()
+        const respawn_buffer = Buffer.from('3f00ad2f000e190058039f5390e32a040000000000776900020b1900', 'hex')
+        respawn_buffer.writeUInt8(this.#number_bot, 4)
+        respawn_buffer.writeUInt8(0x02, 25)
+        this.arr_actions.push(respawn_buffer)
+    }
+    send_signal_drop_gun(){
         const drop_gun_to_flor = Buffer.from('3f00f23f00050532dbac9745000000006ef7f9c4', 'hex')
-        //drop_gun_to_flor.writeUint8(this.#number_bot, 4)
         const baseOffset = 8
         drop_gun_to_flor.writeFloatLE(this.bot_cords.x, baseOffset);
         drop_gun_to_flor.writeFloatLE(this.bot_cords.z, baseOffset + 4);
         drop_gun_to_flor.writeFloatLE(this.bot_cords.y, baseOffset + 8);
         this.arr_actions.push(drop_gun_to_flor)
+        return
     }
     get_action(msg){
         this.last_byte_send = msg.readUInt8(4)
