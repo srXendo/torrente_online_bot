@@ -6,6 +6,9 @@ module.exports = (apis)=>{
   apis_external = apis
   const path = require('node:path')
   app.commandLine.appendSwitch('ignore-certificate-errors');
+  app.commandLine.appendSwitch('disable-background-timer-throttling');
+  app.commandLine.appendSwitch('disable-renderer-backgrounding');
+
   function createWindow () {
     const win = new BrowserWindow({
       width: 800,

@@ -236,7 +236,7 @@ function updateAllSensors() {
             let wallDetected = false;
             let playerDetected = false
             let playerDetected_in_front = false
-            renderMap2D()
+            //renderMap2D()
             if (hits.length > 0) {
                 const t = hits[0].object.userData?.type;
                 if (t === 'wall'){
@@ -245,15 +245,16 @@ function updateAllSensors() {
 
                     // Marcar celda de la pared
                     const hitPoint = hits[0].point;
-                    markCell(hitPoint.x, hitPoint.z, true);
+                    //markCell(hitPoint.x, hitPoint.z, true);
                     
                     process_state(id, BOT_STATES.NO_ATTACK);
                 }
                 if (t === 'bot'){
-                    process_state(id, BOT_STATES.ATTACK);
+                    
                     color = COLOR_BOT.clone();
                 }
                 if(t === 'player'){
+                    send_action(id, BOT_STATES.ATTACK)
                     playerDetected_in_front = true
                 }
             }
@@ -281,9 +282,10 @@ function updateAllSensors() {
                 //send_action(id, move_actions.camera_right.action_type);
             }
             if(!wallDetected){
-                markCell(bot.position.x, bot.position.z, false);
+                //markCell(bot.position.x, bot.position.z, false);
             }
             if(true){
+               
                 const new_angle_bot = angleToTarget(botPos.x, botPos.z, playerPos.x, playerPos.z);
                 const target = normalizeAngle(new_angle_bot + Math.PI);
                 const current = normalizeAngle(-bot.rotation.y);
@@ -365,7 +367,6 @@ function processAction(action) {
             const bot = botPrototype.clone();
             bot.traverse(c => {
                 if (c.isMesh) {
-                
                     c.userData.type = 'bot';
                 }
             });
@@ -433,9 +434,10 @@ async function process_state(id_bot, state){
     
     switch(state_bots[id_bot]){
         case BOT_STATES.ATTACK:
+            send_action(id_bot, BOT_STATES.ATTACK)
             if(last_state !== BOT_STATES.ATTACK){
                 //console.log('attack')
-                await send_action(id_bot, BOT_STATES.ATTACK)
+                
             }
         break;
         case BOT_STATES.NO_ATTACK:

@@ -1,4 +1,5 @@
 
+const EventEmitter = require('events');
 module.exports = class BotService{
     #server;
     #ip_server = '192.168.1.134'
@@ -18,7 +19,9 @@ module.exports = class BotService{
     bot_master = null
     can_shot = false
     can_response = true
+    emit_start = new EventEmitter()
     constructor(number_bot, bot_helper, bot_master){
+        
         this.bot_master = bot_master
         this.can_response = true
         setTimeout(()=>{
@@ -66,6 +69,7 @@ module.exports = class BotService{
                 return this.process_msg(action_response, msg, msg.readUInt8(4), msg.readUInt8(5))
             break;
             case 0x7f00:
+                this.emit_start.emit('user_start');
                 //this.dpnid = msg.slice(164, 167)
                 const first_stage2 = Buffer.from("7f000202c3000000", 'hex')
                 first_stage2.writeUInt8(msg.readUInt8(3), 2)

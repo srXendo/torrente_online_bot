@@ -17,7 +17,7 @@ class publicApi {
   num_bots = 0;
   mapper = {}
   id_bot_mapper = {}
-  loggin = true
+  loggin = false
   bot_master = true
   constructor(bot) {
     this.bot = bot
@@ -125,6 +125,18 @@ class publicApi {
     this.bot.send_event(msg_event)
 
   }
+  starter(){
+    if(this.number_bot_starts <= this.num_bots){
+      console.log(`create new bot order! ${this.number_bot_starts}`)
+      this.number_bot_starts++
+      this.start_bots(()=>this.starter(), this.number_bot_starts).then(async()=>{
+        const helloClient = Buffer.from("000221a5011242191fb8bb154e4401763631007932","hex")
+        const hello_response = await this.send_package_to_server(this.number_bot_starts, helloClient)
+      }).catch(err=>new Error(err))
+
+
+    }
+  }
   async recive_start(stream, headers, params){
         const response =  {
         "access-control-allow-origin": `${process.env.PROT_FRONT}://${process.env.DOMAIN_FRONT}:${process.env.PORT_FRONT}`,
@@ -147,14 +159,11 @@ class publicApi {
 
       this.bot_master = true
       
+      this.number_bot_starts = 1
 
-      const arr_bots = await this.start_bots()
-      this.mapper = arr_bots
-      for(let bot of Object.values(arr_bots)){
-          const helloClient = Buffer.from("00026128011242191fb8bb154e4401763631007932","hex")
-          const hello_response = await this.send_package_to_server(bot.number_bot, helloClient)
-      }
-
+      await this.start_bots(()=>this.starter(), this.number_bot_starts)
+      const helloClient = Buffer.from("000221a5011242191fb8bb154e4401763631007932","hex")
+      const hello_response = await this.send_package_to_server(this.number_bot_starts, helloClient)
 
       //stream.respond(response)
       stream.write('')
@@ -216,30 +225,37 @@ class publicApi {
       throw new Error(err)
     }
   }
-  async start_bots(){
-      const ports_bots_map = {}
-      for(let i = 1; i < this.num_bots+1; i++){
+  async start_bots(first_msg_callback, i){
+      
+      
           
-          const obj_starter = await this.get_server_and_port()
-          if(this.loggin){
-              console.log(`new bot: id_bot${i} port: ${obj_starter.port}`);
-          }
-          this.mapper[obj_starter.port] = {
-              server: obj_starter.server,
-              number_bot: i,
-              port_bot: obj_starter.port,
-              bot: new BotService(i, this.bot, this.bot_master)
-          }
-          ports_bots_map[obj_starter.port] = this.mapper[obj_starter.port]
-          this.bot_master = false
-          this.id_bot_mapper[i] = obj_starter.port,
-          ports_bots_map[obj_starter.port].server.on('message', (msg, rconf)=>this.handler_message(msg, rconf, obj_starter))
-
+      const obj_starter = await this.get_server_and_port(i)
+      if(this.loggin){
+          console.log(`new bot: id_bot${i} port: ${obj_starter.port}`);
       }
+      this.mapper[obj_starter.port] = {
+          server: obj_starter.server,
+          number_bot: i,
+          port_bot: obj_starter.port,
+          bot: new BotService(i, this.bot, this.bot_master)
+      }
+      this.mapper[obj_starter.port] = this.mapper[obj_starter.port]
+      this.bot_master = false
+      this.id_bot_mapper[i] = obj_starter.port
+      this.mapper[obj_starter.port].is_first_msg = false
+      this.mapper[obj_starter.port].bot.emit_start.on('user_start', () => {
+        
+        first_msg_callback()
+      });
+      this.mapper[obj_starter.port].server.on('message', (msg, rconf)=>{
 
-      return ports_bots_map
+        this.handler_message(msg, rconf, obj_starter) 
+      })
+
+      return Promise.resolve()
+      
   }
-  get_server_and_port(){
+  get_server_and_port(i){
     return new Promise((resolve, reject)=>{
 
         const server = dgram.createSocket('udp4');
