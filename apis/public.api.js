@@ -8,6 +8,7 @@ const fs = require('fs')
 let AUsers = null
 const dgram = require('dgram');
 const BotService = require('./../services/bot.service')
+const PacketQueue = require('./../helpers/packetQueue')
 class publicApi {
   router = new routerApi('');
   bot = null
@@ -19,9 +20,11 @@ class publicApi {
   id_bot_mapper = {}
   loggin = false
   bot_master = true
+  packetQueue = null
   constructor(bot) {
     this.bot = bot
     this.registerRoutes();
+
   }
 
   registerRoutes() {
@@ -126,7 +129,7 @@ class publicApi {
 
   }
   starter(){
-    if(this.number_bot_starts <= this.num_bots){
+    if(this.number_bot_starts < this.num_bots){
       console.log(`create new bot order! ${this.number_bot_starts}`)
       this.number_bot_starts++
       this.start_bots(()=>this.starter(), this.number_bot_starts).then(async()=>{
@@ -154,13 +157,19 @@ class publicApi {
 
 
       this.num_bots = body.num_bots;
-      this.mapper = {}
-      this.id_bot_mapper = {}
+
 
       this.bot_master = true
       
       this.number_bot_starts = 1
-
+      this.packetQueue = new PacketQueue({
+        mapper: {},
+        idBotMapper: {},
+        ipServer: this.ip_server,
+        portServer: this.port_server,
+        intervalMs: 0,
+        logging: this.loggin
+      })
       await this.start_bots(()=>this.starter(), this.number_bot_starts)
       const helloClient = Buffer.from("000221a5011242191fb8bb154e4401763631007932","hex")
       const hello_response = await this.send_package_to_server(this.number_bot_starts, helloClient)
@@ -183,38 +192,32 @@ class publicApi {
       stream.respond(response)
       try{
       const body = await this.get_body(stream)
-      const bot_port = this.id_bot_mapper[body.id_bot]
+      const bot_port = this.packetQueue.idBotMapper[body.id_bot]
       if(body.state_bot === 'attack'){
-        const header = Buffer.from('3F00831001FBFF', 'hex')
-        const text = Buffer.from(`Hola soy el bot ${body.id_bot}: te voy a matar`, 'ascii')
-        const end_buf = Buffer.from('001F71DA0C01000000020000004022250CA436061000000000','hex')
-        const chat = Buffer.concat([header, text, end_buf])
-        
-        chat.writeUInt8(body.id_bot, 4)
-        await this.send_package_to_server(body.id_bot, chat)
+
         const change_gun = Buffer.from('3f006f0c000d05', 'hex')
         change_gun.writeInt8(body.id_bot, 4)
         await this.send_package_to_server(body.id_bot, change_gun)
         //const shot = Buffer.from('3f00f2320101803f104620c65b55b244608c08c64507f013','hex')
 
         
-        await this.mapper[bot_port].bot.shot()
+        await this.packetQueue.mapper[bot_port].bot.shot()
       }
 
       
       if('forward_move' === body.state_bot){
 
-        await this.mapper[bot_port].bot.forward_move()
+        await this.packetQueue.mapper[bot_port].bot.forward_move()
           
       }
 
       if(body.state_bot === "camera_right"){
 
-        await this.mapper[bot_port].bot.camera_right()
+        await this.packetQueue.mapper[bot_port].bot.camera_right()
       }
       if(body.state_bot === "camera_left"){
 
-        await this.mapper[bot_port].bot.camera_left()
+        await this.packetQueue.mapper[bot_port].bot.camera_left()
       }
       //stream.respond(response)
       stream.write('')
@@ -226,28 +229,25 @@ class publicApi {
     }
   }
   async start_bots(first_msg_callback, i){
-      
-      
-          
       const obj_starter = await this.get_server_and_port(i)
       if(this.loggin){
           console.log(`new bot: id_bot${i} port: ${obj_starter.port}`);
       }
-      this.mapper[obj_starter.port] = {
+      this.packetQueue.mapper[obj_starter.port] = {
           server: obj_starter.server,
           number_bot: i,
           port_bot: obj_starter.port,
           bot: new BotService(i, this.bot, this.bot_master)
       }
-      this.mapper[obj_starter.port] = this.mapper[obj_starter.port]
+      this.packetQueue.mapper[obj_starter.port] = this.packetQueue.mapper[obj_starter.port]
       this.bot_master = false
-      this.id_bot_mapper[i] = obj_starter.port
-      this.mapper[obj_starter.port].is_first_msg = false
-      this.mapper[obj_starter.port].bot.emit_start.on('user_start', () => {
+      this.packetQueue.idBotMapper[i] = obj_starter.port
+      this.packetQueue.mapper[obj_starter.port].is_first_msg = false
+      this.packetQueue.mapper[obj_starter.port].bot.emit_start.on('user_start', () => {
         
         first_msg_callback()
       });
-      this.mapper[obj_starter.port].server.on('message', (msg, rconf)=>{
+      this.packetQueue.mapper[obj_starter.port].server.on('message', (msg, rconf)=>{
 
         this.handler_message(msg, rconf, obj_starter) 
       })
@@ -276,12 +276,12 @@ class publicApi {
 
   async handler_message(msg, rconf, addr){
       if(this.loggin){
-          console.log(`Mensaje recibido: id_bot: ${this.mapper[addr.port].number_bot} ${addr.port} \n${msg.toString('hex')}`);
+          console.log(`Mensaje recibido: id_bot: ${this.packetQueue.mapper[addr.port].number_bot} ${addr.port} \n${msg.toString('hex')}`);
       
           console.log('handler_message')
       }
-      const responses = this.mapper[addr.port].bot.handler_message(msg, rconf)
-      const id_bot = this.mapper[addr.port].number_bot
+      const responses = this.packetQueue.mapper[addr.port].bot.handler_message(msg, rconf)
+      const id_bot = this.packetQueue.mapper[addr.port].number_bot
       if(!responses){
           console.error(new Error(`[handler_message]: bot nº ${id_bot} msg not recognize`))
           return
@@ -293,9 +293,9 @@ class publicApi {
                 await this.send_package_to_server(id_bot, msg_to_server)
             }else{
                 for(let respawn of msg_to_server.arr_respawns){
-                  const bot_port = this.id_bot_mapper[respawn.bot]
-                  if(!this.mapper[bot_port].bot.in_game){
-                      console.log(`bot no spawn: ${this.mapper[bot_port].bot}`)
+                  const bot_port = this.packetQueue.idBotMapper[respawn.bot]
+                  if(!this.packetQueue.mapper[bot_port].bot.in_game){
+                      console.log(`bot no spawn: ${this.packetQueue.mapper[bot_port].bot}`)
                       //mapper[bot_port].bot.spawn(respawn.cords)
                   }
                     
@@ -307,22 +307,22 @@ class publicApi {
       
   }
   send_package_to_server(id_bot, buf){
-      return new Promise((resolve, reject)=>{
-          this.mapper[this.id_bot_mapper[id_bot]].server.send(buf, this.port_server, this.ip_server, (err) => {
-              if (err) {
-                  console.error(`Error al clientHello: ${err.message}`);
-                  resolve(false)
-              } else {
-                  if(this.loggin){
-                      console.log(`Mensaje enviado: id_bot: ${id_bot} ${this.id_bot_mapper[id_bot]} \n${buf.toString('hex')}`);
-                  
-                      console.log('handler_message')
-                  }
-                  resolve(true)
-                  
-              }
-          });
-      })
+    return new Promise((resolve, reject)=>{
+        this.packetQueue.mapper[this.packetQueue.idBotMapper[id_bot]].server.send(buf, this.port_server, this.ip_server, (err) => {
+            if (err) {
+                console.error(`Error al clientHello: ${err.message}`);
+                resolve(false)
+            } else {
+                if(this.loggin){
+                    console.log(`Mensaje enviado: id_bot: ${id_bot} ${this.packetQueue.idBotMapper[id_bot]} \n${buf.toString('hex')}`);
+                
+                    console.log('handler_message')
+                }
+                resolve(true)
+                
+            }
+        });
+    }) //this.packetQueue.send(id_bot, buf);
 
   }
   get_body(stream){
@@ -341,7 +341,7 @@ class publicApi {
   async disconnect_from_api(stream, headers, params){
     console.log('!disconnect all bots')
     
-    for(let bot of Object.values(this.mapper)){
+    for(let bot of Object.values(this.packetQueue.mapper)){
         const responses = await bot.bot.disconnect()
 
 
@@ -353,7 +353,7 @@ class publicApi {
   }
   async disconnect(stream, headers, params){
     
-      for(let bot of Object.values(this.mapper)){
+      for(let bot of Object.values(this.packetQueue.mapper)){
           const responses = await bot.bot.disconnect()
 
       }

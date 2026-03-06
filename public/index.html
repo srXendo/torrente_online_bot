@@ -364,18 +364,18 @@ function processAction(action) {
     if (action.type_action === 'spawn' && botPrototype && action.id_bot !== 0) {
         console.log('spawn any: ')
         
-            const bot = botPrototype.clone();
-            bot.traverse(c => {
-                if (c.isMesh) {
-                    c.userData.type = 'bot';
-                }
-            });
-            bot.position.set(action.value_action.x, action.value_action.z, -action.value_action.y);
-            scene.add(bot);
-            players[action.id_bot] = bot;
-            process_state(action.id_bot, BOT_STATES.NO_ATTACK)
-            botMeshes.push(bot);
-            createBotSensor(action.id_bot);
+        const bot = botPrototype.clone();
+        bot.traverse(c => {
+            if (c.isMesh) {
+                c.userData.type = 'bot';
+            }
+        });
+        bot.position.set(action.value_action.x, action.value_action.z, -action.value_action.y);
+        scene.add(bot);
+        players[action.id_bot] = bot;
+        process_state(action.id_bot, BOT_STATES.NO_ATTACK)
+        botMeshes.push(bot);
+        createBotSensor(action.id_bot);
 
 
     }
@@ -427,6 +427,7 @@ function processAction(action) {
         delete players[id];
         delete botPatrolData[id]; // LIMPIAR DATOS DE PATRULLAJ
     }
+
 }
 async function process_state(id_bot, state){
     const last_state = state_bots[id_bot]
