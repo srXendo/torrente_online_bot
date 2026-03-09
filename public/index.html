@@ -20,6 +20,7 @@
 
 <script type="module">
 import * as THREE from 'three';
+
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -61,17 +62,18 @@ const playerSpeed = 0.25;
 
 const SENSOR_HEIGHT  = 10;
 const FORWARD_OFFSET = 30;
-const SENSOR_LENGTH  = 400 * 2;
+const SENSOR_LENGTH  = 200 ;
 
 const COLOR_FREE = new THREE.Color(0xff8800);
 const COLOR_WALL = new THREE.Color(0xff0000);
 const COLOR_BOT  = new THREE.Color(0x0000ff);
+const COLOR_SCAN = new THREE.Color(0xffffff);
 
 init();
 
 async function init() {
 
-    camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 100000);
+    camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 15000);
     camera.position.set(0, 120, 250);
 
     scene = new THREE.Scene();
@@ -177,7 +179,7 @@ function createBotSensor(id) {
 
     const line = new THREE.Line(
         new THREE.BufferGeometry(),
-        new THREE.LineBasicMaterial({ color: 0xffffff })
+        new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 1})
     );
     scene.add(line);
     forwardLines[id] = line;
@@ -201,7 +203,107 @@ function updatePlayerMovement(id = 0) {
 
     controls.target.copy(bot.position);
 }
-const SOUND_SENSOR_RADIUS = 400 * 8
+const SOUND_SENSOR_RADIUS = 80
+const steps = 95;
+const waypointMarkers = {};
+function renderWaypoint(id, next_waypoint){
+
+    const wp = next_waypoint;
+    if(!wp) return;
+
+    if(!waypointMarkers[id]){
+
+        const geo = new THREE.SphereGeometry(15, 16, 16);
+        const mat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+
+        const sphere = new THREE.Mesh(geo, mat);
+        scene.add(sphere);
+
+        waypointMarkers[id] = sphere;
+    }
+
+    waypointMarkers[id].position.set(
+        wp.x,
+        wp.y ?? 10,
+        wp.z
+    );
+}
+function get_next_waypoint(now_waypoint, prev_waypoint = null, depth = 1, history = []) {
+
+    const ray = new THREE.Raycaster();
+    const playerPos = players[0].position.clone();
+
+    const origin = now_waypoint.clone();
+    origin.y += SENSOR_HEIGHT;
+
+    const dir = new THREE.Vector3();
+
+    // Dirección hacia atrás del paso inmediatamente anterior
+    let backDir = null;
+    if (prev_waypoint) {
+        backDir = prev_waypoint.clone().sub(now_waypoint).setY(0).normalize();
+    }
+
+    const ANGLE_STEP = 10;
+    const BACKTRACK_PENALTY = 2.0;
+    const HISTORY_PENALTY = 1.0; // penalización por acercarse a cualquier waypoint del historial
+
+    let bestScore = -Infinity;
+    let bestWaypoint = null;
+
+    for (let a = 0; a < 360; a += ANGLE_STEP) {
+
+        const angle = (a / 360) * Math.PI * 2;
+        dir.set(Math.cos(angle), 0, Math.sin(angle)).normalize();
+
+        ray.set(origin, dir);
+        ray.far = SENSOR_LENGTH;
+
+        const hits = ray.intersectObjects(mapMeshes, true);
+        if (hits.length > 0 && hits[0].object.userData?.type === 'wall') continue;
+
+        const candidate = now_waypoint.clone().addScaledVector(dir, SENSOR_LENGTH);
+
+        // score base: dirección hacia el jugador
+        const toPlayer = playerPos.clone().sub(now_waypoint).setY(0).normalize();
+        let score = dir.dot(toPlayer);
+
+        // penalización por volver al paso anterior
+        if (backDir) {
+            const backSimilarity = dir.dot(backDir);
+            score -= Math.max(0, backSimilarity) * BACKTRACK_PENALTY;
+        }
+
+        // penalización por acercarse a cualquier waypoint del historial
+        for (let i = 0; i < history.length; i++) {
+            const histDir = history[i].clone().sub(now_waypoint).setY(0).normalize();
+            const histSimilarity = dir.dot(histDir);
+            // los waypoints más recientes penalizan más
+            const recencyWeight = (i + 1) / history.length;
+            score -= Math.max(0, histSimilarity) * HISTORY_PENALTY * recencyWeight;
+        }
+
+        if (score > bestScore) {
+            bestScore = score;
+            bestWaypoint = candidate;
+        }
+    }
+
+    if (bestWaypoint) {
+        renderWaypoint(depth, bestWaypoint);
+    }
+
+    if (bestWaypoint && depth > 1) {
+        // añadir now_waypoint al historial antes de seguir
+        const newHistory = [...history, now_waypoint];
+        history = get_next_waypoint(bestWaypoint, now_waypoint, depth - 1, newHistory);
+    }else if(depth <= 1){
+        history.push(bestScore)
+    }
+    
+    return history;
+}
+
 function updateAllSensors() {
     const player = players[0];
     for (const id_aux in players) {
@@ -210,105 +312,135 @@ function updateAllSensors() {
             updatePlayerMovement();
             continue;
         }else{
-            updatePlayerMovement(id);
+
             const bot = players[id];
             const ray = botRaycasters[id];
             const line = forwardLines[id];
-
-            const origin = bot.position.clone();
-            origin.y += SENSOR_HEIGHT;
-
-            const forward = new THREE.Vector3();
-            bot.getWorldDirection(forward);
-            forward.y = 0;
-            forward.normalize().multiplyScalar(-1);
-
-            const start = origin.clone().addScaledVector(forward, FORWARD_OFFSET);
-            const end = start.clone().addScaledVector(forward, SENSOR_LENGTH);
-
-            line.geometry.setFromPoints([start, end]);
-
-            ray.set(start, forward);
-            ray.far = SENSOR_LENGTH;
-            const hits = ray.intersectObjects([...mapMeshes, ...botMeshes.filter(b => b !== bot)], true);
-
+            line.material.linewidth = 800
+            //console.log(players[id].state_bot)
             let color = COLOR_FREE.clone();
-            let wallDetected = false;
-            let playerDetected = false
-            let playerDetected_in_front = false
-            //renderMap2D()
-            if (hits.length > 0) {
-                const t = hits[0].object.userData?.type;
-                if (t === 'wall'){
-                    color = COLOR_WALL.clone();
-                    wallDetected = true;
+            //renderWaypoint(id, bot.position.clone())
 
-                    // Marcar celda de la pared
-                    const hitPoint = hits[0].point;
-                    //markCell(hitPoint.x, hitPoint.z, true);
-                    
-                    process_state(id, BOT_STATES.NO_ATTACK);
-                }
-                if (t === 'bot'){
-                    
-                    color = COLOR_BOT.clone();
-                }
-                if(t === 'player'){
-                    send_action(id, BOT_STATES.ATTACK)
-                    playerDetected_in_front = true
-                }
-            }
-            const botPos = bot.position;
-            const playerPos = player.position;
-            const dx = playerPos.x - botPos.x;
-            const dz = playerPos.z - botPos.z;
 
-            const distSq = dx * dx + dz * dz;
-            const radiusSq = SOUND_SENSOR_RADIUS * SOUND_SENSOR_RADIUS;
-            if (distSq <= radiusSq) {
-                playerDetected = true
-                state_bots[id] = {
-                    x: playerPos.x,
-                    y: playerPos.y,
-                    z: playerPos.z
-                }
-            }
-            // ===== PATRULLA MINIMA =====
-            /*if (!wallDetected && !state_bots[id]) {
-                send_action(id, move_actions.forward.action_type);
-            }*/
-
-            if(wallDetected){
+            if(!players[id].next_waypoint){
                 //send_action(id, move_actions.camera_right.action_type);
+                players[id].history_waypoint = get_next_waypoint(bot.position.clone(),null, 20)
+                players[id].next_waypoint =  players[id].history_waypoint.shift()
             }
-            if(!wallDetected){
-                //markCell(bot.position.x, bot.position.z, false);
-            }
-            if(true){
+
+            if (players[id].state_bot === "SCAN") {
                
-                const new_angle_bot = angleToTarget(botPos.x, botPos.z, playerPos.x, playerPos.z);
-                const target = normalizeAngle(new_angle_bot + Math.PI);
-                const current = normalizeAngle(-bot.rotation.y);
-
-                let diff = current - target;
-
-                if (diff > Math.PI) diff -= 2 * Math.PI;
-                if (diff < -Math.PI) diff += 2 * Math.PI;
-
-                // Fix oscilación en el punto opuesto (±PI)
+                //players[id].next_waypoint = get_next_waypoint(players[id].next_waypoint)
+                //send_action(action.id_bot, move_actions.camera_right.action_type);
                 
-               
-                if (diff > 0.15) {
-                    send_action(id, move_actions.camera_left.action_type);
-                } else if (diff < -0.15) {
-                    send_action(id, move_actions.camera_right.action_type);
-                } else  {
-                    console.log("✅ Bot mirando al jugador");
-                    send_action(id, move_actions.forward.action_type);
-                    //send_action(id, move_actions.camera_right.action_type); // sigue girando suavemente
+                //renderWaypoint(id, bot.position.clone())
+             
+                const waypoints = get_next_waypoint(bot.position.clone(), null, 20)
+                //renderWaypoint(id, waypoint)
+                players[id].history_waypoint = waypoints
+                players[id].next_waypoint = players[id].history_waypoint.shift()
+                players[id].state_bot = "ACTION"
+
+            }else if(players[id].state_bot === "ACTION"){
+
+                const origin = bot.position.clone();
+                origin.y += SENSOR_HEIGHT;
+                const forward = new THREE.Vector3();
+                bot.getWorldDirection(forward);
+                forward.y = 0;
+                forward.normalize().multiplyScalar(-1);
+
+                const start = origin.clone().addScaledVector(forward, FORWARD_OFFSET);
+                const end = start.clone().addScaledVector(forward, SENSOR_LENGTH);
+
+                line.geometry.setFromPoints([start, end]);
+
+                ray.set(start, forward);
+                ray.far = SENSOR_LENGTH;
+                const hits = ray.intersectObjects([...mapMeshes, ...botMeshes.filter(b => b !== bot)], true);
+
+                
+                let wallDetected = false;
+                let playerDetected = false
+                let playerDetected_in_front = false
+                //renderMap2D()
+                if (hits.length > 0) {
+                    const t = hits[0].object.userData?.type;
+                    if (t === 'wall'){
+                        color = COLOR_WALL.clone();
+                        wallDetected = true;
+
+                        // Marcar celda de la pared
+                        const hitPoint = hits[0].point;
+                        //markCell(hitPoint.x, hitPoint.z, true);
+                        
+                        process_state(id, BOT_STATES.NO_ATTACK);
+                    }
+                    if (t === 'bot'){
+                    }
+                    if(t === 'player'){
+                        send_action(id, BOT_STATES.ATTACK)
+                        playerDetected_in_front = true
+
+                    }
                 }
+
+                // ===== PATRULLA MINIMA =====
+                /*if (!wallDetected && !state_bots[id]) {
+                    send_action(id, move_actions.forward.action_type);
+                }*/
+
+
+                if(true){
+                    const botPos = bot.position;
+                    const playerPos = players[id].next_waypoint;
+                    const dx = players[id].next_waypoint.x - botPos.x;
+                    const dz = players[id].next_waypoint.z - botPos.z;
+
+                    const distSq = dx * dx + dz * dz;
+                    const radiusSq = SOUND_SENSOR_RADIUS ;
+                    
+                    if (distSq <= 560) {
+                        console.log('id_bot_in_checkpoint: ', id, players[id].history_waypoint.length)
+                        if(players[id].history_waypoint.length <= 2){
+                            players[id].state_bot = "SCAN"
+                        }else{
+                            players[id].next_waypoint = players[id].history_waypoint.shift()
+                        }
+
+                    }
+                    
+                    if(players[id].state_bot !== "SCAN"){
+                        const new_angle_bot = angleToTarget(botPos.x, botPos.z, players[id].next_waypoint.x, players[id].next_waypoint.z);
+                        const target = normalizeAngle(new_angle_bot + Math.PI);
+                        const current = normalizeAngle(-bot.rotation.y);
+
+                        let diff = current - target;
+
+                        if (diff > Math.PI) diff -= 2 * Math.PI;
+                        if (diff < -Math.PI) diff += 2 * Math.PI;
+
+                        // Fix oscilación en el punto opuesto (±PI)
+                        
+                    
+                        if (diff > 0.15) {
+                            send_action(id, move_actions.camera_left.action_type);
+                        } else if (diff < -0.15) {
+                            send_action(id, move_actions.camera_right.action_type);
+                        } else  {
+                            //console.log("✅ Bot mirando al jugador");
+                            send_action(id, move_actions.forward.action_type);
+                            //send_action(id, move_actions.camera_right.action_type); // sigue girando suavemente
+                        }
+                    }
+                }else{
+                    players[id].state_bot = "SCAN"
+                }
+                line.material.color.copy(color);
+
             }
-            line.material.color.copy(color);
+
+
         }
     }
 }
@@ -324,7 +456,7 @@ function angleToTarget(botX, botZ, targetX, targetZ) {
     
     return angle;
 }
-const SENSOR_DT = 0.2; // 100 ms = 10 Hz
+const SENSOR_DT = 0.07; // 100 ms = 10 Hz
 let acc = 0;
 const clock = new THREE.Clock();
 function animate() {
@@ -371,6 +503,9 @@ function processAction(action) {
             }
         });
         bot.position.set(action.value_action.x, action.value_action.z, -action.value_action.y);
+        bot.state_bot = 'ACTION';
+        bot.scanAngle = 0
+        bot.next_waypoint = null
         scene.add(bot);
         players[action.id_bot] = bot;
         process_state(action.id_bot, BOT_STATES.NO_ATTACK)
@@ -379,12 +514,11 @@ function processAction(action) {
 
 
     }
-    if(action.id_bot !== 0){
-        //send_action(action.id_bot, move_actions.camera_right.action_type);
-    }
+
 
     if (action.type_action === 'sync') {
         //console.log('Players disponibles:', Object.keys(players)); 
+
         if(action.id_bot == 0){
             last_player = action.value_action.r
         }
@@ -398,7 +532,9 @@ function processAction(action) {
             bot.rotation.y = -(action.value_action.r / 256) * Math.PI * 2;
         }
 
-        
+        if(action.id_bot === 0){
+
+        }
 
     }
     
