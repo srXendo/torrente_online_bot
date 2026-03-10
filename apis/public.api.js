@@ -34,6 +34,8 @@ class publicApi {
     this.router.set_route("GET", "/styles.css", this.get_styles_css.bind(this));
     this.router.set_route("GET", "/map.obj", this.get_map.bind(this));
     this.router.set_route("GET", "/model.bot.obj", this.get_model.bind(this));
+    this.router.set_route("GET", "/pathfinder.worker.js", this.pathfinder.bind(this));
+    
     this.router.set_route("GET", "/api/connect", this.connect_client.bind(this));
     this.router.set_route("POST", "/api/recive_start", this.recive_start.bind(this))
     this.router.set_route("POST", "/api/action_bot", this.action_bot.bind(this))
@@ -67,6 +69,21 @@ class publicApi {
     const style_css = fs.readFileSync('./public/styles.css');
     stream.respond(response)
     stream.write(style_css)
+    stream.end()
+    return null
+  }
+  async pathfinder(stream, headers, params){
+    const response =  {
+      "access-control-allow-origin": `${process.env.PROT_FRONT}://${process.env.DOMAIN_FRONT}:${process.env.PORT_FRONT}`,
+      "access-control-allow-methods": "GET,POST,OPTIONS,PUT",
+      'Access-Control-Allow-Credentials': true,
+      "access-control-allow-headers": "Content-Type, Cookies",
+      'content-type': 'text/javascript; charset=utf-8',
+      ":status": 200,
+    }
+    const index_js = fs.readFileSync('./public/pathfinder.worker.js');
+    stream.respond(response)
+    stream.write(index_js)
     stream.end()
     return null
   }
