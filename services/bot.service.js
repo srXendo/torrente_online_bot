@@ -54,8 +54,10 @@ module.exports = class BotService{
                 const ok2 = []
                 if(msg.readUInt8(3) - msg.readUInt8(2) < 2){
                     ok2.push(Buffer.from("3f020404"+this.buffer_session, 'hex'))
-                    ok2[0].writeUint8(msg.readUint8(2)+1, 3)
-
+                    ok2[0].writeUint8(0, 3)
+                    if(msg.readUint8(2)+1 <= 255){
+                        ok2[0].writeUint8(msg.readUint8(2)+1, 3)
+                    }
                     
                     ok2[0].writeUint8(msg.readUint8(3), 2)
                 }else if(msg.readUInt8(3) - msg.readUInt8(2) > 8){
@@ -76,23 +78,31 @@ module.exports = class BotService{
                 return this.process_msg(action_response, msg, msg.readUInt8(4), msg.readUInt8(5))
             break;
             case 0x7f00:
-                
-                //this.dpnid = msg.slice(164, 167)
                 const first_stage2 = Buffer.from("7f000202c3000000", 'hex')
                 first_stage2.writeUInt8(msg.readUInt8(3), 2)
-                first_stage2.writeUInt8(msg.readUInt8(2)+1, 3)
-                const before_name = Buffer.from("3f0003020000",'hex')
-
-                before_name.writeUInt8(msg.readUInt8(3)+1, 2)
-                before_name.writeUInt8(msg.readUInt8(2), 3)
-
-                const name = Buffer.from(this.user_bot.toString('hex').padEnd(this.max_name_byte * 2, "0"), 'hex')
-                const after_name_before_map_name = Buffer.from('0b0200000000000000000000080600000003', 'hex')
-
-                const map_name = Buffer.from(this.party.mapNameBuff.toString('hex').padEnd(this.max_map_name_byte * 2, "0"), 'hex')//Buffer.from("000000034d505f444d545f5645525449474f0000000000",'hex')
-                const after_map_name = Buffer.from('90b51900be000000b0b4190001000000010000000500000074b31900c7932b5380b3190001000000102d6903','hex')
-                return [first_stage2, this.replace_name_map((Buffer.concat([before_name, name, after_name_before_map_name, map_name, after_map_name])), this.party.mapName, this.party.currentPlayers, this.party.maxPlayers)]
+                first_stage2.writeUInt8(0, 3)
+                if(msg.readUInt8(2)+1 <=255){
+                    first_stage2.writeUInt8(msg.readUInt8(2)+1, 3)
+                }
                 
+                if(msg.readUInt8(4) !== 0xdf){
+                    //this.dpnid = msg.slice(164, 167)
+
+                    const before_name = Buffer.from("3f0003020000",'hex')
+
+                    before_name.writeUInt8(msg.readUInt8(3)+1, 2)
+                    before_name.writeUInt8(msg.readUInt8(2), 3)
+
+                    const name = Buffer.from(this.user_bot.toString('hex').padEnd(this.max_name_byte * 2, "0"), 'hex')
+                    const after_name_before_map_name = Buffer.from('0b0200000000000000000000080600000003', 'hex')
+
+                    const map_name = Buffer.from(this.party.mapNameBuff.toString('hex').padEnd(this.max_map_name_byte * 2, "0"), 'hex')//Buffer.from("000000034d505f444d545f5645525449474f0000000000",'hex')
+                    const after_map_name = Buffer.from('90b51900be000000b0b4190001000000010000000500000074b31900c7932b5380b3190001000000102d6903','hex')
+                    return [first_stage2, this.replace_name_map((Buffer.concat([before_name, name, after_name_before_map_name, map_name, after_map_name])), this.party.mapName, this.party.currentPlayers, this.party.maxPlayers)]
+                }else{
+                    
+                    return this.disconnect()
+                }
                 break;
             case 0x3f02:
 
@@ -139,12 +149,20 @@ module.exports = class BotService{
                     
                 }
             break;
+            case 0xd4: 
+                const change_gun = Buffer.from('3f006f0c000d05', 'hex')
+                change_gun.writeInt8(this.#number_bot, 4)
+                this.arr_actions.push(change_gun)
+                    
+            break;
             case 0xd8:
                 console.log('bot can shot: ')
                 this.can_shot = true
                 this.emit_start.emit('user_start');
+                 //this.send_signal_die()
                 return []
             case 0xfb:
+                return []
                 break;
             case 0x0d:
                 console.log('player change gun ', bot, this.#number_bot)    
@@ -165,7 +183,8 @@ module.exports = class BotService{
                 //this.user_camera(msg)
             break;
             case 0xfc:
-
+                    console.log(`${this.user_bot} ha sido impactado por: other user. 2222`)
+                    console.log(`${this.user_bot} vida restante2222: `, msg.readUInt8(10), bot )
                 if(this.#number_bot === msg.readUint8(4)){
 
                     const have_life = msg.readUInt8(10)
@@ -194,9 +213,10 @@ module.exports = class BotService{
                 break;
             case 0xed:
                 if(this.bot_master){
+
                     console.log('any player death')
                 }
-
+               
                 break;
             case 0x0e:
                 //throw new Error('spwan palyer!!!')
@@ -206,10 +226,10 @@ module.exports = class BotService{
                 const that_bot = arr_respawns.filter(row=>row.bot === this.#number_bot)[0]
                 const player_respawn = arr_respawns.filter(row=>row.bot === 0)[0]
                 
-                if(player_respawn){
+                if(bot === 0){
                     
                     console.log('player spawn ', bot)
-                    this.player_cords = player_respawn
+                    this.player_cords = this.extractRespawnXZR(msg, bot)
                     //this.start_move()
                 }
                 
@@ -225,15 +245,13 @@ module.exports = class BotService{
                     this.bot_helper.send_event(JSON.stringify({type_action: 'spawn', value_action: bot_cords, id_bot: this.#number_bot}))
                 
                     //this.arr_actions.push(pj_response)
-                    const change_gun = Buffer.from('3f006f0c000d05', 'hex')
-                    change_gun.writeInt8(this.#number_bot, 4)
-                    this.arr_actions.push(change_gun)
+
                     //this.spawn(that_bot.cords)
                     //const all_players = this.extractAllPlayers(msg)
 
                     //this.cb_spawn(all_players)
                     //responses.push({is_external: true, arr_respawns: arr_respawns})
-                    ok2.writeUint8(msg.readUint8(2), 3)
+                    //ok2.writeUint8(msg.readUint8(2), 3)
                 }
                 
                 break;
@@ -252,7 +270,7 @@ module.exports = class BotService{
                 
                 console.log('sync package: ', this.#number_bot, bot, this.bot_master, msg)
          
-                if(this.bot_master && bot==0 ){
+                if(this.bot_master ){
                     
                     this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: {bot: bot, x: bot_cords.x, y: bot_cords.y, z: bot_cords.z, r: bot_cords.r}, id_bot: bot}))
                 }
@@ -261,6 +279,8 @@ module.exports = class BotService{
                     
                     this.in_game = true
                     this.bot_cords = this.extractRespawnXZR(msg, bot)
+                    this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: {bot: bot, x: bot_cords.x, y: bot_cords.y, z: bot_cords.z, r: bot_cords.r}, id_bot: bot}))
+                
                     //this.follow_cam()
                     
                     //this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: {bot: bot, x: bot_cords.x, y: bot_cords.y, z: bot_cords.z, r: bot_cords.r}, id_bot: bot}))
@@ -273,8 +293,7 @@ module.exports = class BotService{
                     //this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: this.extractRespawnXZR(msg, bot), id_bot: this.#number_bot}))
                     
                 }
-                this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: {bot: bot, x: bot_cords.x, y: bot_cords.y, z: bot_cords.z, r: bot_cords.r}, id_bot: bot}))
-                
+
 
                 break;
             case 0xce:
@@ -434,15 +453,18 @@ module.exports = class BotService{
         this.arr_actions.push(chat)
         this.bot_helper.send_event(JSON.stringify({type_action: 'die', id_bot: this.#number_bot}))
         // 3f00bd30000c15000d1000017f554004254690571541062da5c5bbb2d5d5
-        this.send_signal_drop_gun()
+
         const respawn_buffer = Buffer.from('3f00ad2f000e190058039f5390e32a040000000000776900020b1900', 'hex')
         respawn_buffer.writeUInt8(this.#number_bot, 4)
         respawn_buffer.writeUInt8(0x02, 25)
         this.arr_actions.push(respawn_buffer)
+        if(this.bot_cords){
+            this.send_signal_drop_gun()
+        }
     }
     send_signal_drop_gun(){
         const drop_gun_to_flor = Buffer.from('3f00f23f00050532dbac9745000000006ef7f9c4', 'hex')
-        //drop_gun_to_flor.writeUInt8(this.#number_bot, 4)
+        drop_gun_to_flor.writeUInt8(this.#number_bot, 4)
         const baseOffset = 8
         drop_gun_to_flor.writeFloatLE(this.bot_cords.x, baseOffset);
         drop_gun_to_flor.writeFloatLE(this.bot_cords.z, baseOffset + 4);
@@ -757,7 +779,7 @@ module.exports = class BotService{
         this.arr_actions.push(sync_pack)
         return 
     }
-    async disconnect(){
+    disconnect(){
         /*
         client action:  <Buffer 3f 03 dc 0e e1 db 66 1e>
         client action:  <Buffer 3f 01 dd 0e 00 02>

@@ -1,557 +1,522 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Torrente online bots</title>
     <link rel="stylesheet" href="styles.css">
-    <style>body { margin:0 }</style>
+    <style>
+        body {
+            margin: 0
+        }
+    </style>
 </head>
+
 <body>
 
-<script type="importmap">
+    <script type="importmap">
 {
   "imports": {
     "three": "https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/"
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/",
+    "threePathfinding": "https://cdn.jsdelivr.net/npm/three-pathfinding@1.3.0/+esm"
   }
 }
 </script>
 
-<script type="module">
-import * as THREE from 'three';
-import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+        import { Pathfinding, PathfindingHelper } from 'threePathfinding';
+        import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+        const Color = {
+            GROUND: 0x606060,
+            NAVMESH: 0xFFFFFF,
+        };
+        let offsetX = -3.9
+        let offsetZ = -1.6
+        document.getElementById('offsetX').setAttribute('value', -3.9)
+        document.getElementById('lx').textContent = offsetX.toFixed(2);
+        document.getElementById('offsetZ').setAttribute('value', -1.6)
+        document.getElementById('lz').textContent = offsetZ.toFixed(2);
+        const ZONE = 'level';
+        const SPEED = 5;
+        const OFFSET = 0.2;
 
-let camera, scene, renderer, controls;
-let mapMeshes = [];
-let botMeshes = [];
-let players = {};
-let state_bots = {
-}
-let status_player_bot = {}
-const move_actions = {camera_right: {action_type: "camera_right"}, camera_left: {action_type: "camera_left"}, forward: {action_type: "forward_move"}}
-const BOT_STATES = {
-    NO_ATTACK: 'no_attack',
-    PATROL: 'patrol',
-    CHASE: 'chase',
-    ATTACK: 'attack'
-};
+        let level, navmesh;
+        let groupID, path;
+        let yellowMarker;
+        let botPrototype;
+        const players = {};
+        const botsWaypoints = {}
+        const move_actions = {camera_right: {action_type: "camera_right"}, camera_left: {action_type: "camera_left"}, forward: {action_type: "forward_move"}}
+        const playerPosition = new THREE.Vector3(-3.5, 0.5, 5.5);
+        const targetPosition = new THREE.Vector3();
+        const wireMaterialBot = new THREE.MeshBasicMaterial({ color: 0x00c8ff, wireframe: true });
+        const pathfinder = new Pathfinding();
+        const helper = new PathfindingHelper();
+        const SENSOR_DT = 0.22; // 100 ms = 10 Hz
+        let acc = 0;
+        const clock = new THREE.Clock();
+        const mouse = new THREE.Vector2();
+        const mouseDown = new THREE.Vector2();
+        const raycaster = new THREE.Raycaster();
 
-const PATROL_CONFIG = {
-    WAYPOINT_RADIUS: 5,
-    WAIT_TIME: 2000,
-    PATROL_SPEED: 0.5,
-    EXPLORATION_RANGE: 20
-};
-const botPatrolData = {};
+        function worldPosition(value) {
+            return new THREE.Vector3(value.x, -value.y, value.z);
+        }
 
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0xFFFFFF);
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        document.body.appendChild(renderer.domElement);
 
-let forwardLines = {};
-let botRaycasters = {};
-let botPrototype;
-const wireMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
+        const environment = new RoomEnvironment(renderer);
+        const pmremGenerator = new THREE.PMREMGenerator(renderer);
 
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xbbbbbb);
+        scene.environment = pmremGenerator.fromScene(environment).texture;
+        scene.add(helper);
 
-const wireMaterialBot = new THREE.MeshBasicMaterial({ color: 0x00c8ff, wireframe: true });
-
-const move = { forward: false, backward: false, left: false, right: false };
-const playerSpeed = 0.25;
-
-const SENSOR_HEIGHT  = 10;
-const FORWARD_OFFSET = 30;
-const SENSOR_LENGTH  = 400 * 2;
-
-const COLOR_FREE = new THREE.Color(0xff8800);
-const COLOR_WALL = new THREE.Color(0xff0000);
-const COLOR_BOT  = new THREE.Color(0x0000ff);
-
-init();
-
-async function init() {
-
-    camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 100000);
-    camera.position.set(0, 120, 250);
-
-    scene = new THREE.Scene();
-
-    scene.add(new THREE.AmbientLight(0xffffff, 1.2));
-
-    renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(innerWidth, innerHeight);
-    renderer.setPixelRatio(devicePixelRatio);
-    document.getElementById('ocultar').appendChild(renderer.domElement);
-
-    // ORBIT CONTROLS
-    controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.08;
-    controls.enablePan = true;
-    controls.enableZoom = true;
-    controls.maxPolarAngle = Math.PI * 0.49;
-
-    window.addEventListener('resize', onResize);
-
-    const loader = new OBJLoader().setPath('./');
-    const gloader = new GLTFLoader();
-
-    // MAPA
-    try {
-        const mapObj = await loader.loadAsync('map.obj');
-        mapObj.position.y = -1;
-
-        mapObj.traverse(c => {
-            if (c.isMesh) {
-                c.material = wireMaterial;
-                c.material.side = THREE.DoubleSide;
-                c.userData.type = 'wall';
-                mapMeshes.push(c);
-            }
+        const yellowGeometry = new THREE.SphereGeometry(0.28, 16, 16);
+        const yellowMaterial = new THREE.MeshStandardMaterial({
+            color: 0xFFFF00,
+            emissive: 0x666600,
+            emissiveIntensity: 0.45,
+            flatShading: true
         });
-        scene.add(mapObj);
-        // Ejecuta esto una vez al inicio
-        const mapBoundingBox = new THREE.Box3();
-        mapMeshes.forEach(mesh => mapBoundingBox.expandByObject(mesh));
+        yellowMarker = new THREE.Mesh(yellowGeometry, yellowMaterial);
+        yellowMarker.visible = false;
+        scene.add(yellowMarker);
+        environment.dispose();
 
-        const mapSize = new THREE.Vector3();
-        mapBoundingBox.getSize(mapSize);
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
+        camera.position.x = -10;
+        camera.position.y = 14;
+        camera.position.z = 10;
 
-        const mapMin = mapBoundingBox.min; // esquina origen
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.damping = 0.2;
 
-        console.log("Mapa tamaño:", mapSize.x, mapSize.z);
-        console.log("Mapa origen:", mapMin.x, mapMin.z);
-    } catch(e) { console.warn("map.glb no cargado", e); }
+        const ambient = new THREE.AmbientLight(0x101030);
+        scene.add(ambient);
 
-    // BOT PROTOTYPE
-    try {
-        botPrototype = await loader.loadAsync('model.bot.obj');
-        botPrototype.scale.setScalar(100);
-        botPrototype.traverse(c => {
-            if (c.isMesh) {
-                c.material = wireMaterialBot;
-                c.userData.type = 'bot';
-            }
-        });
-    } catch(e) { console.warn("model.bot.obj no cargado", e); }
+        const directionalLight = new THREE.DirectionalLight(0xFFEEDD);
+        directionalLight.position.set(0, 0.5, 0.5);
+        scene.add(directionalLight);
 
-    // BOT LOCAL
-    if (botPrototype) {
-        const bot0 = botPrototype.clone();
-        bot0.position.set(0, 0, 0);
-        bot0.traverse(c => {
-            if (c.isMesh) {
-                c.userData.type = 'player';
-            }
-        })
-        scene.add(bot0);
-        players[0] = bot0;
-        botMeshes.push(bot0);
-  
-        //createBotSensor(0);
-    }
+        init();
+        animate();
+        const SCALE = 15;
+        async function init() {
 
-    document.addEventListener('keydown', onKeyDown);
-    document.addEventListener('keyup', onKeyUp);
+            const gltfLoader = new GLTFLoader();
+            const objLoader = new OBJLoader()
 
-    connectSSE();
-    animate();
-}
+            gltfLoader.load('/navmesh3.glb', function (gltf) {
 
-function onKeyDown(e){
-    if (e.code === 'KeyW') move.forward = true;
-    if (e.code === 'KeyS') move.backward = true;
-    if (e.code === 'KeyA') move.left = true;
-    if (e.code === 'KeyD') move.right = true;
-}
+                const levelMesh = gltf.scene.getObjectByName('Navmesh_Mesh');
 
-function onKeyUp(e){
-    if (e.code === 'KeyW') move.forward = false;
-    if (e.code === 'KeyS') move.backward = false;
-    if (e.code === 'KeyA') move.left = false;
-    if (e.code === 'KeyD') move.right = false;
-}
+                const levelMat = new THREE.MeshStandardMaterial({
+                    color: Color.GROUND,
+                    flatShading: true,
+                    roughness: 1,
+                    metalness: 0
+                });
+                level = new THREE.Mesh(levelMesh.geometry, levelMat);
+                //level.scale.set(9.98, 0.004, 8.475);
+                level.scale.set(15, 0.5, 15);
+                window.level = level;
+                scene.add(level);
 
-function createBotSensor(id) {
-    botRaycasters[id] = new THREE.Raycaster();
+                objLoader.load('model.bot.obj', (bp)=>{
+                    try {
+                        botPrototype = bp
+                        botPrototype.scale.setScalar(0.5);
+                        botPrototype.traverse(c => {
+                            if (c.isMesh) {
+                                c.material = wireMaterialBot;
+                                c.userData.type = 'bot';
+                            }
+                        });
 
-    const line = new THREE.Line(
-        new THREE.BufferGeometry(),
-        new THREE.LineBasicMaterial({ color: 0xffffff })
-    );
-    scene.add(line);
-    forwardLines[id] = line;
-}
+                        const bot0 = botPrototype.clone();
+                        bot0.position.set(0, 0.43, 0);
+                        bot0.traverse(c => {
+                            if (c.isMesh) {
+                                c.userData.type = 'player';
+                            }
+                        })
+                        players[0] = bot0;
+                        scene.add(bot0);
 
-function updatePlayerMovement(id = 0) {
-    const bot = players[id];
-    if (!bot) return;
 
-    const dir = new THREE.Vector3();
-    camera.getWorldDirection(dir);
-    dir.y = 0;
-    dir.normalize();
-
-    if(id===0) { const right = new THREE.Vector3().crossVectors(dir, camera.up).normalize(); }
-
-    if (move.forward)  bot.position.addScaledVector(dir, playerSpeed);
-    if (move.backward) bot.position.addScaledVector(dir, -playerSpeed);
-    if (move.left)     bot.position.addScaledVector(right, -playerSpeed);
-    if (move.right)    bot.position.addScaledVector(right, playerSpeed);
-
-    controls.target.copy(bot.position);
-}
-const SOUND_SENSOR_RADIUS = 400 * 8
-function updateAllSensors() {
-    const player = players[0];
-    for (const id_aux in players) {
-        const id = parseInt(id_aux)
-        if(id == 0){
-            updatePlayerMovement();
-            continue;
-        }else{
-            updatePlayerMovement(id);
-            const bot = players[id];
-            const ray = botRaycasters[id];
-            const line = forwardLines[id];
-
-            const origin = bot.position.clone();
-            origin.y += SENSOR_HEIGHT;
-
-            const forward = new THREE.Vector3();
-            bot.getWorldDirection(forward);
-            forward.y = 0;
-            forward.normalize().multiplyScalar(-1);
-
-            const start = origin.clone().addScaledVector(forward, FORWARD_OFFSET);
-            const end = start.clone().addScaledVector(forward, SENSOR_LENGTH);
-
-            line.geometry.setFromPoints([start, end]);
-
-            ray.set(start, forward);
-            ray.far = SENSOR_LENGTH;
-            const hits = ray.intersectObjects([...mapMeshes, ...botMeshes.filter(b => b !== bot)], true);
-
-            let color = COLOR_FREE.clone();
-            let wallDetected = false;
-            let playerDetected = false
-            let playerDetected_in_front = false
-            //renderMap2D()
-            if (hits.length > 0) {
-                const t = hits[0].object.userData?.type;
-                if (t === 'wall'){
-                    color = COLOR_WALL.clone();
-                    wallDetected = true;
-
-                    // Marcar celda de la pared
-                    const hitPoint = hits[0].point;
-                    //markCell(hitPoint.x, hitPoint.z, true);
+                    } catch(e) { console.warn("model.bot.obj no cargado", e); }
+                });
+                //createBotSensor(0);
                     
-                    process_state(id, BOT_STATES.NO_ATTACK);
-                }
-                if (t === 'bot'){
+            }, null);
+
+            gltfLoader.load('/navmesh3.glb', function (gltf) {
+
+                const _navmesh = gltf.scene.getObjectByName('Navmesh_Mesh');
+
+                const scaledGeometry = _navmesh.geometry.clone();
+                //scaledGeometry.scale(9.98, 0.004, 8.475);
+                scaledGeometry.scale(15, 0.5, 15);
+                console.time('createZone()');
+                const zone = Pathfinding.createZone(scaledGeometry);
+                console.timeEnd('createZone()');
+
+                pathfinder.setZoneData(ZONE, zone);
+
+                navmesh = new THREE.Mesh(scaledGeometry, new THREE.MeshBasicMaterial({
+                    color: Color.NAVMESH,
+                    opacity: 0.75,
+                    transparent: true
+                }));
+
+                scene.add(navmesh);
+
+            });
+            helper
+                .setPlayerPosition(new THREE.Vector3(-3.5, 0.5, 5.5))
+                .setTargetPosition(new THREE.Vector3(-3.5, 0.5, 5.5));
+
+            document.addEventListener('pointerdown', onDocumentPointerDown, false);
+            document.addEventListener('pointerup', onDocumentPointerUp, false);
+            window.addEventListener('resize', onWindowResize, false);
+
+        }
+        function renderPathLine(path) {
+            // Eliminar línea anterior
+            const oldLine = scene.getObjectByName('pathLine');
+            if (oldLine) scene.remove(oldLine);
+
+            const points = path.map(p => new THREE.Vector3(p.x, p.y, p.z));
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const material = new THREE.LineBasicMaterial({ color: 0x0088ff, linewidth: 2 });
+            
+            const line = new THREE.Line(geometry, material);
+            line.name = 'pathLine';
+            scene.add(line);
+        }
+        function onDocumentPointerDown(event) {
+
+            mouseDown.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouseDown.y = - (event.clientY / window.innerHeight) * 2 + 1;
+
+        }
+
+        function onDocumentPointerUp(event) {
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+
+            if (Math.abs(mouseDown.x - mouse.x) > 0 || Math.abs(mouseDown.y - mouse.y) > 0) return;
+
+            camera.updateMatrixWorld();
+
+            raycaster.setFromCamera(mouse, camera);
+
+            const intersects = raycaster.intersectObject(navmesh);
+
+            if (!intersects.length) return;
+
+            targetPosition.copy(intersects[0].point);
+
+            helper
+                .reset()
+                .setPlayerPosition(playerPosition);
+
+            if (event.metaKey || event.ctrlKey || event.button === 2) {
+
+                path = null;
+                groupID = pathfinder.getGroup(ZONE, targetPosition, true);
+                const closestNode = pathfinder.getClosestNode(playerPosition, ZONE, groupID, true);
+
+                helper.setPlayerPosition(playerPosition.copy(targetPosition))
+                if (closestNode) helper.setNodePosition(closestNode.centroid);
+
+                return;
+
+            }
+
+            const targetGroupID = pathfinder.getGroup(ZONE, targetPosition, true);
+            const closestTargetNode = pathfinder.getClosestNode(targetPosition, ZONE, targetGroupID, true);
+
+            helper.setTargetPosition(targetPosition);
+            if (closestTargetNode) helper.setNodePosition(closestTargetNode.centroid);
+
+            path = pathfinder.findPath(playerPosition, targetPosition, ZONE, groupID);
+
+            if (path && path.length) {
+
+                helper.setPath(path);
+
+                console.log(path.map(p => ({
+                    x: p.x,
+                    y: p.y,
+                    z: p.z
+                })))
+            } else {
+
+                const closestPlayerNode = pathfinder.getClosestNode(playerPosition, ZONE, groupID);
+                const clamped = new THREE.Vector3();
+
+                pathfinder.clampStep(
+                    playerPosition, targetPosition.clone(), closestPlayerNode, ZONE, groupID, clamped);
+
+                helper.setStepPosition(clamped);
+
+            }
+        }
+
+        function onWindowResize() {
+
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+        }
+
+        function animate() {
+
+            requestAnimationFrame(animate);
+            acc += clock.getDelta();
+            if(acc >= SENSOR_DT){
+                updateAllSensors();
+                acc = 0;
+            }
+            renderer.render(scene, camera);
+
+        }
+        function updateAllSensors() {
+            //console.log('update_all sensors')
+            for (const id_aux in players) {
+                const id = parseInt(id_aux)
+                if(id == 0){
+                    continue;
+                }else if(botsWaypoints[id]?.path[0]){
+                    const player = players[0];
+                    const bot = players[id];
+                    const botPos = bot.position;
+                    const waypointPos = botsWaypoints[id].path[0];
+                    const dx = waypointPos.x - botPos.x;
+                    const dz = waypointPos.z - botPos.z;
+
+                    const distSq = dx * dx + dz * dz;
+                    const radiusSq = 0.1;
+                    console.log('distSq <= radiusSq: ', distSq <= radiusSq)
+                    if (distSq <= radiusSq && botsWaypoints[id].path.length > 1) {
+                        /*const closestPlayerNode = pathfinder.getClosestNode(playerPosition, ZONE, playerGroup);
+                        if (closestPlayerNode) {
+                            const clamped = new THREE.Vector3();
+                            pathfinder.clampStep(
+                                playerPosition,
+                                bot1Position.clone(),
+                                closestPlayerNode,
+                                ZONE,
+                                playerGroup,
+                                clamped
+                            );
+                            helper.setStepPosition(clamped);
+                        }*/
+                       const res =  botsWaypoints[id].path.shift()
+                       console.log('wypoint: ',res)
+                    }
+
+                    if(true){
                     
-                    color = COLOR_BOT.clone();
-                }
-                if(t === 'player'){
-                    send_action(id, BOT_STATES.ATTACK)
-                    playerDetected_in_front = true
-                }
-            }
-            const botPos = bot.position;
-            const playerPos = player.position;
-            const dx = playerPos.x - botPos.x;
-            const dz = playerPos.z - botPos.z;
+                        const new_angle_bot = angleToTarget(botPos.x, botPos.z, waypointPos.x, waypointPos.z);
+                        const target = normalizeAngle(new_angle_bot + Math.PI);
+                        const current = normalizeAngle(-bot.rotation.y);
+                        console.log('current angle: ', current )
+                        let diff = current - target;
 
-            const distSq = dx * dx + dz * dz;
-            const radiusSq = SOUND_SENSOR_RADIUS * SOUND_SENSOR_RADIUS;
-            if (distSq <= radiusSq) {
-                playerDetected = true
-                state_bots[id] = {
-                    x: playerPos.x,
-                    y: playerPos.y,
-                    z: playerPos.z
-                }
-            }
-            // ===== PATRULLA MINIMA =====
-            /*if (!wallDetected && !state_bots[id]) {
-                send_action(id, move_actions.forward.action_type);
-            }*/
+                        if (diff > Math.PI) diff -= 2 * Math.PI;
+                        if (diff < -Math.PI) diff += 2 * Math.PI;
 
-            if(wallDetected){
-                //send_action(id, move_actions.camera_right.action_type);
-            }
-            if(!wallDetected){
-                //markCell(bot.position.x, bot.position.z, false);
-            }
-            if(true){
-               
-                const new_angle_bot = angleToTarget(botPos.x, botPos.z, playerPos.x, playerPos.z);
-                const target = normalizeAngle(new_angle_bot + Math.PI);
-                const current = normalizeAngle(-bot.rotation.y);
-
-                let diff = current - target;
-
-                if (diff > Math.PI) diff -= 2 * Math.PI;
-                if (diff < -Math.PI) diff += 2 * Math.PI;
-
-                // Fix oscilación en el punto opuesto (±PI)
-                
-               
-                if (diff > 0.15) {
-                    send_action(id, move_actions.camera_left.action_type);
-                } else if (diff < -0.15) {
-                    send_action(id, move_actions.camera_right.action_type);
-                } else  {
-                    console.log("✅ Bot mirando al jugador");
-                    send_action(id, move_actions.forward.action_type);
-                    //send_action(id, move_actions.camera_right.action_type); // sigue girando suavemente
+                        // Fix oscilación en el punto opuesto (±PI)
+                        
+                    
+                        if (diff > 0.15) {
+                            send_action(id, move_actions.camera_left.action_type);
+                        } else if (diff < -0.15) {
+                            send_action(id, move_actions.camera_right.action_type);
+                        } else  {
+                            console.log("✅ Bot mirando al jugador");
+                            send_action(id, move_actions.forward.action_type);
+                            //send_action(id, move_actions.camera_right.action_type); // sigue girando suavemente
+                        }
+                    }
+                    
                 }
             }
-            line.material.color.copy(color);
         }
-    }
-}
-function normalizeAngle(a) {
-    return ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
-}
-function angleToTarget(botX, botZ, targetX, targetZ) {
-    const dx = targetX - botX;
-    const dz = targetZ - botZ;
-    
-    // Ajuste para que mire hacia el objetivo (eje Z positivo)
-    let angle = Math.atan2(dz, dx) - Math.PI/2;
-    
-    return angle;
-}
-const SENSOR_DT = 0.02; // 100 ms = 10 Hz
-let acc = 0;
-const clock = new THREE.Clock();
-function animate() {
-    requestAnimationFrame(animate);
 
-    acc += clock.getDelta();
+        async function send_action(id_bot, action){
+            const response_connection = await fetch('/api/action_bot',{
+                method: 'POST',
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    id_bot: id_bot,
+                    state_bot: action 
+                }),
 
-    if(acc >= SENSOR_DT){
-        updateAllSensors();
-        acc = 0;
-    }
-    controls.update();
-
-    renderer.render(scene, camera);
-}
-
-function onResize() {
-    camera.aspect = innerWidth / innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(innerWidth, innerHeight);
-}
-
-// SSE
-function connectSSE() {
-    const source = new EventSource('/api/connect');
-    source.onmessage = e => {
-        try {
-            processAction(JSON.parse(e.data));
-        } catch(err) {
-            console.log('message: ', e)
-            console.error(new Error(err))
+            })
         }
-    };
-}
-let last_player = 0
-function processAction(action) {
-    if (action.type_action === 'spawn' && botPrototype && action.id_bot !== 0) {
-        console.log('spawn any: ')
-        
-        const bot = botPrototype.clone();
-        bot.traverse(c => {
-            if (c.isMesh) {
-                c.userData.type = 'bot';
+        const sseSource = new EventSource('/api/connect');
+        sseSource.onmessage = e => {
+
+
+            try {
+                const data = JSON.parse(e.data);
+                console.log('SSE message', data);
+
+                if (data.type_action === 'sync' && data.value_action) {
+                    const idBot = Number(data.value_action?.bot);
+                    const position = new THREE.Vector3(
+                        ((data.value_action.x / (1000 * 9.98)) * 15) + offsetX,   // = x / 9980
+                        0.5,
+                        -(((data.value_action.y / (1000 * 8.47508)) * 15) + offsetZ) // = y / 8475.08
+                    );
+                    players[idBot].position.set(position.x, 0.43, position.z);
+                    
+                    if (idBot === 0) {
+                        helper.setTargetPosition(targetPosition);
+                        yellowMarker.position.copy(players[idBot].position);
+                        yellowMarker.visible = true;
+                        for(let idAuxBot in players){
+                            const intIdAuxBot = parseInt(idAuxBot)
+                            if(idAuxBot > 0 && (!botsWaypoints[intIdAuxBot]|| botsWaypoints[intIdAuxBot].path.length === 0)){
+                                
+                                const bot1Position = players[intIdAuxBot].position;
+
+                                
+                                const playerGroup = pathfinder.getGroup(ZONE, players[0].position, true);
+                                if (playerGroup !== null && playerGroup !== undefined) {
+                                    
+                                    const targetGroupID = pathfinder.getGroup(ZONE, players[0].position, true);
+
+                                    const closestTargetNode = pathfinder.getClosestNode(players[0].position, ZONE, targetGroupID, true);
+                                  
+
+                                    const pathToBot1 = pathfinder.findPath(players[0].position, bot1Position, ZONE, playerGroup);
+                                      console.log("waypoints: " , pathToBot1 )
+
+                                    if (pathToBot1 && pathToBot1.length <= 0 && (!botsWaypoints[intIdAuxBot] ||botsWaypoints[intIdAuxBot].path.length <= 0)) {
+                                        botsWaypoints[intIdAuxBot] = {
+                                            path: pathToBot1,
+                                            group: playerGroup,
+
+                                        }
+                                        helper.setPath(pathToBot1);
+                                    } 
+                                }
+                            }
+                        }
+                        
+                    }else if(idBot > 0){
+                        
+                        targetPosition.copy(players[idBot].position)
+                        helper.setPlayerPosition(players[idBot].position);
+                    }
+                } else if (data.type_action === 'spawn' && data.value_action) {
+                    const idBot = Number(data.id_bot ?? data.value_action?.bot);
+                    const position = new THREE.Vector3(
+                        ((data.value_action.x / (1000 * 9.98)) * 15) + offsetX,   // = x / 9980
+                        0.5,
+                        -(((data.value_action.y / (1000 * 8.47508)) * 15) + offsetZ) // = y / 8475.08
+                    );
+                    if (idBot > 0) {
+                        const bot = botPrototype.clone();
+                        bot.traverse(c => {
+                            if (c.isMesh) {
+                                c.userData.type = 'bot';
+                            }
+                        });
+                        bot.position.set(position.x, position.y, position.z);
+                        scene.add(bot);
+                        players[idBot] = bot;
+                        helper.setPlayerPosition(players[idBot].position);
+                    }
+                }
+            } catch (err) {
+                console.error(err.stack);
+                console.error('SSE parse error', err);
             }
-        });
-        bot.position.set(action.value_action.x, action.value_action.z, -action.value_action.y);
-        scene.add(bot);
-        players[action.id_bot] = bot;
-        process_state(action.id_bot, BOT_STATES.NO_ATTACK)
-        botMeshes.push(bot);
-        createBotSensor(action.id_bot);
-
-
-    }
-    if(action.id_bot !== 0){
-        //send_action(action.id_bot, move_actions.camera_right.action_type);
-    }
-
-    if (action.type_action === 'sync') {
-        //console.log('Players disponibles:', Object.keys(players)); 
-        if(action.id_bot == 0){
-            last_player = action.value_action.r
+        };
+        function normalizeAngle(a) {
+            return ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
         }
-        const bot = players[action.id_bot];
-        //console.log(`sync bot: ${action.id_bot}`, !bot,action.value_action.x, action.value_action.z, -action.value_action.y, action.value_action.r )
-        if (!bot) return;
-
-        bot.position.set(action.value_action.x, action.value_action.z, -action.value_action.y);
-
-        if (typeof action.value_action.r === 'number') {
-            bot.rotation.y = -(action.value_action.r / 256) * Math.PI * 2;
+        function angleToTarget(botX, botZ, targetX, targetZ) {
+            const dx = targetX - botX;
+            const dz = targetZ - botZ;
+            
+            // Ajuste para que mire hacia el objetivo (eje Z positivo)
+            let angle = Math.atan2(dz, dx) - Math.PI/2;
+            
+            return angle;
         }
+        sseSource.onerror = err => {
+            console.warn('SSE connection error', err);
+        };
 
-        
+        //main render loop
+    </script>
 
-    }
-    
-    if (action.type_action === 'die' && action.id_bot !== 0) {
-        
-        const id = action.id_bot;
-        console.log('boy die: ', id)
-        const bot = players[id];
+    <div class="formulario">
+        <div class="tituloformulario"><span>CONECTAR BOTS</span></div>
+        <div class="datosformulario">
+            <label>Dirección IP:<br><input type="text" id="ipv4" value="192.168.1.130"></label>
+            <label>Puerto:<br><input type="number" id="puerto" value="8888"></label>
+            <label>Número de bots:<br><input type="number" id="numbots" max="32" value="1"></label>
 
-        if (!bot) return;
+        </div>
 
-        scene.remove(bot);
-
-        const i = botMeshes.indexOf(bot);
-        if (i !== -1) botMeshes.splice(i, 1);
-
-        if (forwardLines[id]) {
-            scene.remove(forwardLines[id]);
-            forwardLines[id].geometry.dispose();
-            forwardLines[id].material.dispose();
-            delete forwardLines[id];
-        }
-
-        delete botRaycasters[id];
-
-        delete players[id];
-        delete botPatrolData[id]; // LIMPIAR DATOS DE PATRULLAJ
-    }
-
-}
-async function process_state(id_bot, state){
-    const last_state = state_bots[id_bot]
-    state_bots[id_bot] = state
-    
-    switch(state_bots[id_bot]){
-        case BOT_STATES.ATTACK:
-            send_action(id_bot, BOT_STATES.ATTACK)
-            if(last_state !== BOT_STATES.ATTACK){
-                //console.log('attack')
-                
-            }
-        break;
-        case BOT_STATES.NO_ATTACK:
-            //console.log('no attack')
-        break;
-        default: 
-        break;
-    }
-
-}
-async function send_action(id_bot, action){
-    const response_connection = await fetch('/api/action_bot',{
-        method: 'POST',
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            id_bot: id_bot,
-            state_bot: action 
-        }),
-
-    })
-}
-// ---- CONFIGURACIÓN DEL MAPA ----
-const MAP_CELL_SIZE = 500; // ajusta la resolución aquí
-
-const MAP_ORIGIN_X = -59663.0;
-const MAP_ORIGIN_Z = -30040.2;
-const MAP_WIDTH    = 95135.7;
-const MAP_HEIGHT   = 58740.5;
-
-const GRID_COLS = Math.ceil(MAP_WIDTH  / MAP_CELL_SIZE);
-const GRID_ROWS = Math.ceil(MAP_HEIGHT / MAP_CELL_SIZE);
-
-// 0 = libre, 1 = pared, null = desconocido
-const exploredMap = Array.from({ length: GRID_ROWS }, () => 
-    new Array(GRID_COLS).fill(null)
-);
-
-function worldToGrid(x, z) {
-    const col = Math.floor((x - MAP_ORIGIN_X) / MAP_CELL_SIZE);
-    const row = Math.floor((z - MAP_ORIGIN_Z) / MAP_CELL_SIZE);
-    return { col, row };
-}
-
-function markCell(worldX, worldZ, isWall) {
-    const { col, row } = worldToGrid(worldX, worldZ);
-    if (row >= 0 && row < GRID_ROWS && col >= 0 && col < GRID_COLS) {
-        // No sobreescribir pared ya marcada con libre
-        if (exploredMap[row][col] !== 1) {
-            exploredMap[row][col] = isWall ? 1 : 0;
-        }
-    }
-}
-const MAP_CANVAS_SCALE = 3; // píxeles por celda
-
-function renderMap2D() {
-    let container = document.getElementById('map2d');
-    if (!container) return;
-
-    let canvas = container.querySelector('canvas');
-    if (!canvas) {
-        canvas = document.createElement('canvas');
-        canvas.width  = GRID_COLS * MAP_CANVAS_SCALE;
-        canvas.height = GRID_ROWS * MAP_CANVAS_SCALE;
-        canvas.style.border = '1px solid #fff';
-        container.appendChild(canvas);
-    }
-
-    const ctx = canvas.getContext('2d');
-
-    for (let row = 0; row < GRID_ROWS; row++) {
-        for (let col = 0; col < GRID_COLS; col++) {
-            const val = exploredMap[row][col];
-            if      (val === null) ctx.fillStyle = '#111';   // desconocido
-            else if (val === 1)    ctx.fillStyle = '#e74c3c'; // pared
-            else                   ctx.fillStyle = '#2ecc71'; // libre
-            ctx.fillRect(col * MAP_CANVAS_SCALE, row * MAP_CANVAS_SCALE, MAP_CANVAS_SCALE, MAP_CANVAS_SCALE);
-        }
-    }
-
-    // Pintar posición del bot en azul
-    for(let id_player in players ){
-        const player = players[id_player]
-        const pos = player.position
-        const { col, row } = worldToGrid(pos.x, pos.z);
-        ctx.fillStyle = '#3498db';
-        ctx.fillRect(col * MAP_CANVAS_SCALE - 2, row * MAP_CANVAS_SCALE - 2, MAP_CANVAS_SCALE + 4, MAP_CANVAS_SCALE + 4);
-    }
-
-}
-</script>
-
-<div class="welcome"><span>torrenteservidor.es</span></div>
-
-
-<div class="formulario">
-    <div class="tituloformulario"><span>CONECTAR BOTS</span></div>
-    <div class="datosformulario">
-        <label>Dirección IP:<br><input type="text" id="ipv4" value="192.168.1.130"></label>
-        <label>Puerto:<br><input type="number" id="puerto" value="8888"></label>
-        <label>Número de bots:<br><input type="number" id="numbots" max="32" value="15"></label>
-        <input id="boton" type="button" value="Conectar" onclick="btnocultar()">
     </div>
-    <div class="btnocultar"><button>Mostrar / Ocultar</button></div>
-</div>
 
-<script src="index.js"></script>
+    <div id="ocultar" style="display:none;">
+        <div id="map2d" style="position:fixed; top:10px; right:10px; z-index:9999;"></div>
+    </div>
+    <div id="offset-panel" style="
+    position: fixed; top: 20px; left: 20px; z-index: 9999;
+    background: rgba(0,0,0,0.75); color: white;
+    padding: 12px 16px; border-radius: 10px;
+    font-family: monospace; font-size: 13px;
+    display: flex; flex-direction: column; gap: 8px; min-width: 240px;">
 
-<div id="ocultar" style="display: none;">
+        <span style="font-weight:bold; margin-bottom:4px;">Ajuste de offset</span>
+        <input id="boton" type="button" value="Conectar" onclick="btnocultar()">
 
-    <div id="map2d" style="position:fixed; top:10px; right:10px; z-index:9999;"></div>
+        <label>Offset X: <span id="lx">0.00</span>
+            <input id="offsetX" type="range" min="-20" max="20" step="0.1" value="-3.9"
+                oninput=" offsetX = parseFloat(this.value); document.getElementById('lx').textContent = offsetX.toFixed(2);"
+                style="width:100%; margin-top:4px;">
+        </label>
 
-</div>
+        <label>Offset Z: <span id="lz">0.00</span>
+            <input id="offsetZ" type="range" min="-20" max="20" step="0.1" value="-1.6"
+                oninput="offsetZ = parseFloat(this.value); document.getElementById('lz').textContent = offsetZ.toFixed(2);"
+                style="width:100%; margin-top:4px;">
+        </label>
+    </div>
+    <script>
+
+    </script>
+
+    <script src="index.js"></script>
+
 </body>
+
 </html>

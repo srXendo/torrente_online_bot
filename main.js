@@ -15,9 +15,10 @@ module.exports = (apis)=>{
       height: 600,
       webPreferences: {
         preload: path.join(__dirname, 'preload.js')
-      }
-    })
+      },
 
+    })
+    win.webContents.openDevTools({ mode: 'right' })
     win.loadURL('https://localhost:3000/')
   }
 

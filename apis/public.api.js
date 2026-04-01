@@ -33,6 +33,7 @@ class publicApi {
     this.router.set_route("GET", "/index.js", this.get_index_js.bind(this));
     this.router.set_route("GET", "/styles.css", this.get_styles_css.bind(this));
     this.router.set_route("GET", "/map.obj", this.get_map.bind(this));
+    this.router.set_route("GET", "/navmesh3.glb", this.get_navmesh.bind(this));
     this.router.set_route("GET", "/model.bot.obj", this.get_model.bind(this));
     this.router.set_route("GET", "/pathfinder.worker.js", this.pathfinder.bind(this));
     
@@ -102,13 +103,29 @@ class publicApi {
     stream.end()
     return null
   }
+  
+  async get_navmesh(stream, headers, params){
+    const response =  {
+      "access-control-allow-origin": `${process.env.PROT_FRONT}://${process.env.DOMAIN_FRONT}:${process.env.PORT_FRONT}`,
+      "access-control-allow-methods": "GET,POST,OPTIONS,PUT",
+      'Access-Control-Allow-Credentials': true,
+      "access-control-allow-headers": "Content-Type, Cookies",
+      'content-type': 'text/plain; charset=utf-8',
+      ":status": 200,
+    }
+    const map = fs.readFileSync('./public/navmesh.glb');
+    stream.respond(response)
+    stream.write(map)
+    stream.end()
+    return null
+  }
   async get_map(stream, headers, params){
     const response =  {
       "access-control-allow-origin": `${process.env.PROT_FRONT}://${process.env.DOMAIN_FRONT}:${process.env.PORT_FRONT}`,
       "access-control-allow-methods": "GET,POST,OPTIONS,PUT",
       'Access-Control-Allow-Credentials': true,
       "access-control-allow-headers": "Content-Type, Cookies",
-      'content-type': 'text/html; charset=utf-8',
+      'content-type': 'text/plain; charset=utf-8',
       ":status": 200,
     }
     const map = fs.readFileSync('./public/map.obj');
@@ -123,7 +140,7 @@ class publicApi {
       "access-control-allow-methods": "GET,POST,OPTIONS,PUT",
       'Access-Control-Allow-Credentials': true,
       "access-control-allow-headers": "Content-Type, Cookies",
-      'content-type': 'text/html; charset=utf-8',
+      'content-type': 'text/plain; charset=utf-8',
       ":status": 200,
     }
     const model = fs.readFileSync('./public/model.bot.obj');
@@ -265,7 +282,7 @@ class publicApi {
         first_msg_callback()
       });
       this.packetQueue.mapper[obj_starter.port].server.on('message', (msg, rconf)=>{
-
+        console.log(`Nuevo mensaje recibido bot_${i}: `, msg.toString('hex'))
         this.handler_message(msg, rconf, obj_starter) 
       })
 
@@ -300,6 +317,7 @@ class publicApi {
       const responses = this.packetQueue.mapper[addr.port].bot.handler_message(msg, rconf)
       const id_bot = this.packetQueue.mapper[addr.port].number_bot
       if(!responses){
+        console.log('[handler_message]: bot nº ${id_bot} msg not recognize', msg.toString('hex'))
           console.error(new Error(`[handler_message]: bot nº ${id_bot} msg not recognize`))
           return
       }
