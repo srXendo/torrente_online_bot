@@ -58,7 +58,7 @@
         const wireMaterialBot = new THREE.MeshBasicMaterial({ color: 0x00c8ff, wireframe: true });
         const pathfinder = new Pathfinding();
         const helper = new PathfindingHelper();
-        const SENSOR_DT = 0.22; // 100 ms = 10 Hz
+        const SENSOR_DT = 0.1; // 100 ms = 10 Hz
         let acc = 0;
         const clock = new THREE.Clock();
         const mouse = new THREE.Vector2();
@@ -304,7 +304,7 @@
                 const id = parseInt(id_aux)
                 if(id == 0){
                     continue;
-                }else if(botsWaypoints[id]?.path[0]){
+                }else if(botsWaypoints[id] && botsWaypoints[id].path.length > 0){
                     const player = players[0];
                     const bot = players[id];
                     const botPos = bot.position;
@@ -313,9 +313,9 @@
                     const dz = waypointPos.z - botPos.z;
 
                     const distSq = dx * dx + dz * dz;
-                    const radiusSq = 0.1;
-                    console.log('distSq <= radiusSq: ', distSq <= radiusSq)
-                    if (distSq <= radiusSq && botsWaypoints[id].path.length > 1) {
+                    const radiusSq = 100;
+                    console.log('distSq <= radiusSq: ', distSq, radiusSq)
+                    if (distSq <= radiusSq ) {
                         /*const closestPlayerNode = pathfinder.getClosestNode(playerPosition, ZONE, playerGroup);
                         if (closestPlayerNode) {
                             const clamped = new THREE.Vector3();
@@ -330,7 +330,7 @@
                             helper.setStepPosition(clamped);
                         }*/
                        const res =  botsWaypoints[id].path.shift()
-                       console.log('wypoint: ',res)
+                       //console.log('wypoint: ',res)
                     }
 
                     if(true){
@@ -338,7 +338,8 @@
                         const new_angle_bot = angleToTarget(botPos.x, botPos.z, waypointPos.x, waypointPos.z);
                         const target = normalizeAngle(new_angle_bot + Math.PI);
                         const current = normalizeAngle(-bot.rotation.y);
-                        console.log('current angle: ', current )
+                        console.log('botPos.x, botPos.z, waypointPos.x, waypointPos.z, target ', botPos.x, botPos.z, waypointPos.x, waypointPos.z, target, current, current - target)
+                        
                         let diff = current - target;
 
                         if (diff > Math.PI) diff -= 2 * Math.PI;
@@ -381,9 +382,10 @@
 
             try {
                 const data = JSON.parse(e.data);
-                console.log('SSE message', data);
+
 
                 if (data.type_action === 'sync' && data.value_action) {
+                    
                     const idBot = Number(data.value_action?.bot);
                     const position = new THREE.Vector3(
                         ((data.value_action.x / (1000 * 9.98)) * 15) + offsetX,   // = x / 9980
@@ -392,13 +394,16 @@
                     );
                     players[idBot].position.set(position.x, 0.43, position.z);
                     
+                    if (typeof data.value_action.r === 'number') {
+                        players[idBot].rotation.y = -(data.value_action.r / 256) * Math.PI * 2;
+                    }
                     if (idBot === 0) {
                         helper.setTargetPosition(targetPosition);
                         yellowMarker.position.copy(players[idBot].position);
                         yellowMarker.visible = true;
                         for(let idAuxBot in players){
                             const intIdAuxBot = parseInt(idAuxBot)
-                            if(idAuxBot > 0 && (!botsWaypoints[intIdAuxBot]|| botsWaypoints[intIdAuxBot].path.length === 0)){
+                            if(intIdAuxBot > 0){
                                 
                                 const bot1Position = players[intIdAuxBot].position;
 
@@ -412,9 +417,9 @@
                                   
 
                                     const pathToBot1 = pathfinder.findPath(players[0].position, bot1Position, ZONE, playerGroup);
-                                      console.log("waypoints: " , pathToBot1 )
+                                    
 
-                                    if (pathToBot1 && pathToBot1.length <= 0 && (!botsWaypoints[intIdAuxBot] ||botsWaypoints[intIdAuxBot].path.length <= 0)) {
+                                    if (pathToBot1 && pathToBot1.length > 0 ) {
                                         botsWaypoints[intIdAuxBot] = {
                                             path: pathToBot1,
                                             group: playerGroup,
@@ -427,8 +432,9 @@
                         }
                         
                     }else if(idBot > 0){
+
+                        //targetPosition.copy(players[idBot].position)
                         
-                        targetPosition.copy(players[idBot].position)
                         helper.setPlayerPosition(players[idBot].position);
                     }
                 } else if (data.type_action === 'spawn' && data.value_action) {
