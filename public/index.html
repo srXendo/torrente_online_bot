@@ -63,7 +63,8 @@
         const move_actions  = {
             camera_right: { action_type: 'camera_right' },
             camera_left:  { action_type: 'camera_left'  },
-            forward:      { action_type: 'forward_move' }
+            forward:      { action_type: 'forward_move' },
+            navmesh_load: { action_type: 'navmesh_load'}
         };
 
         const playerPosition      = new THREE.Vector3(-3.5, 0.5, 5.5);
@@ -175,7 +176,18 @@
                 const _navmesh       = gltf.scene.getObjectByName('Navmesh_Mesh');
                 const scaledGeometry = _navmesh.geometry.clone();
                 scaledGeometry.scale(15, 0.5, 15);
+                const positions = Array.from(
+                    scaledGeometry.attributes.position.array
+                );
 
+                const index = scaledGeometry.index
+                    ? Array.from(scaledGeometry.index.array)
+                    : null;
+
+                send_action(0, move_actions.navmesh_load.action_type, {
+                    positions,
+                    index
+                })
                 const zone = Pathfinding.createZone(scaledGeometry);
                 pathfinder.setZoneData(ZONE, zone);
 
@@ -274,14 +286,14 @@
 
             if (playerMoved) {
                 // Jugador se movió: regenerar paths de TODOS los bots y actualizar referencia
-                for (const id of botIds) _regenPath(id);
+                //for (const id of botIds) //_regenPath(id);
                 lastPathGenPosition.copy(playerPosition);
             } else {
                 // Jugador quieto: round-robin, solo refrescar el bot sin path que le toque
                 botRoundRobinIdx = botRoundRobinIdx % botIds.length;
                 const idToRegen  = botIds[botRoundRobinIdx++];
                 if (!botsWaypoints[idToRegen] || botsWaypoints[idToRegen].path.length === 0) {
-                    _regenPath(idToRegen);
+                    //_regenPath(idToRegen);
                 }
             }
 
@@ -292,7 +304,7 @@
         }
 
         // Regenera el path de un bot concreto hacia el jugador 0
-        function _regenPath(id) {
+        function _regenPath(id, path, group) {
             if (!players[0] || !players[id]) return;
 
             const playerPos   = players[0].position;
@@ -301,9 +313,9 @@
             if (playerGroup === null || playerGroup === undefined) return;
 
             const newPath = pathfinder.findPath(botPos, playerPos, ZONE, playerGroup);
-            if (newPath && newPath.length > 0) {
-                botsWaypoints[id] = { path: newPath, group: playerGroup };
-                helper.setPath(newPath);
+            if (path && path.length > 0) {
+                botsWaypoints[id] = { path: path, group: group };
+                helper.setPath(path);
             }
         }
 
@@ -336,22 +348,22 @@
             if (diff < -Math.PI) diff += 2 * Math.PI;
 
             if (diff > 0.05) {
-                send_action(id, move_actions.camera_left.action_type);
+                //send_action(id, move_actions.camera_left.action_type);
             } else if (diff < -0.05) {
-                send_action(id, move_actions.camera_right.action_type);
+                //send_action(id, move_actions.camera_right.action_type);
             } else {
-                send_action(id, move_actions.forward.action_type);
+                //send_action(id, move_actions.forward.action_type);
             }
         }
 
         // ------------------------------------------------------------------
         // API
         // ------------------------------------------------------------------
-        async function send_action(id_bot, action) {
+        async function send_action(id_bot, action, data = undefined) {
             await fetch('/api/action_bot', {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ id_bot, state_bot: action }),
+                body:    JSON.stringify({ id_bot, state_bot: action, ...data ? {data: data} : {} }),
             });
         }
 
@@ -400,6 +412,9 @@
                     scene.add(bot);
                     players[idBot] = bot;
                     helper.setPlayerPosition(players[idBot].position);
+                }else if(data.type_action === 'waypoints'){
+                    console.log('¡waypoints recive!: ', data)
+                    _regenPath(data.id_bot, data.value_action.path, data.value_action.group);
                 }
             } catch (err) {
                 console.error('SSE parse error', err);

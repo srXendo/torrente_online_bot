@@ -1,6 +1,7 @@
 
 const EventEmitter = require('events');
-module.exports = class BotService{
+const THREE = require('three')
+module.exports = class BotService {
     #server;
     #ip_server = '192.168.1.134'
     #port_server = 8888
@@ -14,34 +15,32 @@ module.exports = class BotService{
     arr_actions = []
     in_game = false
     bot_helper = null
-    last_byte_send= null
+    last_byte_send = null
     last_byte_send_next = null
     bot_master = null
     can_shot = false
     can_response = true
     emit_start = new EventEmitter()
-    constructor(number_bot, bot_helper, bot_master){
-        
+    pathfinder = null
+    waypoints = null
+    constructor(number_bot, bot_helper, bot_master, pathfinder) {
+
         this.bot_master = bot_master
         this.can_response = true
-
-  
-                
-
-
+        this.pathfinder = pathfinder
         this.bot_helper = bot_helper
         this.#number_bot = number_bot
         this.buffer_session = (this.buffer_session + `${number_bot}`.padStart(2, '0'))
-        this.user_bot = Buffer.from(('Bot'+`${number_bot}`.padStart(2, "0")), 'ascii') 
+        this.user_bot = Buffer.from(('Bot' + `${number_bot}`.padStart(2, "0")), 'ascii')
     }
-    handler_message(msg, rconf){
+    handler_message(msg, rconf) {
         const headers = msg.readUInt16BE(0)
-        switch(headers){
+        switch (headers) {
             case 0x3701:
 
             case 0x3700:
                 //console.log('msg: No uknow: ', '0x3700')
-                
+
                 /*const ok = Buffer.from("3f020404"+this.buffer_session, 'hex')
                 ok.writeUint8(msg.readUint8(3), 2)
                 ok.writeUint8(msg.readUint8(2), 3)*/
@@ -52,55 +51,51 @@ module.exports = class BotService{
 
                 const user_responses = this.users_actions(msg)
                 const ok2 = []
-                if(msg.readUInt8(3) - msg.readUInt8(2) < 2){
-                    ok2.push(Buffer.from("3f020404"+this.buffer_session, 'hex'))
+
+                    ok2.push(Buffer.from("3f020404" + this.buffer_session, 'hex'))
                     ok2[0].writeUint8(0, 3)
-                    if(msg.readUint8(2)+1 <= 255){
-                        ok2[0].writeUint8(msg.readUint8(2)+1, 3)
+                    if (msg.readUint8(2) + 1 <= 255) {
+                        ok2[0].writeUint8(msg.readUint8(2) + 1, 3)
+                    }else{
+                        ok2[0].writeUint8(0, 3)
                     }
-                    
+
                     ok2[0].writeUint8(msg.readUint8(3), 2)
-                }else if(msg.readUInt8(3) - msg.readUInt8(2) > 8){
-                    ok2.push(Buffer.from("3f020404"+this.buffer_session, 'hex'))
-                    ok2[0].writeUint8(msg.readUint8(2)+1, 3)
-
-                    
-                    ok2[0].writeUint8(msg.readUint8(3), 2)
-                }
+                
 
 
-                return [...ok2, ...user_responses]// this.process_msg(user_responses, msg, msg.readUInt8(2), msg.readUInt8(3))
+                return [ ...ok2, ...user_responses]// this.process_msg(user_responses, msg, msg.readUInt8(2), msg.readUInt8(3))
 
-            break;
+                break;
             case 0x8006:
                 //console.log('msg: main bucle: ', '0x8006')
                 let action_response = this.get_action(msg)
                 return this.process_msg(action_response, msg, msg.readUInt8(4), msg.readUInt8(5))
-            break;
+                break;
             case 0x7f00:
                 const first_stage2 = Buffer.from("7f000202c3000000", 'hex')
                 first_stage2.writeUInt8(msg.readUInt8(3), 2)
                 first_stage2.writeUInt8(0, 3)
-                if(msg.readUInt8(2)+1 <=255){
-                    first_stage2.writeUInt8(msg.readUInt8(2)+1, 3)
+                if (msg.readUInt8(2) + 1 <= 255) {
+                    first_stage2.writeUInt8(msg.readUInt8(2) + 1, 3)
                 }
-                
-                if(msg.readUInt8(4) !== 0xdf){
+
+                if (msg.readUInt8(4) !== 0xdf) {
                     //this.dpnid = msg.slice(164, 167)
 
-                    const before_name = Buffer.from("3f0003020000",'hex')
+                    const before_name = Buffer.from("3f0003020000", 'hex')
 
-                    before_name.writeUInt8(msg.readUInt8(3)+1, 2)
+                    before_name.writeUInt8(msg.readUInt8(3) + 1, 2)
                     before_name.writeUInt8(msg.readUInt8(2), 3)
 
                     const name = Buffer.from(this.user_bot.toString('hex').padEnd(this.max_name_byte * 2, "0"), 'hex')
                     const after_name_before_map_name = Buffer.from('0b0200000000000000000000080600000003', 'hex')
 
                     const map_name = Buffer.from(this.party.mapNameBuff.toString('hex').padEnd(this.max_map_name_byte * 2, "0"), 'hex')//Buffer.from("000000034d505f444d545f5645525449474f0000000000",'hex')
-                    const after_map_name = Buffer.from('90b51900be000000b0b4190001000000010000000500000074b31900c7932b5380b3190001000000102d6903','hex')
+                    const after_map_name = Buffer.from('90b51900be000000b0b4190001000000010000000500000074b31900c7932b5380b3190001000000102d6903', 'hex')
                     return [first_stage2, this.replace_name_map((Buffer.concat([before_name, name, after_name_before_map_name, map_name, after_map_name])), this.party.mapName, this.party.currentPlayers, this.party.maxPlayers)]
-                }else{
-                    
+                } else {
+
                     return this.disconnect()
                 }
                 break;
@@ -108,142 +103,159 @@ module.exports = class BotService{
 
                 //console.log('msg: ping: ', '0x3f02')
                 return []
-            break;
+                break;
             case 0x8802:
                 //console.log('msg: firstStage: ', "0x8802")
-                const session = Buffer.from('7f000100c100000002000000070000005800000014000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000430068006100760061006c006f00740065000000','hex')
-                const pre1 = Buffer.from("8002010006000100"+this.buffer_session+"e665f602", "hex")
-                const pre2 = Buffer.from("3f020000"+this.buffer_session+"", 'hex')
-                return [ pre1, pre2, session]
-            break;
-            case 0x0003: 
+                const session = Buffer.from('7f000100c100000002000000070000005800000014000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000430068006100760061006c006f00740065000000', 'hex')
+                const pre1 = Buffer.from("8002010006000100" + this.buffer_session + "e665f602", "hex")
+                const pre2 = Buffer.from("3f020000" + this.buffer_session + "", 'hex')
+                return [pre1, pre2, session]
+                break;
+            case 0x0003:
                 this.party = this.extract_data(msg)
-                return [Buffer.from("8801000006000100"+this.buffer_session+"c2091002", 'hex')]
-            break;
+                return [Buffer.from("8801000006000100" + this.buffer_session + "c2091002", 'hex')]
+                break;
             case 0x3f08:
                 return []
-            break;
+                break;
             default:
-                console.log("err: msg not recognice: ",msg)
+                console.log("err: msg not recognice: ", msg)
                 return false
-            break;
+                break;
         }
     }
-    users_actions(msg){
+    users_actions(msg) {
 
         const bot = msg.readUInt8(4)
         const action = msg.readUInt8(5) //action player byte
         let responses = []
-        const ok2 = Buffer.from("3f020404"+this.buffer_session, 'hex')
+        const ok2 = Buffer.from("3f020404" + this.buffer_session, 'hex')
         ok2.writeUint8(msg.readUint8(3), 2)
         ok2.writeUint8(msg.readUint8(2), 3)
         //console.log('action, bot: ', action, this.#number_bot)
-        switch(action){
+        switch (action) {
             case 0xd2:
-                
-                    
-                if(msg.readUInt8(msg.length -1) === 0xde){
-                    
-                    
+
+
+                if (msg.readUInt8(msg.length - 1) === 0xde) {
+
+
                     //this.player_cords = this.predecirMovimientoForward(this.player_cords, 10)
-                    
+
                 }
-            break;
-            case 0xd4: 
+                break;
+            case 0xd4:
                 const change_gun = Buffer.from('3f006f0c000d05', 'hex')
                 change_gun.writeInt8(this.#number_bot, 4)
                 this.arr_actions.push(change_gun)
-                    
-            break;
+
+                break;
             case 0xd8:
                 console.log('bot can shot: ')
                 this.can_shot = true
                 this.emit_start.emit('user_start');
-                 //this.send_signal_die()
-                return []
+                //this.send_signal_die()
+
             case 0xfb:
                 return []
                 break;
             case 0x0d:
-                console.log('player change gun ', bot, this.#number_bot)    
-            break;
+                console.log('player change gun ', bot, this.#number_bot)
+                break;
             case 0x0c:
                 //this.follow_cam()
                 console.log("move any: ", msg)
                 //this.follow_cam()
-                if(msg.readUInt8(6) === 0x03 && this.#number_bot === 0){
+                if (msg.readUInt8(6) === 0x03 && this.#number_bot === 0) {
                     //this.player_cords = this.predecirMovimientoForward(this.player_cords, 10)
-                    
+
                 }
-                
-            break;
+
+                break;
             case 0x0a:
                 console.log('camera any: ', msg)
 
                 //this.user_camera(msg)
-            break;
+                break;
             case 0xfc:
-                    console.log(`${this.user_bot} ha sido impactado por: other user. 2222`)
-                    console.log(`${this.user_bot} vida restante2222: `, msg.readUInt8(10), bot )
-                if(this.#number_bot === msg.readUint8(4)){
+                console.log(`${this.user_bot} ha sido impactado por: other user. 2222`)
+                console.log(`${this.user_bot} vida restante2222: `, msg.readUInt8(10), bot)
+                if (this.#number_bot === msg.readUint8(4)) {
 
                     const have_life = msg.readUInt8(10)
                     console.log(`${this.user_bot} ha sido impactado por: other user. `)
                     console.log(`${this.user_bot} vida restante: `, msg.readUInt8(10))
-                    if(msg.readUInt8(10) === 0){
+                    if (msg.readUInt8(10) === 0) {
                         console.log(`ha muerto: ${this.user_bot}`)
                         //responses.push({is_external: true, die: this.#number_bot})
                         this.send_signal_die()
+                        if (this.bot_action_interval) {
+                            clearInterval(this.bot_action_interval)
+                            this.bot_action_interval = null
+                        }
+
                         this.can_shot = false
-                        
+
 
                     }
-                    if(msg.readUInt8(10) === 255){
+                    if (msg.readUInt8(10) === 255) {
                         console.log(`ha muerto: ${this.user_bot}`)
                         this.send_signal_die()
+                        if (this.bot_action_interval) {
+                            clearInterval(this.bot_action_interval)
+                            this.bot_action_interval = null
+                        }
                         //responses.push({is_external: true, die: this.#number_bot})
                         this.can_shot = false
                     }
-                    
+
                 }
-                
+
                 break;
             case 0xfe:
-                
+
                 break;
             case 0xed:
-                if(this.bot_master){
+                if (this.bot_master) {
 
                     console.log('any player death')
                 }
-               
+
                 break;
             case 0x0e:
                 //throw new Error('spwan palyer!!!')
-                
+
                 const arr_respawns = this.extractAllPlayers(msg)
                 //console.log('spawns: ', arr_respawns.length, arr_respawns.map(i=>i.bot))
-                const that_bot = arr_respawns.filter(row=>row.bot === this.#number_bot)[0]
-                const player_respawn = arr_respawns.filter(row=>row.bot === 0)[0]
-                
-                if(bot === 0){
-                    
+                const that_bot = arr_respawns.filter(row => row.bot === this.#number_bot)[0]
+                const player_respawn = arr_respawns.filter(row => row.bot === 0)[0]
+
+                if (bot === 0) {
+
                     console.log('player spawn ', bot)
                     this.player_cords = this.extractRespawnXZR(msg, bot)
                     //this.start_move()
                 }
-                
-                if(this.#number_bot === bot){
+
+                if (this.#number_bot === bot) {
                     this.can_shot = true
-                    console.log('bot spawn ', this.#number_bot, that_bot)
+                    console.log('bot spawn ', this.#number_bot)
                     this.in_game = true
                     this.start = true
                     const bot_cords = this.extractRespawnXZR(msg, bot)
                     //const pj_response = Buffer.from('3f00800d010d1000010000e55e1d465c55b244ba37d045f6a30000', 'hex')
                     //pj_response.writeInt8(this.#number_bot, 4)
                     this.bot_cords = bot_cords
-                    this.bot_helper.send_event(JSON.stringify({type_action: 'spawn', value_action: bot_cords, id_bot: this.#number_bot}))
-                
+                    this.bot_helper.send_event(JSON.stringify({ type_action: 'spawn', value_action: bot_cords, id_bot: this.#number_bot }))
+                    try {
+
+                        this.send_waypoints()
+                        this.ia_bot_start()
+                    } catch (err) {
+                        console.error(new Error(err.stack))
+                        throw new Error(err)
+                    }
+
                     //this.arr_actions.push(pj_response)
 
                     //this.spawn(that_bot.cords)
@@ -253,53 +265,55 @@ module.exports = class BotService{
                     //responses.push({is_external: true, arr_respawns: arr_respawns})
                     //ok2.writeUint8(msg.readUint8(2), 3)
                 }
-                
+
                 break;
             case 0x26:
-               // console.log('shot air', msg)    
-            break;
+                // console.log('shot air', msg)    
+                break;
             case 0x01:
                 const bot_cords = this.extractRespawnXZR(msg, bot)
-                
-                if( bot==0 ){
+
+                if (bot == 0) {
                     //console.log('sync player bot number: ', msg)
                     this.player_cords = bot_cords
+                    this.send_waypoints()
                     //this.follow_cam()
-                    
+
+
                 }
-                
+
                 console.log('sync package: ', this.#number_bot, bot, this.bot_master, msg)
-         
-                if(this.bot_master ){
-                    
-                    this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: {bot: bot, x: bot_cords.x, y: bot_cords.y, z: bot_cords.z, r: bot_cords.r}, id_bot: bot}))
+
+                if (this.bot_master) {
+
+                    this.bot_helper.send_event(JSON.stringify({ type_action: 'sync', value_action: { bot: bot, x: bot_cords.x, y: bot_cords.y, z: bot_cords.z, r: bot_cords.r }, id_bot: bot }))
                 }
-                
-                if(bot == this.#number_bot){
-                    
+
+                if (bot == this.#number_bot) {
+
                     this.in_game = true
                     this.bot_cords = this.extractRespawnXZR(msg, bot)
-                    this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: {bot: bot, x: bot_cords.x, y: bot_cords.y, z: bot_cords.z, r: bot_cords.r}, id_bot: bot}))
-                
+                    this.bot_helper.send_event(JSON.stringify({ type_action: 'sync', value_action: { bot: bot, x: bot_cords.x, y: bot_cords.y, z: bot_cords.z, r: bot_cords.r }, id_bot: bot }))
+
                     //this.follow_cam()
-                    
+
                     //this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: {bot: bot, x: bot_cords.x, y: bot_cords.y, z: bot_cords.z, r: bot_cords.r}, id_bot: bot}))
-                    
-                    
-                   
-                   
+
+
+
+
                     //this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: {bot: bot, x: bot_cords.x, y: bot_cords.y, z: bot_cords.z, r: bot_cords.r}, id_bot: bot}))
-                    
+
                     //this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: this.extractRespawnXZR(msg, bot), id_bot: this.#number_bot}))
-                    
+
                 }
 
 
                 break;
             case 0xce:
                 this.arr_actions.push(this.try_other_spawn())
-                
-                
+
+
                 const ping_ce = Buffer.from('80060100ac240000ee8b4503', 'hex')
                 ping_ce.writeUInt8(msg.readUInt8(2), 5)
                 ping_ce.writeUInt8(msg.readUInt8(3), 4)
@@ -310,29 +324,104 @@ module.exports = class BotService{
                 break;
             default:
 
-            break;
+                break;
         }
         responses.push(ok2)
         return responses
+    }
+    send_waypoints() {
+        const playerPos = this.player_cords;
+        if (!playerPos) return;
+
+        const botPos = this.bot_cords;
+        if (!botPos) return;
+        const pp = this.get_vector(playerPos.x, playerPos.y)
+        const bp = this.get_vector(botPos.x, botPos.y)
+        const playerGroup = this.pathfinder.getGroup('level', pp, true);
+        if (playerGroup === null || playerGroup === undefined) return;
+
+        const newPath = this.pathfinder.findPath(bp, pp, 'level', playerGroup);
+        if (newPath && newPath.length > 0) {
+            this.waypoints = { path: newPath, group: playerGroup }
+            this.bot_helper.send_event(JSON.stringify({ type_action: 'waypoints', value_action: { path: newPath, group: playerGroup }, id_bot: this.#number_bot }))
+        }
+    }
+    get_vector(x, z) {
+        const bx = ((x / (1000 * 9.98)) * 15) + -3.90;
+        const bz = -(((z / (1000 * 8.47508)) * 15) + -1.60);
+        const pp = new THREE.Vector3(bx, 0.5, bz);
+        return pp
+    }
+    ia_bot_start() {
+        this.bot_action_interval = setInterval(() => {
+            const playerPos = this.player_cords;
+            if (!playerPos) return;
+            const pp = this.get_vector(playerPos.x, playerPos.y)
+
+            if (!this.waypoints || this.waypoints.path.length === 0) return;
+
+            if (!this.bot_cords) return;
+
+            const botPos = this.get_vector(this.bot_cords.x, this.bot_cords.y)
+
+            const waypointPos = this.waypoints.path[0];
+
+            const dx = waypointPos.x - botPos.x;
+            const dz = waypointPos.z - botPos.z;
+            const distSq = dx * dx + dz * dz;
+
+            // ¿Llegamos al waypoint?
+            if (distSq <= 0.09) {
+                this.waypoints.path.shift();
+                return;
+            }
+
+            const target = this.normalizeAngle(this.angleToTargetFront(botPos.x, botPos.z, waypointPos.x, waypointPos.z) + Math.PI);
+            const r = -(this.bot_cords.r / 256) * Math.PI * 2
+            const current = this.normalizeAngle(-r);
+
+            let diff = current - target;
+            if (diff > Math.PI) diff -= 2 * Math.PI;
+            if (diff < -Math.PI) diff += 2 * Math.PI;
+
+            if (diff > 0.05) {
+
+                this.camera_left()
+
+            } else if (diff < -0.05) {
+                this.camera_right()
+
+            } else {
+
+                this.forward_move()
+            }
+        }, 100)
+    }
+    normalizeAngle(a) {
+        return ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+    }
+
+    angleToTargetFront(botX, botZ, targetX, targetZ) {
+        return Math.atan2(targetZ - botZ, targetX - botX) - Math.PI / 2;
     }
     generarPaqueteBot(botData) {
         // Calcular movimiento hacia adelante
         const speed = 50.0;
         const radian = (botData.r / 256) * Math.PI * 2;  // O SIN EL NEGATIVO, LO QUE FUNCIONE
-        
+
         const newX = botData.x + Math.sin(radian) * speed;
         const newZ = botData.z;
         const newY = botData.y + Math.cos(radian) * speed;
         const newR = botData.r;  // LA MISMA ROTACIÓN
-        
+
         // 2. BUFFER DE 26 BYTES
         const buf = Buffer.from('3f009e7b01017f55b58a1bc5e1ec564493ebe845769ad5d5010ac1927421', 'hex');
-        
+
         // X (8-11)
         buf.writeFloatLE(newX, 8);
         buf.writeFloatLE(newZ, 12);
         buf.writeFloatLE(newY, 16);
-        
+
         // R (20) - uint8, no float32
         buf.writeUInt8(newR, 21);
         this.bot_cords.x = newX;
@@ -341,128 +430,128 @@ module.exports = class BotService{
         this.bot_cords.r = newR;
         // 3. ENVIAR JSON CON LAS COORDENADAS NUEVAS
         this.bot_helper.send_event(JSON.stringify({
-            type_action: 'sync', 
+            type_action: 'sync',
             value_action: {
-                bot: this.#number_bot, 
+                bot: this.#number_bot,
                 x: newX,  // ✅ X NUEVA
                 y: newY,  // ✅ Y NUEVA
                 z: newZ,  // ✅ Z NUEVA
                 r: newR   // ✅ R NUEVA
-            }, 
+            },
             id_bot: this.#number_bot
         }));
-        
 
-        
+
+
         return buf;
     }
-    generate_pack_camera_right(botData){
+    generate_pack_camera_right(botData) {
         let view = 0        // Calcular movimiento hacia adelante
-        console.log('this.bot_cords.r,', this.bot_cords.r)
-        if(this.bot_cords.r + 2 > 255) {
+
+        if (this.bot_cords.r + 2 > 255) {
             this.bot_cords.r = (this.bot_cords.r + 2) - 255
-        }else{
+        } else {
             this.bot_cords.r = this.bot_cords.r + 2
         }
 
-        
+
         // 2. BUFFER DE 26 BYTES
         const buf = Buffer.from('3f009e7b01017f55b58a1bc5e1ec564493ebe845769ad5d5010ac1927421', 'hex');
-        
+
         // X (8-11)
         buf.writeFloatLE(botData.x, 8);
         buf.writeFloatLE(botData.z, 12);
         buf.writeFloatLE(botData.y, 16);
-        
+
         // R (20) - uint8, no float32
-        buf.writeUInt8( this.bot_cords.r, 21);
-        
+        buf.writeUInt8(this.bot_cords.r, 21);
+
         // 3. ENVIAR JSON CON LAS COORDENADAS NUEVAS
         this.bot_helper.send_event(JSON.stringify({
-            type_action: 'sync', 
+            type_action: 'sync',
             value_action: {
-                bot: this.#number_bot, 
+                bot: this.#number_bot,
                 x: botData.x,  // ✅ X NUEVA
                 y: botData.y,  // ✅ Y NUEVA
                 z: botData.z,  // ✅ Z NUEVA
                 r: this.bot_cords.r   // ✅ R NUEVA
-            }, 
+            },
             id_bot: this.#number_bot
         }));
-        const row = Buffer.from('3f002e1d000a77b3d60a','hex')
+        const row = Buffer.from('3f002e1d000a77b3d60a', 'hex')
         row.writeUInt8(this.#number_bot, 4)
         //row.writeUint16LE( Math.floor(Math.random() * 180) , 8)
-        row.writeUint8( this.bot_cords.r , 7)
+        row.writeUint8(this.bot_cords.r, 7)
         //this.arr_actions.push(buf)
-    
 
-        
+
+
         return row;
     }
-    generate_pack_camera_left(botData){
+    generate_pack_camera_left(botData) {
         let view = 0        // Calcular movimiento hacia adelante
 
-        if(this.bot_cords.r - 2 < 0) {
+        if (this.bot_cords.r - 2 < 0) {
             this.bot_cords.r = (this.bot_cords.r - 2) + 255
-        }else{
+        } else {
             this.bot_cords.r = this.bot_cords.r - 2
         }
 
-        
+
         // 2. BUFFER DE 26 BYTES
         const buf = Buffer.from('3f009e7b01017f55b58a1bc5e1ec564493ebe845769ad5d5010ac1927421', 'hex');
-        
+
         // X (8-11)
         buf.writeFloatLE(botData.x, 8);
         buf.writeFloatLE(botData.z, 12);
         buf.writeFloatLE(botData.y, 16);
-        
+
         // R (20) - uint8, no float32
-        buf.writeUInt8( this.bot_cords.r, 21);
-        
+        buf.writeUInt8(this.bot_cords.r, 21);
+
         // 3. ENVIAR JSON CON LAS COORDENADAS NUEVAS
         this.bot_helper.send_event(JSON.stringify({
-            type_action: 'sync', 
+            type_action: 'sync',
             value_action: {
-                bot: this.#number_bot, 
+                bot: this.#number_bot,
                 x: botData.x,  // ✅ X NUEVA
                 y: botData.y,  // ✅ Y NUEVA
                 z: botData.z,  // ✅ Z NUEVA
                 r: this.bot_cords.r   // ✅ R NUEVA
-            }, 
+            },
             id_bot: this.#number_bot
         }));
-        const row = Buffer.from('3f002e1d000a77b3d60a','hex')
+        const row = Buffer.from('3f002e1d000a77b3d60a', 'hex')
         row.writeUInt8(this.#number_bot, 4)
         //row.writeUint16LE( Math.floor(Math.random() * 180) , 8)
-        row.writeUint8( this.bot_cords.r , 7)
+        row.writeUint8(this.bot_cords.r, 7)
         //this.arr_actions.push(buf)
-    
 
-        
+
+
         return row;
     }
-    send_signal_die(){
+    send_signal_die() {
         console.log('send signal die: ')
         const header = Buffer.from('3F00831001FBFF', 'hex')
         const text = Buffer.from(`Hola soy el bot ${this.#number_bot}: he muerto`, 'ascii')
-        const end_buf = Buffer.from('001F71DA0C01000000020000004022250CA436061000000000','hex')
+        const end_buf = Buffer.from('001F71DA0C01000000020000004022250CA436061000000000', 'hex')
         const chat = Buffer.concat([header, text, end_buf])
-        
+
         chat.writeUInt8(this.#number_bot, 4)
         this.arr_actions.push(chat)
-        this.bot_helper.send_event(JSON.stringify({type_action: 'die', id_bot: this.#number_bot}))
+        this.bot_helper.send_event(JSON.stringify({ type_action: 'die', id_bot: this.#number_bot }))
         // 3f00bd30000c15000d1000017f554004254690571541062da5c5bbb2d5d5
 
         const respawn_buffer = Buffer.from('3f00ad2f000e190058039f5390e32a040000000000776900020b1900', 'hex')
         respawn_buffer.writeUInt8(this.#number_bot, 4)
         respawn_buffer.writeUInt8(0x02, 25)
         this.arr_actions.push(respawn_buffer)
-        if(this.bot_cords){
+        if (this.bot_cords) {
             this.send_signal_drop_gun()
         }
     }
-    send_signal_drop_gun(){
+    send_signal_drop_gun() {
         const drop_gun_to_flor = Buffer.from('3f00f23f00050532dbac9745000000006ef7f9c4', 'hex')
         drop_gun_to_flor.writeUInt8(this.#number_bot, 4)
         const baseOffset = 8
@@ -472,61 +561,61 @@ module.exports = class BotService{
         this.arr_actions.push(drop_gun_to_flor)
         return
     }
-    get_action(msg){
+    get_action(msg) {
         this.last_byte_send = msg.readUInt8(4)
         this.last_byte_send_next = msg.readUInt8(5)
-        const ping = Buffer.from("3f020c0c"+this.buffer_session, 'hex')
+        const ping = Buffer.from("3f020c0c" + this.buffer_session, 'hex')
         const result = [ping]
-        if(this.arr_actions.length > 0){
+        if (this.arr_actions.length > 0) {
             const returned = this.arr_actions.shift(0);
             result.push(returned)
-        }else{
-            
+        } else {
+
         }
 
         return result
     }
-    try_other_spawn(){
+    try_other_spawn() {
         const pj_setup = Buffer.from('3f00ad2f000e190058039f5390e32a040000000000776900020b1900'.replace('123123332323133313213', this.buffer_session.toString('hex')), 'hex')
         //console.log('send spawn: ', this.#number_bot)
         pj_setup.writeUInt8(this.#number_bot, 4) //byte ultimo numero de jugadores en partida 0x00
         pj_setup.writeUInt8(0x02, 25) //modelo byte 0x00 torrente 0x0b yonki
         //pj_setup.writeUInt8(0x02, 24) //equipo byte 0x02 random 0x01 amarillo 0x00 rojo
-       
+
         //pj_setup.writeUInt8(0x02, pj_setup.length- 10) //numero de jugador 0x01 jugador 1 0x02 jugador 2
         return pj_setup
     }
-    try_die(){
+    try_die() {
         const pj_setup = Buffer.from('3f00454c100510786281e7c5209aeb40df8477c5'.replace('123123332323133313213', this.buffer_session.toString('hex')), 'hex')
         //console.log('send spawn: ', this.#number_bot)
         //pj_setup.writeUInt8(this.#number_bot, 4) //byte ultimo numero de jugadores en partida 0x00
 
-       
+
         //pj_setup.writeUInt8(0x02, pj_setup.length- 10) //numero de jugador 0x01 jugador 1 0x02 jugador 2
         return pj_setup
-        
+
     }
-    follow_cam(){
+    follow_cam() {
         //console.log(this.bot_cords, this.player_cords)
-        if(this.bot_cords  && this.player_cords){
+        if (this.bot_cords && this.player_cords) {
             const view = this.angleToTarget(this.bot_cords.x, this.bot_cords.y, this.player_cords.x, this.player_cords.y)
             //console.log('bot view to: ', view)
             const before_view = this.bot_cords.r
             this.bot_cords.r = view
-            const row = Buffer.from('3f002e1d000a77b3d60a','hex')
+            const row = Buffer.from('3f002e1d000a77b3d60a', 'hex')
             row.writeUInt8(this.#number_bot, 4)
             //row.writeUint16LE( Math.floor(Math.random() * 180) , 8)
-            row.writeUint8(view , 7)
+            row.writeUint8(view, 7)
             this.arr_actions.push(row)
 
-            
+
 
 
         }
 
     }
     angleToTarget(botX, botY, targetX, targetY) {
-        const dx =  botX - targetX
+        const dx = botX - targetX
         const dy = targetY - botY
 
         let angleDeg = Math.atan2(dy, dx) * 180 / Math.PI
@@ -535,27 +624,27 @@ module.exports = class BotService{
         const packed = Math.floor(angleDeg / 360 * 256)
         return packed;
     }
-    extractAllPlayers(buffer){
+    extractAllPlayers(buffer) {
         const arr = this.splitBuffer(buffer, Buffer.from([0x0e, 0x00, 0x00]))
         const first_ele = arr.shift();
         //console.log('number players respawn', arr.length)
-        if(arr.length === 1){
+        if (arr.length === 1) {
             return [this.extractRespawnXZR(arr[0], first_ele.readUInt8(first_ele.length - 1), 0)]
         }
         const result = []
         let id_bot = null
-        for(let idx_entity in arr){
+        for (let idx_entity in arr) {
 
-            if(idx_entity == 0){
+            if (idx_entity == 0) {
                 id_bot = first_ele.readUInt8(first_ele.length - 1)
             }
             let row = arr[idx_entity]
-            result.push({bot: id_bot, cords: this.extractRespawnXZR(row, id_bot, 0)})
+            result.push({ bot: id_bot, cords: this.extractRespawnXZR(row, id_bot, 0) })
             id_bot = row.readUInt8(row.length - 1)
         }
         return result
     }
-    spawn(cords){
+    spawn(cords) {
         console.log('bot spawn: ', this.#number_bot)
         this.start = true
         //this.bot_cords = cords
@@ -573,38 +662,10 @@ module.exports = class BotService{
         const y = buffer.readFloatLE(baseOffset + 8);
         const r = buffer.readUInt8(baseOffset + 13);
 
-        return { x, y, z, r, bot};
+        return { x, y, z, r, bot };
 
     }
-    predecirMovimientoForward(botData, tiempoMs) {
-        // Velocidad: 9 unidades por segundo
-        const speed = 9.0;
-        const elapsedSec = tiempoMs / 1000;
-        const distance = speed * elapsedSec;
-        
-        // Convertir rotación (0-255) a radianes
-        const radian = -(botData.r / 256) * Math.PI * 2;
-        
-        // Calcular nuevas coordenadas
-        const newX = botData.x + Math.sin(radian) * distance;
-        const newZ = botData.z + Math.cos(radian) * distance;
-        const bot_cords = {
-            x: newX,
-            y: botData.y, // Y no cambia al andar
-            z: newZ,
-            r: botData.r, // Rotación no cambia
-            bot: botData.bot
-        }
-        const view = this.angleToTarget(bot_cords.x, bot_cords.y, this.player_cords.x, this.player_cords.y)
-        // Devolver mismo objeto con coordenadas actualizadas
-        return {
-            x: newX,
-            y: botData.y, // Y no cambia al andar
-            z: newZ,
-            r: -view, // Rotación no cambia
-            bot: botData.bot
-        };
-    }
+
     splitBuffer(buffer, delimiter) {
         const parts = [];
         let start = 0;
@@ -621,21 +682,21 @@ module.exports = class BotService{
 
         return parts;
     }
-    process_msg(arr, msg, count_prev, next_prev){
+    process_msg(arr, msg, count_prev, next_prev) {
         const results = []
-        for(let idx = 0; idx < arr.length; idx++){
+        for (let idx = 0; idx < arr.length; idx++) {
             const row = arr[idx]
-            if(!row.is_external){
-                if( next_prev+idx > 255){
+            if (!row.is_external) {
+                if (next_prev + idx > 255) {
                     row.writeUint8(next_prev, 2)
 
-                }else{
-                    row.writeUint8(next_prev+idx, 2)
-                   
+                } else {
+                    row.writeUint8(next_prev + idx, 2)
+
                 }
-                
+
                 row.writeUint8(count_prev, 3)
-                
+
             }
             results.push(row)
         }
@@ -695,7 +756,7 @@ module.exports = class BotService{
             mapNameBuff
         };
     }
-    replace_name_map(buffer, new_name_map, current_player, max_player){
+    replace_name_map(buffer, new_name_map, current_player, max_player) {
         // Actualiza nombre de mapa si está disponible
         const copy = Buffer.from(buffer);
         if (new_name_map) {
@@ -719,7 +780,7 @@ module.exports = class BotService{
 
         return copy
     }
-    async shot(){
+    async shot() {
 
         console.log('shot bot')
         //for(let i = 0; i < 1; i++){ 
@@ -750,7 +811,7 @@ module.exports = class BotService{
            
         //}*/
     }
-    async forward_move(){
+    async forward_move() {
 
         /*const buf_forware = Buffer.from('3f008e10000c03','hex')
         buf_forware.writeUInt8(this.#number_bot, 4)
@@ -766,20 +827,20 @@ module.exports = class BotService{
         //this.bot_cords = 
         return
     }
-    camera_right(){
+    camera_right() {
 
         const sync_pack = this.generate_pack_camera_right(this.bot_cords)
         sync_pack.writeUInt8(this.#number_bot, 4)
         this.arr_actions.push(sync_pack)
-        return 
+        return
     }
-    camera_left(){
+    camera_left() {
         const sync_pack = this.generate_pack_camera_left(this.bot_cords)
         sync_pack.writeUInt8(this.#number_bot, 4)
         this.arr_actions.push(sync_pack)
-        return 
+        return
     }
-    disconnect(){
+    disconnect() {
         /*
         client action:  <Buffer 3f 03 dc 0e e1 db 66 1e>
         client action:  <Buffer 3f 01 dd 0e 00 02>
@@ -791,11 +852,11 @@ module.exports = class BotService{
         this.arr_actions.push(disconnect)
         this.arr_actions.push(after_disconnect)
         this.can_response = false
-       
+
         return [
             disconnect,
             after_disconnect
         ]
-        
+
     }
 }

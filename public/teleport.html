@@ -1,15 +1,21 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Torrente online bots</title>
-    <link rel="stylesheet" href="styles.css">
-    <style>body { margin:0 }</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Torrente online bots</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body {
+      margin: 0
+    }
+  </style>
 </head>
+
 <body>
 
-<script type="importmap">
+  <script type="importmap">
 {
   "imports": {
     "three": "https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js",
@@ -19,225 +25,226 @@
 }
 </script>
 
-<script type="module">
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { Pathfinding, PathfindingHelper } from 'threePathfinding';
-
-const Color = {
-    GROUND: 0x606060,
-    NAVMESH: 0xFFFFFF,
-};
-
-const ZONE = 'level';
-const SPEED = 5;
-const OFFSET = 0.2;
-
-let level, navmesh;
-let groupID, path;
-
-const playerPosition = new THREE.Vector3( -3.5, 0.5, 5.5 );
-const targetPosition = new THREE.Vector3();
-
-const pathfinder = new Pathfinding();
-const helper = new PathfindingHelper();
-const clock = new THREE.Clock();
-const mouse = new THREE.Vector2();
-const mouseDown = new THREE.Vector2();
-const raycaster = new THREE.Raycaster();
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+    import { Pathfinding, PathfindingHelper } from 'threePathfinding';
+
+    const Color = {
+      GROUND: 0x606060,
+      NAVMESH: 0xFFFFFF,
+    };
+
+    const ZONE = 'level';
+    const SPEED = 5;
+    const OFFSET = 0.2;
+
+    let level, navmesh;
+    let groupID, path;
+
+    const playerPosition = new THREE.Vector3(-3.5, 0.5, 5.5);
+    const targetPosition = new THREE.Vector3();
+
+    const pathfinder = new Pathfinding();
+    const helper = new PathfindingHelper();
+    const clock = new THREE.Clock();
+    const mouse = new THREE.Vector2();
+    const mouseDown = new THREE.Vector2();
+    const raycaster = new THREE.Raycaster();
 
-const renderer = new THREE.WebGLRenderer();
-renderer.setPixelRatio( window.devicePixelRatio );
-renderer.setSize( window.innerWidth, window.innerHeight );
-renderer.setClearColor( 0xFFFFFF );
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-document.body.appendChild( renderer.domElement );
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0xFFFFFF);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    document.body.appendChild(renderer.domElement);
 
-const environment = new RoomEnvironment( renderer );
-const pmremGenerator = new THREE.PMREMGenerator( renderer );
+    const environment = new RoomEnvironment(renderer);
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
 
-const scene = new THREE.Scene();
-scene.background = new THREE.Color( 0xbbbbbb );
-scene.environment = pmremGenerator.fromScene( environment ).texture;
-scene.add( helper );
-environment.dispose();
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xbbbbbb);
+    scene.environment = pmremGenerator.fromScene(environment).texture;
+    scene.add(helper);
+    environment.dispose();
 
-const camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
-camera.position.x = -10;
-camera.position.y = 14;
-camera.position.z = 10;
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
+    camera.position.x = -10;
+    camera.position.y = 14;
+    camera.position.z = 10;
 
-const controls = new OrbitControls( camera, renderer.domElement );
-controls.damping = 0.2;
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.damping = 0.2;
 
-const ambient = new THREE.AmbientLight( 0x101030 );
-scene.add( ambient );
+    const ambient = new THREE.AmbientLight(0x101030);
+    scene.add(ambient);
 
-const directionalLight = new THREE.DirectionalLight( 0xFFEEDD );
-directionalLight.position.set( 0, 0.5, 0.5 );
-scene.add( directionalLight );
+    const directionalLight = new THREE.DirectionalLight(0xFFEEDD);
+    directionalLight.position.set(0, 0.5, 0.5);
+    scene.add(directionalLight);
 
-init();
-animate();
-const SCALE = 20;
-async function init() {
+    init();
+    animate();
+    const SCALE = 20;
+    async function init() {
 
-const gltfLoader = new GLTFLoader();
+      const gltfLoader = new GLTFLoader();
 
-gltfLoader.load( '/navmesh3.glb', function( gltf ) {
+      gltfLoader.load('/navmesh3.glb', function (gltf) {
 
-const levelMesh = gltf.scene.getObjectByName('Navmesh_Mesh');
+        const levelMesh = gltf.scene.getObjectByName('Navmesh_Mesh');
 
-const levelMat = new THREE.MeshStandardMaterial({
-color: Color.GROUND,
-flatShading: true,
-roughness: 1,
-metalness: 0
-});
-level = new THREE.Mesh(levelMesh.geometry, levelMat);
-level.scale.set(SCALE, 0.5, SCALE);
-window.level = level;
-scene.add(level);
-}, null);
+        const levelMat = new THREE.MeshStandardMaterial({
+          color: Color.GROUND,
+          flatShading: true,
+          roughness: 1,
+          metalness: 0
+        });
+        level = new THREE.Mesh(levelMesh.geometry, levelMat);
+        level.scale.set(SCALE, 0.5, SCALE);
+        window.level = level;
+        scene.add(level);
+      }, null);
 
-gltfLoader.load('/navmesh3.glb', function (gltf) {
+      gltfLoader.load('/navmesh3.glb', function (gltf) {
 
-const _navmesh = gltf.scene.getObjectByName('Navmesh_Mesh');
+        const _navmesh = gltf.scene.getObjectByName('Navmesh_Mesh');
 
-const scaledGeometry = _navmesh.geometry.clone();
-scaledGeometry.scale(SCALE, 0.5, SCALE);
+        const scaledGeometry = _navmesh.geometry.clone();
+        scaledGeometry.scale(SCALE, 0.5, SCALE);
 
-console.time('createZone()');
-const zone = Pathfinding.createZone(scaledGeometry);
-console.timeEnd('createZone()');
+        console.time('createZone()');
+        const zone = Pathfinding.createZone(scaledGeometry);
+        console.timeEnd('createZone()');
 
-pathfinder.setZoneData(ZONE, zone);
+        pathfinder.setZoneData(ZONE, zone);
 
-navmesh = new THREE.Mesh(scaledGeometry, new THREE.MeshBasicMaterial({
-color: Color.NAVMESH,
-opacity: 0.75,
-transparent: true
-}));
+        navmesh = new THREE.Mesh(scaledGeometry, new THREE.MeshBasicMaterial({
+          color: Color.NAVMESH,
+          opacity: 0.75,
+          transparent: true
+        }));
 
-scene.add(navmesh);
+        scene.add(navmesh);
 
-});
-helper
-.setPlayerPosition( new THREE.Vector3( -3.5, 0.5, 5.5 ) )
-.setTargetPosition( new THREE.Vector3( -3.5, 0.5, 5.5 ) );
+      });
+      helper
+        .setPlayerPosition(new THREE.Vector3(-3.5, 0.5, 5.5))
+        .setTargetPosition(new THREE.Vector3(-3.5, 0.5, 5.5));
 
-document.addEventListener( 'pointerdown', onDocumentPointerDown, false );
-document.addEventListener( 'pointerup', onDocumentPointerUp, false );
-window.addEventListener( 'resize', onWindowResize, false );
+      document.addEventListener('pointerdown', onDocumentPointerDown, false);
+      document.addEventListener('pointerup', onDocumentPointerUp, false);
+      window.addEventListener('resize', onWindowResize, false);
 
-}
+    }
 
-function onDocumentPointerDown (event) {
+    function onDocumentPointerDown(event) {
 
-mouseDown.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-mouseDown.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+      mouseDown.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouseDown.y = - (event.clientY / window.innerHeight) * 2 + 1;
 
-}
+    }
 
-function onDocumentPointerUp (event) {
+    function onDocumentPointerUp(event) {
 
-mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
 
-if ( Math.abs( mouseDown.x - mouse.x ) > 0 || Math.abs( mouseDown.y - mouse.y ) > 0 ) return;
+      if (Math.abs(mouseDown.x - mouse.x) > 0 || Math.abs(mouseDown.y - mouse.y) > 0) return;
 
-camera.updateMatrixWorld();
+      camera.updateMatrixWorld();
 
-raycaster.setFromCamera( mouse, camera );
+      raycaster.setFromCamera(mouse, camera);
 
-const intersects = raycaster.intersectObject( navmesh );
+      const intersects = raycaster.intersectObject(navmesh);
 
-if ( !intersects.length ) return;
+      if (!intersects.length) return;
 
-targetPosition.copy( intersects[0].point );
+      targetPosition.copy(intersects[0].point);
 
-helper
-.reset()
-.setPlayerPosition( playerPosition );
+      helper
+        .reset()
+        .setPlayerPosition(playerPosition);
 
-if (event.metaKey || event.ctrlKey || event.button === 2) {
+      if (event.metaKey || event.ctrlKey || event.button === 2) {
 
-path = null;
-groupID = pathfinder.getGroup(ZONE, targetPosition, true);
-const closestNode = pathfinder.getClosestNode( playerPosition, ZONE, groupID, true );
+        path = null;
+        groupID = pathfinder.getGroup(ZONE, targetPosition, true);
+        const closestNode = pathfinder.getClosestNode(playerPosition, ZONE, groupID, true);
 
-helper.setPlayerPosition( playerPosition.copy( targetPosition ) )
-if ( closestNode ) helper.setNodePosition( closestNode.centroid );
+        helper.setPlayerPosition(playerPosition.copy(targetPosition))
+        if (closestNode) helper.setNodePosition(closestNode.centroid);
 
-return;
+        return;
 
-}
+      }
 
-const targetGroupID = pathfinder.getGroup( ZONE, targetPosition, true );
-const closestTargetNode = pathfinder.getClosestNode( targetPosition, ZONE, targetGroupID, true );
+      const targetGroupID = pathfinder.getGroup(ZONE, targetPosition, true);
+      const closestTargetNode = pathfinder.getClosestNode(targetPosition, ZONE, targetGroupID, true);
 
-helper.setTargetPosition( targetPosition );
-if (closestTargetNode) helper.setNodePosition( closestTargetNode.centroid );
+      helper.setTargetPosition(targetPosition);
+      if (closestTargetNode) helper.setNodePosition(closestTargetNode.centroid);
 
-path = pathfinder.findPath( playerPosition, targetPosition, ZONE, groupID );
+      path = pathfinder.findPath(playerPosition, targetPosition, ZONE, groupID);
 
-if ( path && path.length ) {
+      if (path && path.length) {
 
-helper.setPath( path );
+        helper.setPath(path);
 
-console.log(path.map(p => ({
-x: p.x,
-y: p.y,
-z: p.z
-})))
-} else {
+        console.log(path.map(p => ({
+          x: p.x,
+          y: p.y,
+          z: p.z
+        })))
+      } else {
 
-const closestPlayerNode = pathfinder.getClosestNode( playerPosition, ZONE, groupID );
-const clamped = new THREE.Vector3();
+        const closestPlayerNode = pathfinder.getClosestNode(playerPosition, ZONE, groupID);
+        const clamped = new THREE.Vector3();
 
-pathfinder.clampStep(
-playerPosition, targetPosition.clone(), closestPlayerNode, ZONE, groupID, clamped );
+        pathfinder.clampStep(
+          playerPosition, targetPosition.clone(), closestPlayerNode, ZONE, groupID, clamped);
 
-helper.setStepPosition( clamped );
+        helper.setStepPosition(clamped);
 
-}
-}
+      }
+    }
 
-function onWindowResize() {
+    function onWindowResize() {
 
-camera.aspect = window.innerWidth / window.innerHeight;
-camera.updateProjectionMatrix();
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
 
-renderer.setSize( window.innerWidth, window.innerHeight );
+      renderer.setSize(window.innerWidth, window.innerHeight);
 
-}
+    }
 
-function animate() {
+    function animate() {
 
-requestAnimationFrame( animate );
-tick(clock.getDelta());
-renderer.render( scene, camera );
+      requestAnimationFrame(animate);
+      tick(clock.getDelta());
+      renderer.render(scene, camera);
 
-}
+    }
 
-function tick ( dt ) {
-if ( !level || !(path||[]).length ) return
+    function tick(dt) {
+      if (!level || !(path || []).length) return
 
-let targetPosition = path[ 0 ];
-const velocity = targetPosition.clone().sub( playerPosition );
+      let targetPosition = path[0];
+      const velocity = targetPosition.clone().sub(playerPosition);
 
-if (velocity.lengthSq() > 0.05 * 0.05) {
-velocity.normalize();
-playerPosition.add( velocity.multiplyScalar( dt * SPEED ) );
-helper.setPlayerPosition( playerPosition );
-} else {
-path.shift();
-}
-}
+      if (velocity.lengthSq() > 0.05 * 0.05) {
+        velocity.normalize();
+        playerPosition.add(velocity.multiplyScalar(dt * SPEED));
+        helper.setPlayerPosition(playerPosition);
+      } else {
+        path.shift();
+      }
+    }
 
-</script>
+  </script>
 
 </body>
+
 </html>

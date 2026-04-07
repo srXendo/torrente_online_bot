@@ -90,7 +90,8 @@ class apis{
               }
             }
           } catch (err) {
-            console.error("Handler error:", err);
+            
+            console.error("Handler error:", err, err.stack);
             response[":status"] = 500;
             stream.respond(response);
             stream.end(JSON.stringify({ error: "Internal Server Error" }));

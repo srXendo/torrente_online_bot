@@ -23,5 +23,9 @@
   },
   "devDependencies": {
     "electron": "^40.2.1"
+  },
+  "dependencies": {
+    "three": "^0.183.2",
+    "three-pathfinding": "^1.3.0"
   }
 }
