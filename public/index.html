@@ -32,43 +32,62 @@
         import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
         import { Pathfinding, PathfindingHelper } from 'threePathfinding';
         import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+
         const Color = {
-            GROUND: 0x606060,
+            GROUND:  0x606060,
             NAVMESH: 0xFFFFFF,
         };
-        let offsetX = -3.9
-        let offsetZ = -1.6
-        document.getElementById('offsetX').setAttribute('value', -3.9)
-        document.getElementById('lx').textContent = offsetX.toFixed(2);
-        document.getElementById('offsetZ').setAttribute('value', -1.6)
-        document.getElementById('lz').textContent = offsetZ.toFixed(2);
-        const ZONE = 'level';
-        const SPEED = 5;
-        const OFFSET = 0.2;
 
-        let level, navmesh;
+        let offsetX = -3.9;
+        let offsetZ = -1.6;
+        document.getElementById('offsetX').setAttribute('value', -3.9);
+        document.getElementById('lx').textContent = offsetX.toFixed(2);
+        document.getElementById('offsetZ').setAttribute('value', -1.6);
+        document.getElementById('lz').textContent = offsetZ.toFixed(2);
+
+        const ZONE  = 'level';
+
+        // --- Umbrales de optimización ---
+        // Solo regenerar path si el jugador se movió más de esta distancia al cuadrado
+        const PATH_REGEN_DIST_SQ  = 0.25; // ~0.5 unidades
+        // Radio al cuadrado para considerar waypoint alcanzado
+        const WAYPOINT_RADIUS_SQ  = 0.09; // ~0.3 unidades
+
+        let navmesh;
         let groupID, path;
         let yellowMarker;
         let botPrototype;
-        const players = {};
-        const botsWaypoints = {}
-        const move_actions = {camera_right: {action_type: "camera_right"}, camera_left: {action_type: "camera_left"}, forward: {action_type: "forward_move"}}
-        const playerPosition = new THREE.Vector3(-3.5, 0.5, 5.5);
-        const targetPosition = new THREE.Vector3();
+
+        const players       = {};
+        const botsWaypoints = {};
+        const move_actions  = {
+            camera_right: { action_type: 'camera_right' },
+            camera_left:  { action_type: 'camera_left'  },
+            forward:      { action_type: 'forward_move' }
+        };
+
+        const playerPosition      = new THREE.Vector3(-3.5, 0.5, 5.5);
+        // Última posición usada para generar paths (evita regeneraciones innecesarias)
+        const lastPathGenPosition = new THREE.Vector3(Infinity, Infinity, Infinity);
+
+        const targetPosition  = new THREE.Vector3();
         const wireMaterialBot = new THREE.MeshBasicMaterial({ color: 0x00c8ff, wireframe: true });
-        const pathfinder = new Pathfinding();
-        const helper = new PathfindingHelper();
+        const pathfinder      = new Pathfinding();
+        const helper          = new PathfindingHelper();
+
         const SENSOR_DT = 0.1; // 100 ms = 10 Hz
         let acc = 0;
-        const clock = new THREE.Clock();
-        const mouse = new THREE.Vector2();
+        // Round-robin: regeneramos el path de un bot distinto por tick
+        let botRoundRobinIdx = 0;
+
+        const clock     = new THREE.Clock();
+        const mouse     = new THREE.Vector2();
         const mouseDown = new THREE.Vector2();
         const raycaster = new THREE.Raycaster();
 
-        function worldPosition(value) {
-            return new THREE.Vector3(value.x, -value.y, value.z);
-        }
-
+        // ------------------------------------------------------------------
+        // Renderer / Scene
+        // ------------------------------------------------------------------
         const renderer = new THREE.WebGLRenderer();
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -76,7 +95,7 @@
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
         document.body.appendChild(renderer.domElement);
 
-        const environment = new RoomEnvironment(renderer);
+        const environment    = new RoomEnvironment(renderer);
         const pmremGenerator = new THREE.PMREMGenerator(renderer);
 
         const scene = new THREE.Scene();
@@ -91,57 +110,52 @@
             emissiveIntensity: 0.45,
             flatShading: true
         });
-        yellowMarker = new THREE.Mesh(yellowGeometry, yellowMaterial);
+        yellowMarker         = new THREE.Mesh(yellowGeometry, yellowMaterial);
         yellowMarker.visible = false;
         scene.add(yellowMarker);
         environment.dispose();
 
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
-        camera.position.x = -10;
-        camera.position.y = 14;
-        camera.position.z = 10;
+        camera.position.set(-10, 14, 10);
 
-        const controls = new OrbitControls(camera, renderer.domElement);
+        const controls  = new OrbitControls(camera, renderer.domElement);
         controls.damping = 0.2;
 
-        const ambient = new THREE.AmbientLight(0x101030);
-        scene.add(ambient);
-
+        scene.add(new THREE.AmbientLight(0x101030));
         const directionalLight = new THREE.DirectionalLight(0xFFEEDD);
         directionalLight.position.set(0, 0.5, 0.5);
         scene.add(directionalLight);
 
         init();
         animate();
-        const SCALE = 15;
-        async function init() {
 
+        // ------------------------------------------------------------------
+        // Init
+        // ------------------------------------------------------------------
+        async function init() {
             const gltfLoader = new GLTFLoader();
-            const objLoader = new OBJLoader()
+            const objLoader  = new OBJLoader();
 
             gltfLoader.load('/navmesh3.glb', function (gltf) {
-
                 const levelMesh = gltf.scene.getObjectByName('Navmesh_Mesh');
-
-                const levelMat = new THREE.MeshStandardMaterial({
-                    color: Color.GROUND,
+                const levelMat  = new THREE.MeshStandardMaterial({
+                    color:     Color.GROUND,
                     flatShading: true,
                     roughness: 1,
                     metalness: 0
                 });
-                level = new THREE.Mesh(levelMesh.geometry, levelMat);
-                //level.scale.set(9.98, 0.004, 8.475);
+                const level = new THREE.Mesh(levelMesh.geometry, levelMat);
                 level.scale.set(15, 0.5, 15);
                 window.level = level;
                 scene.add(level);
 
-                objLoader.load('model.bot.obj', (bp)=>{
+                objLoader.load('model.bot.obj', (bp) => {
                     try {
-                        botPrototype = bp
+                        botPrototype = bp;
                         botPrototype.scale.setScalar(0.5);
                         botPrototype.traverse(c => {
                             if (c.isMesh) {
-                                c.material = wireMaterialBot;
+                                c.material      = wireMaterialBot;
                                 c.userData.type = 'bot';
                             }
                         });
@@ -149,365 +163,289 @@
                         const bot0 = botPrototype.clone();
                         bot0.position.set(0, 0.43, 0);
                         bot0.traverse(c => {
-                            if (c.isMesh) {
-                                c.userData.type = 'player';
-                            }
-                        })
+                            if (c.isMesh) c.userData.type = 'player';
+                        });
                         players[0] = bot0;
                         scene.add(bot0);
-
-
-                    } catch(e) { console.warn("model.bot.obj no cargado", e); }
+                    } catch (e) { console.warn('model.bot.obj no cargado', e); }
                 });
-                //createBotSensor(0);
-                    
             }, null);
 
             gltfLoader.load('/navmesh3.glb', function (gltf) {
-
-                const _navmesh = gltf.scene.getObjectByName('Navmesh_Mesh');
-
+                const _navmesh       = gltf.scene.getObjectByName('Navmesh_Mesh');
                 const scaledGeometry = _navmesh.geometry.clone();
-                //scaledGeometry.scale(9.98, 0.004, 8.475);
                 scaledGeometry.scale(15, 0.5, 15);
-                console.time('createZone()');
-                const zone = Pathfinding.createZone(scaledGeometry);
-                console.timeEnd('createZone()');
 
+                const zone = Pathfinding.createZone(scaledGeometry);
                 pathfinder.setZoneData(ZONE, zone);
 
                 navmesh = new THREE.Mesh(scaledGeometry, new THREE.MeshBasicMaterial({
-                    color: Color.NAVMESH,
-                    opacity: 0.75,
+                    color:       Color.NAVMESH,
+                    opacity:     0.75,
                     transparent: true
                 }));
-
                 scene.add(navmesh);
-
             });
+
             helper
                 .setPlayerPosition(new THREE.Vector3(-3.5, 0.5, 5.5))
                 .setTargetPosition(new THREE.Vector3(-3.5, 0.5, 5.5));
 
             document.addEventListener('pointerdown', onDocumentPointerDown, false);
-            document.addEventListener('pointerup', onDocumentPointerUp, false);
-            window.addEventListener('resize', onWindowResize, false);
-
+            document.addEventListener('pointerup',   onDocumentPointerUp,   false);
+            window.addEventListener('resize',        onWindowResize,        false);
         }
-        function renderPathLine(path) {
-            // Eliminar línea anterior
-            const oldLine = scene.getObjectByName('pathLine');
-            if (oldLine) scene.remove(oldLine);
 
-            const points = path.map(p => new THREE.Vector3(p.x, p.y, p.z));
-            const geometry = new THREE.BufferGeometry().setFromPoints(points);
-            const material = new THREE.LineBasicMaterial({ color: 0x0088ff, linewidth: 2 });
-            
-            const line = new THREE.Line(geometry, material);
-            line.name = 'pathLine';
-            scene.add(line);
-        }
+        // ------------------------------------------------------------------
+        // Pointer / resize
+        // ------------------------------------------------------------------
         function onDocumentPointerDown(event) {
-
-            mouseDown.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouseDown.y = - (event.clientY / window.innerHeight) * 2 + 1;
-
+            mouseDown.x =  (event.clientX / window.innerWidth)  * 2 - 1;
+            mouseDown.y = -(event.clientY / window.innerHeight)  * 2 + 1;
         }
 
         function onDocumentPointerUp(event) {
-
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+            mouse.x =  (event.clientX / window.innerWidth)  * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight)  * 2 + 1;
 
             if (Math.abs(mouseDown.x - mouse.x) > 0 || Math.abs(mouseDown.y - mouse.y) > 0) return;
 
             camera.updateMatrixWorld();
-
             raycaster.setFromCamera(mouse, camera);
-
             const intersects = raycaster.intersectObject(navmesh);
-
             if (!intersects.length) return;
 
             targetPosition.copy(intersects[0].point);
-
-            helper
-                .reset()
-                .setPlayerPosition(playerPosition);
+            helper.reset().setPlayerPosition(playerPosition);
 
             if (event.metaKey || event.ctrlKey || event.button === 2) {
-
-                path = null;
+                path    = null;
                 groupID = pathfinder.getGroup(ZONE, targetPosition, true);
                 const closestNode = pathfinder.getClosestNode(playerPosition, ZONE, groupID, true);
-
-                helper.setPlayerPosition(playerPosition.copy(targetPosition))
+                helper.setPlayerPosition(playerPosition.copy(targetPosition));
                 if (closestNode) helper.setNodePosition(closestNode.centroid);
-
                 return;
-
             }
 
-            const targetGroupID = pathfinder.getGroup(ZONE, targetPosition, true);
+            const targetGroupID     = pathfinder.getGroup(ZONE, targetPosition, true);
             const closestTargetNode = pathfinder.getClosestNode(targetPosition, ZONE, targetGroupID, true);
-
             helper.setTargetPosition(targetPosition);
             if (closestTargetNode) helper.setNodePosition(closestTargetNode.centroid);
 
             path = pathfinder.findPath(playerPosition, targetPosition, ZONE, groupID);
 
             if (path && path.length) {
-
                 helper.setPath(path);
-
-                console.log(path.map(p => ({
-                    x: p.x,
-                    y: p.y,
-                    z: p.z
-                })))
             } else {
-
                 const closestPlayerNode = pathfinder.getClosestNode(playerPosition, ZONE, groupID);
-                const clamped = new THREE.Vector3();
-
-                pathfinder.clampStep(
-                    playerPosition, targetPosition.clone(), closestPlayerNode, ZONE, groupID, clamped);
-
+                const clamped           = new THREE.Vector3();
+                pathfinder.clampStep(playerPosition, targetPosition.clone(), closestPlayerNode, ZONE, groupID, clamped);
                 helper.setStepPosition(clamped);
-
             }
         }
 
         function onWindowResize() {
-
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
-
             renderer.setSize(window.innerWidth, window.innerHeight);
-
         }
 
+        // ------------------------------------------------------------------
+        // Render loop
+        // ------------------------------------------------------------------
         function animate() {
-
             requestAnimationFrame(animate);
             acc += clock.getDelta();
-            if(acc >= SENSOR_DT){
+            if (acc >= SENSOR_DT) {
                 updateAllSensors();
                 acc = 0;
             }
             renderer.render(scene, camera);
-
         }
+
+        // ------------------------------------------------------------------
+        // Sensor update — optimizado
+        // ------------------------------------------------------------------
         function updateAllSensors() {
-            //console.log('update_all sensors')
-            for (const id_aux in players) {
-                const id = parseInt(id_aux)
-                if(id == 0){
-                    continue;
-                }else if(botsWaypoints[id] && botsWaypoints[id].path.length > 0){
-                    const player = players[0];
-                    const bot = players[id];
-                    const botPos = bot.position;
-                    const waypointPos = botsWaypoints[id].path[0];
-                    const dx = waypointPos.x - botPos.x;
-                    const dz = waypointPos.z - botPos.z;
+            const botIds = Object.keys(players).map(Number).filter(id => id > 0);
+            if (botIds.length === 0) return;
 
-                    const distSq = dx * dx + dz * dz;
-                    const radiusSq = 100;
-                    console.log('distSq <= radiusSq: ', distSq, radiusSq)
-                    if (distSq <= radiusSq ) {
-                        /*const closestPlayerNode = pathfinder.getClosestNode(playerPosition, ZONE, playerGroup);
-                        if (closestPlayerNode) {
-                            const clamped = new THREE.Vector3();
-                            pathfinder.clampStep(
-                                playerPosition,
-                                bot1Position.clone(),
-                                closestPlayerNode,
-                                ZONE,
-                                playerGroup,
-                                clamped
-                            );
-                            helper.setStepPosition(clamped);
-                        }*/
-                       const res =  botsWaypoints[id].path.shift()
-                       //console.log('wypoint: ',res)
-                    }
+            const playerMoved = playerPosition.distanceToSquared(lastPathGenPosition) > PATH_REGEN_DIST_SQ;
 
-                    if(true){
-                    
-                        const new_angle_bot = angleToTarget(botPos.x, botPos.z, waypointPos.x, waypointPos.z);
-                        const target = normalizeAngle(new_angle_bot + Math.PI);
-                        const current = normalizeAngle(-bot.rotation.y);
-                        console.log('botPos.x, botPos.z, waypointPos.x, waypointPos.z, target ', botPos.x, botPos.z, waypointPos.x, waypointPos.z, target, current, current - target)
-                        
-                        let diff = current - target;
-
-                        if (diff > Math.PI) diff -= 2 * Math.PI;
-                        if (diff < -Math.PI) diff += 2 * Math.PI;
-
-                        // Fix oscilación en el punto opuesto (±PI)
-                        
-                    
-                        if (diff > 0.15) {
-                            send_action(id, move_actions.camera_left.action_type);
-                        } else if (diff < -0.15) {
-                            send_action(id, move_actions.camera_right.action_type);
-                        } else  {
-                            console.log("✅ Bot mirando al jugador");
-                            send_action(id, move_actions.forward.action_type);
-                            //send_action(id, move_actions.camera_right.action_type); // sigue girando suavemente
-                        }
-                    }
-                    
+            if (playerMoved) {
+                // Jugador se movió: regenerar paths de TODOS los bots y actualizar referencia
+                for (const id of botIds) _regenPath(id);
+                lastPathGenPosition.copy(playerPosition);
+            } else {
+                // Jugador quieto: round-robin, solo refrescar el bot sin path que le toque
+                botRoundRobinIdx = botRoundRobinIdx % botIds.length;
+                const idToRegen  = botIds[botRoundRobinIdx++];
+                if (!botsWaypoints[idToRegen] || botsWaypoints[idToRegen].path.length === 0) {
+                    _regenPath(idToRegen);
                 }
+            }
+
+            // Mover todos los bots (barato: solo aritmética + fetch)
+            for (const id of botIds) {
+                _stepBot(id);
             }
         }
 
-        async function send_action(id_bot, action){
-            const response_connection = await fetch('/api/action_bot',{
-                method: 'POST',
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    id_bot: id_bot,
-                    state_bot: action 
-                }),
+        // Regenera el path de un bot concreto hacia el jugador 0
+        function _regenPath(id) {
+            if (!players[0] || !players[id]) return;
 
-            })
+            const playerPos   = players[0].position;
+            const botPos      = players[id].position;
+            const playerGroup = pathfinder.getGroup(ZONE, playerPos, true);
+            if (playerGroup === null || playerGroup === undefined) return;
+
+            const newPath = pathfinder.findPath(botPos, playerPos, ZONE, playerGroup);
+            if (newPath && newPath.length > 0) {
+                botsWaypoints[id] = { path: newPath, group: playerGroup };
+                helper.setPath(newPath);
+            }
         }
+
+        // Avanza un bot un paso hacia su siguiente waypoint
+        function _stepBot(id) {
+            if (!botsWaypoints[id] || botsWaypoints[id].path.length === 0) return;
+
+            const bot         = players[id];
+            if (!bot) return;
+
+            const botPos      = bot.position;
+            const waypointPos = botsWaypoints[id].path[0];
+
+            const dx     = waypointPos.x - botPos.x;
+            const dz     = waypointPos.z - botPos.z;
+            const distSq = dx * dx + dz * dz;
+
+            // ¿Llegamos al waypoint?
+            if (distSq <= WAYPOINT_RADIUS_SQ) {
+                botsWaypoints[id].path.shift();
+                return;
+            }
+
+            // Calcular ángulo y enviar acción
+            const target  = normalizeAngle(angleToTarget(botPos.x, botPos.z, waypointPos.x, waypointPos.z) + Math.PI);
+            const current = normalizeAngle(-bot.rotation.y);
+
+            let diff = current - target;
+            if (diff >  Math.PI) diff -= 2 * Math.PI;
+            if (diff < -Math.PI) diff += 2 * Math.PI;
+
+            if (diff > 0.05) {
+                send_action(id, move_actions.camera_left.action_type);
+            } else if (diff < -0.05) {
+                send_action(id, move_actions.camera_right.action_type);
+            } else {
+                send_action(id, move_actions.forward.action_type);
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // API
+        // ------------------------------------------------------------------
+        async function send_action(id_bot, action) {
+            await fetch('/api/action_bot', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ id_bot, state_bot: action }),
+            });
+        }
+
+        // ------------------------------------------------------------------
+        // SSE
+        // ------------------------------------------------------------------
         const sseSource = new EventSource('/api/connect');
+
         sseSource.onmessage = e => {
-
-
             try {
                 const data = JSON.parse(e.data);
 
-
                 if (data.type_action === 'sync' && data.value_action) {
-                    
                     const idBot = Number(data.value_action?.bot);
-                    const position = new THREE.Vector3(
-                        ((data.value_action.x / (1000 * 9.98)) * 15) + offsetX,   // = x / 9980
-                        0.5,
-                        -(((data.value_action.y / (1000 * 8.47508)) * 15) + offsetZ) // = y / 8475.08
-                    );
-                    players[idBot].position.set(position.x, 0.43, position.z);
-                    
+                    if (!players[idBot]) return;
+
+                    const px =  ((data.value_action.x / (1000 * 9.98))    * 15) + offsetX;
+                    const pz = -(((data.value_action.y / (1000 * 8.47508)) * 15) + offsetZ);
+
+                    players[idBot].position.set(px, 0.43, pz);
+
                     if (typeof data.value_action.r === 'number') {
                         players[idBot].rotation.y = -(data.value_action.r / 256) * Math.PI * 2;
                     }
+
                     if (idBot === 0) {
-                        helper.setTargetPosition(targetPosition);
-                        yellowMarker.position.copy(players[idBot].position);
+                        // Actualizar posición canónica del jugador 0
+                        playerPosition.copy(players[0].position);
+                        yellowMarker.position.copy(players[0].position);
                         yellowMarker.visible = true;
-                        for(let idAuxBot in players){
-                            const intIdAuxBot = parseInt(idAuxBot)
-                            if(intIdAuxBot > 0){
-                                
-                                const bot1Position = players[intIdAuxBot].position;
-
-                                
-                                const playerGroup = pathfinder.getGroup(ZONE, players[0].position, true);
-                                if (playerGroup !== null && playerGroup !== undefined) {
-                                    
-                                    const targetGroupID = pathfinder.getGroup(ZONE, players[0].position, true);
-
-                                    const closestTargetNode = pathfinder.getClosestNode(players[0].position, ZONE, targetGroupID, true);
-                                  
-
-                                    const pathToBot1 = pathfinder.findPath(players[0].position, bot1Position, ZONE, playerGroup);
-                                    
-
-                                    if (pathToBot1 && pathToBot1.length > 0 ) {
-                                        botsWaypoints[intIdAuxBot] = {
-                                            path: pathToBot1,
-                                            group: playerGroup,
-
-                                        }
-                                        helper.setPath(pathToBot1);
-                                    } 
-                                }
-                            }
-                        }
-                        
-                    }else if(idBot > 0){
-
-                        //targetPosition.copy(players[idBot].position)
-                        
+                        helper.setTargetPosition(targetPosition);
+                    } else {
                         helper.setPlayerPosition(players[idBot].position);
                     }
+
                 } else if (data.type_action === 'spawn' && data.value_action) {
                     const idBot = Number(data.id_bot ?? data.value_action?.bot);
-                    const position = new THREE.Vector3(
-                        ((data.value_action.x / (1000 * 9.98)) * 15) + offsetX,   // = x / 9980
-                        0.5,
-                        -(((data.value_action.y / (1000 * 8.47508)) * 15) + offsetZ) // = y / 8475.08
-                    );
-                    if (idBot > 0) {
-                        const bot = botPrototype.clone();
-                        bot.traverse(c => {
-                            if (c.isMesh) {
-                                c.userData.type = 'bot';
-                            }
-                        });
-                        bot.position.set(position.x, position.y, position.z);
-                        scene.add(bot);
-                        players[idBot] = bot;
-                        helper.setPlayerPosition(players[idBot].position);
-                    }
+                    if (idBot <= 0) return;
+
+                    const px =  ((data.value_action.x / (1000 * 9.98))    * 15) + offsetX;
+                    const pz = -(((data.value_action.y / (1000 * 8.47508)) * 15) + offsetZ);
+
+                    const bot = botPrototype.clone();
+                    bot.traverse(c => { if (c.isMesh) c.userData.type = 'bot'; });
+                    bot.position.set(px, 0.5, pz);
+                    scene.add(bot);
+                    players[idBot] = bot;
+                    helper.setPlayerPosition(players[idBot].position);
                 }
             } catch (err) {
-                console.error(err.stack);
                 console.error('SSE parse error', err);
             }
         };
+
+        sseSource.onerror = err => console.warn('SSE connection error', err);
+
+        // ------------------------------------------------------------------
+        // Helpers matemáticos
+        // ------------------------------------------------------------------
         function normalizeAngle(a) {
             return ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
         }
-        function angleToTarget(botX, botZ, targetX, targetZ) {
-            const dx = targetX - botX;
-            const dz = targetZ - botZ;
-            
-            // Ajuste para que mire hacia el objetivo (eje Z positivo)
-            let angle = Math.atan2(dz, dx) - Math.PI/2;
-            
-            return angle;
-        }
-        sseSource.onerror = err => {
-            console.warn('SSE connection error', err);
-        };
 
-        //main render loop
+        function angleToTarget(botX, botZ, targetX, targetZ) {
+            return Math.atan2(targetZ - botZ, targetX - botX) - Math.PI / 2;
+        }
     </script>
 
     <div class="formulario">
         <div class="tituloformulario"><span>CONECTAR BOTS</span></div>
         <div class="datosformulario">
-            <label>Dirección IP:<br><input type="text" id="ipv4" value="192.168.1.130"></label>
+            <label>Dirección IP:<br><input type="text" id="ipv4" value="192.168.1.131"></label>
             <label>Puerto:<br><input type="number" id="puerto" value="8888"></label>
             <label>Número de bots:<br><input type="number" id="numbots" max="32" value="1"></label>
-
         </div>
-
     </div>
 
     <div id="ocultar" style="display:none;">
         <div id="map2d" style="position:fixed; top:10px; right:10px; z-index:9999;"></div>
     </div>
+
     <div id="offset-panel" style="
-    position: fixed; top: 20px; left: 20px; z-index: 9999;
-    background: rgba(0,0,0,0.75); color: white;
-    padding: 12px 16px; border-radius: 10px;
-    font-family: monospace; font-size: 13px;
-    display: flex; flex-direction: column; gap: 8px; min-width: 240px;">
+        position: fixed; top: 20px; left: 20px; z-index: 9999;
+        background: rgba(0,0,0,0.75); color: white;
+        padding: 12px 16px; border-radius: 10px;
+        font-family: monospace; font-size: 13px;
+        display: flex; flex-direction: column; gap: 8px; min-width: 240px;">
 
         <span style="font-weight:bold; margin-bottom:4px;">Ajuste de offset</span>
         <input id="boton" type="button" value="Conectar" onclick="btnocultar()">
 
         <label>Offset X: <span id="lx">0.00</span>
             <input id="offsetX" type="range" min="-20" max="20" step="0.1" value="-3.9"
-                oninput=" offsetX = parseFloat(this.value); document.getElementById('lx').textContent = offsetX.toFixed(2);"
+                oninput="offsetX = parseFloat(this.value); document.getElementById('lx').textContent = offsetX.toFixed(2);"
                 style="width:100%; margin-top:4px;">
         </label>
 
@@ -517,12 +455,8 @@
                 style="width:100%; margin-top:4px;">
         </label>
     </div>
-    <script>
-
-    </script>
 
     <script src="index.js"></script>
 
 </body>
-
 </html>
