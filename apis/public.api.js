@@ -327,13 +327,13 @@ class publicApi {
       const pad = (n) => n.toString().padStart(2, '0');
 
       const formattedDate =
-        pad(now.getDate()) + '/' +
-        pad(now.getMonth() + 1) + '/' +
-        now.getFullYear() + ' ' +
-        pad(now.getHours()) + ':' +
-        pad(now.getMinutes()) + ':' +
-        pad(now.getSeconds());
-
+          pad(now.getDate()) + '/' +
+          pad(now.getMonth() + 1) + '/' +
+          now.getFullYear() + ' ' +
+          pad(now.getHours()) + ':' +
+          pad(now.getMinutes()) + ':' +
+          pad(now.getSeconds()) + '.' +
+          now.getMilliseconds().toString().padStart(3, '0');
       console.log(`${formattedDate}: Nuevo mensaje recibido bot_${i}: `, msg.toString('hex'))
       this.handler_message(msg, rconf, obj_starter)
     })
@@ -362,7 +362,7 @@ class publicApi {
 
   async handler_message(msg, rconf, addr) {
     if (this.loggin) {
-      console.log(`Mensaje recibido: id_bot: ${this.packetQueue.mapper[addr.port].number_bot} ${addr.port} \n${msg.toString('hex')}`);
+      console.log(`Mensaje recibido: id_bot:  ${this.packetQueue.mapper[addr.port].number_bot} ${addr.port} \n${msg.toString('hex')}`);
 
       console.log('handler_message')
     }
@@ -379,14 +379,14 @@ class publicApi {
         const now = new Date();
 
         const pad = (n) => n.toString().padStart(2, '0');
-
         const formattedDate =
-          pad(now.getDate()) + '/' +
-          pad(now.getMonth() + 1) + '/' +
-          now.getFullYear() + ' ' +
-          pad(now.getHours()) + ':' +
-          pad(now.getMinutes()) + ':' +
-          pad(now.getSeconds());
+            pad(now.getDate()) + '/' +
+            pad(now.getMonth() + 1) + '/' +
+            now.getFullYear() + ' ' +
+            pad(now.getHours()) + ':' +
+            pad(now.getMinutes()) + ':' +
+            pad(now.getSeconds()) + '.' +
+            now.getMilliseconds().toString().padStart(3, '0');
         console.log(`${formattedDate}: Nueva resupuesta enviada bot_${id_bot}: ${msg_to_server.toString('hex')} al mensaje: ${msg.toString('hex')}`)
         await this.send_package_to_server(id_bot, msg_to_server)
       } else {
