@@ -202,7 +202,7 @@ class publicApi {
       idBotMapper: {},
       ipServer: this.ip_server,
       portServer: this.port_server,
-      intervalMs: 0,
+      intervalMs: 3,
       logging: this.loggin
     })
     await this.start_bots(() => this.starter(), this.number_bot_starts)
@@ -322,7 +322,19 @@ class publicApi {
       first_msg_callback()
     });
     this.packetQueue.mapper[obj_starter.port].server.on('message', (msg, rconf) => {
-      console.log(`Nuevo mensaje recibido bot_${i}: `, msg.toString('hex'))
+      const now = new Date();
+
+      const pad = (n) => n.toString().padStart(2, '0');
+
+      const formattedDate =
+        pad(now.getDate()) + '/' +
+        pad(now.getMonth() + 1) + '/' +
+        now.getFullYear() + ' ' +
+        pad(now.getHours()) + ':' +
+        pad(now.getMinutes()) + ':' +
+        pad(now.getSeconds());
+
+      console.log(`${formattedDate}: Nuevo mensaje recibido bot_${i}: `, msg.toString('hex'))
       this.handler_message(msg, rconf, obj_starter)
     })
 
@@ -364,7 +376,18 @@ class publicApi {
 
     for (let msg_to_server of responses) {
       if (!msg_to_server.is_external) {
-        console.log(`bot_${id_bot} response: ${msg_to_server.toString('hex')}`)
+        const now = new Date();
+
+        const pad = (n) => n.toString().padStart(2, '0');
+
+        const formattedDate =
+          pad(now.getDate()) + '/' +
+          pad(now.getMonth() + 1) + '/' +
+          now.getFullYear() + ' ' +
+          pad(now.getHours()) + ':' +
+          pad(now.getMinutes()) + ':' +
+          pad(now.getSeconds());
+        console.log(`${formattedDate}: Nueva resupuesta enviada bot_${id_bot}: ${msg_to_server.toString('hex')} al mensaje: ${msg.toString('hex')}`)
         await this.send_package_to_server(id_bot, msg_to_server)
       } else {
         for (let respawn of msg_to_server.arr_respawns) {

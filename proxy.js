@@ -1,7 +1,7 @@
 const dgram = require('dgram');
 const server = dgram.createSocket('udp4');
 let n_msg = {}
-let ip_server = '192.168.1.130'
+let ip_server = '192.168.1.131'
 let ip_client
 let port_server = 8888
 let port_client
@@ -25,6 +25,16 @@ server.on('message', (msg, rinfo) => {
       }
       if(msg.readUInt8(0) === 0x3f && msg.readUInt8(1) === 0x00 && msg.readUInt8(5) === 0x0e){
         console.log('spawn spawn spawn!')
+        server.send(msg, port_response, ip_response, (err) => {
+          if (err) {
+            console.error(`Error al enviar la respuesta: ${err.message}`);
+          } else {
+            console.log(`Respuesta enviada: ${ip_response}:${port_response}`);
+              
+          }
+          console.log(`------FIN DEL MENSAJE------`);
+        });
+        msg.writeUint8(1, 1); //retry byte.
       }
     }
     server.send(msg, port_response, ip_response, (err) => {

@@ -17,7 +17,7 @@ class PacketQueue {
      * @param {boolean} [opts.logging]     - Activa logs (default: false)
      * @param {number}  [opts.intervalMs]  - Ms entre paquetes (default: 50)
      */
-    constructor({ mapper, idBotMapper, portServer, ipServer, logging = false, intervalMs = 50 }) {
+    constructor({ mapper, idBotMapper, portServer, ipServer, logging = false, intervalMs = 1 }) {
         this.mapper      = mapper;
         this.idBotMapper = idBotMapper;
         this.portServer  = portServer;

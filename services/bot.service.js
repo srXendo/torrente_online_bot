@@ -36,36 +36,42 @@ module.exports = class BotService {
     handler_message(msg, rconf) {
         const headers = msg.readUInt16BE(0)
         switch (headers) {
+            case 0x3f01:
             case 0x3701:
+                /*let action_response = Buffer.from("3f020c0c" + this.buffer_session, 'hex')
+                return this.process_msg(action_response, msg, msg.readUInt8(3), msg.readUInt8(2))*/
+                const ok3 = Buffer.from('80060101690b00009d043b03', 'hex')
+                                
+                ok3.writeUint8((msg.readUint8(2)) & 0xFF, 5)
 
+                ok3.writeUint8(msg.readUint8(3), 4)
+                return [ok3]
+                break;
             case 0x3700:
                 //console.log('msg: No uknow: ', '0x3700')
 
                 /*const ok = Buffer.from("3f020404"+this.buffer_session, 'hex')
                 ok.writeUint8(msg.readUint8(3), 2)
                 ok.writeUint8(msg.readUint8(2), 3)*/
-                return []
 
-                break;
             case 0x3f00:
-
-                const user_responses = this.users_actions(msg)
+                if(headers == 0x3f00){
+                    const user_responses = this.users_actions(msg)
+                }
                 const ok2 = []
 
-                    ok2.push(Buffer.from("3f020404" + this.buffer_session, 'hex'))
-                    ok2[0].writeUint8(0, 3)
-                    if (msg.readUint8(2) + 1 <= 255) {
-                        ok2[0].writeUint8(msg.readUint8(2) + 1, 3)
-                    }else{
-                        ok2[0].writeUint8(0, 3)
-                    }
-
-                    ok2[0].writeUint8(msg.readUint8(3), 2)
+                ok2.push(Buffer.from("3f020404" + this.buffer_session, 'hex'))
                 
+                ok2[0].writeUint8((msg.readUint8(2) ) & 0xFF, 3)
 
+                ok2[0].writeUint8(msg.readUint8(3), 2)
+                /*const ok2_aux = Buffer.from('80060101690b00009d043b03', 'hex')
+                ok2_aux.writeUint8((msg.readUint8(2) + 1) & 0xFF, 5)
 
-                return [ ...ok2, ...user_responses]// this.process_msg(user_responses, msg, msg.readUInt8(2), msg.readUInt8(3))
+                ok2_aux.writeUint8(msg.readUint8(3), 4)*/
 
+                //this.arr_actions.push([ ...ok2])// this.process_msg(user_responses, msg, msg.readUInt8(2), msg.readUInt8(3))
+                return [...ok2]
                 break;
             case 0x8006:
                 //console.log('msg: main bucle: ', '0x8006')
@@ -317,6 +323,7 @@ module.exports = class BotService {
                 const ping_ce = Buffer.from('80060100ac240000ee8b4503', 'hex')
                 ping_ce.writeUInt8(msg.readUInt8(2), 5)
                 ping_ce.writeUInt8(msg.readUInt8(3), 4)
+                responses.push(ping_ce)
                 //this.arr_actions.push(ping_ce)
                 //responses.push(ping_ce)
                 //ok2.writeUint8(msg.readUint8(2), 3)
@@ -326,7 +333,7 @@ module.exports = class BotService {
 
                 break;
         }
-        responses.push(ok2)
+
         return responses
     }
     send_waypoints() {
@@ -687,8 +694,8 @@ module.exports = class BotService {
         for (let idx = 0; idx < arr.length; idx++) {
             const row = arr[idx]
             if (!row.is_external) {
-                if (next_prev + idx > 255) {
-                    row.writeUint8(next_prev, 2)
+                if (next_prev + idx >= 255) {
+                    row.writeUint8(((next_prev + idx) - 255) , 2)
 
                 } else {
                     row.writeUint8(next_prev + idx, 2)
@@ -696,6 +703,7 @@ module.exports = class BotService {
                 }
 
                 row.writeUint8(count_prev, 3)
+                
 
             }
             results.push(row)
