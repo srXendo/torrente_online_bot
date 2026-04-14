@@ -202,7 +202,7 @@ class publicApi {
       idBotMapper: {},
       ipServer: this.ip_server,
       portServer: this.port_server,
-      intervalMs: 3,
+      intervalMs: 1,
       logging: this.loggin
     })
     await this.start_bots(() => this.starter(), this.number_bot_starts)
@@ -369,7 +369,7 @@ class publicApi {
     const responses = this.packetQueue.mapper[addr.port].bot.handler_message(msg, rconf)
     const id_bot = this.packetQueue.mapper[addr.port].number_bot
     if (!responses) {
-      console.log('[handler_message]: bot nº ${id_bot} msg not recognize', msg.toString('hex'))
+      console.log(`[handler_message]: bot nº ${id_bot} msg not recognize`, msg.toString('hex'))
       console.error(new Error(`[handler_message]: bot nº ${id_bot} msg not recognize`))
       return
     }

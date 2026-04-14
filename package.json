@@ -19,7 +19,8 @@
   },
   "scripts": {
     "start": "npx electron .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "proxy": "node proxy.js 2222"
   },
   "devDependencies": {
     "electron": "^40.2.1"

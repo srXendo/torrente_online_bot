@@ -23,6 +23,8 @@ module.exports = class BotService {
     emit_start = new EventEmitter()
     pathfinder = null
     waypoints = null
+    last_bnSeq = null
+    last_bnRecv = null
     constructor(number_bot, bot_helper, bot_master, pathfinder) {
 
         this.bot_master = bot_master
@@ -55,8 +57,9 @@ module.exports = class BotService {
             ok.writeUint8(msg.readUint8(2), 3)*/
 
             case 0x3f00:
+                let user_responses = []
                 if (headers == 0x3f00) {
-                    const user_responses = this.users_actions(msg)
+                    user_responses = this.users_actions(msg)
                 }
                 const ok2 = []
 
@@ -64,30 +67,21 @@ module.exports = class BotService {
 
                 ok2[0].writeUint8((msg.readUint8(2) + 1) & 0xFF, 3)
 
-                ok2[0].writeUint8(msg.readUint8(3), 2)
+                ok2[0].writeUint8((msg.readUint8(3)), 2)
                 /*const ok2_aux = Buffer.from('80060101690b00009d043b03', 'hex')
                 ok2_aux.writeUint8((msg.readUint8(2) + 1) & 0xFF, 5)
 1: 3f020099cac34001 al mensaje: 8006030099ff0000f7ac6e0001000000
                 ok2_aux.writeUint8(msg.readUint8(3), 4)*/
 
                 //this.arr_actions.push([ ...ok2])// this.process_msg(user_responses, msg, msg.readUInt8(2), msg.readUInt8(3))
-                return [...ok2]
+                return [...user_responses, ...ok2]
                 break;
             case 0x8006:
                 //console.log('msg: main bucle: ', '0x8006')
-                if (msg.readUInt8(2) === 0x03) {
-                    const ok3 = []
 
-                    ok3.push(Buffer.from("3f020404" + this.buffer_session, 'hex'))
-
-                    ok3[0].writeUint8((msg.readUint8(4) + 1) & 0xFF, 3)
-
-                    ok3[0].writeUint8(msg.readUint8(5), 2)
-                    return ok3
-                } else {
-                    let action_response = this.get_action(msg)
-                    return this.process_msg(action_response, msg, msg.readUInt8(4), msg.readUInt8(5))
-                }
+                let action_response = this.get_action(msg)
+                return this.process_msg(action_response, msg, msg.readUInt8(4), msg.readUInt8(5))
+    
                 break;
             case 0x7f00:
                 const first_stage2 = Buffer.from("7f000202c3000000", 'hex')
@@ -122,10 +116,13 @@ module.exports = class BotService {
                 return []
                 break;
             case 0x8802:
+                
                 //console.log('msg: firstStage: ', "0x8802")
                 const session = Buffer.from('7f000100c100000002000000070000005800000014000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000430068006100760061006c006f00740065000000', 'hex')
                 const pre1 = Buffer.from("8002010006000100" + this.buffer_session + "e665f602", "hex")
                 const pre2 = Buffer.from("3f020000" + this.buffer_session + "", 'hex')
+                this.last_bnSeq = 0x01
+                this.last_bnRecv = 0x00
                 return [pre1, pre2, session]
                 break;
             case 0x0003:
@@ -141,7 +138,7 @@ module.exports = class BotService {
                 break;
         }
     }
-    async users_actions(msg) {
+    users_actions(msg) {
 
         const bot = msg.readUInt8(4)
         const action = msg.readUInt8(5) //action player byte
@@ -153,7 +150,7 @@ module.exports = class BotService {
         switch (action) {
             case 0xd2:
 
-                
+
                 if (msg.readUInt8(msg.length - 1) === 0xde) {
 
 
@@ -162,17 +159,17 @@ module.exports = class BotService {
                 }
                 break;
             case 0xd4:
-                const change_gun = Buffer.from('3f006f0c000d05', 'hex')
+                /*const change_gun = Buffer.from('3f006f0c000d05', 'hex')
                 change_gun.writeInt8(this.#number_bot, 4)
-                
-                this.arr_actions.push(change_gun)
-                
+
+                this.arr_actions.push(change_gun)*/
+
 
                 break;
             case 0xd8:
                 console.log('bot can shot: ')
                 this.can_shot = true
-                this.emit_start.emit('user_start');
+                
             //this.send_signal_die()
 
             case 0xfb:
@@ -180,6 +177,7 @@ module.exports = class BotService {
                 break;
             case 0x0d:
                 console.log('player change gun ', bot, this.#number_bot)
+                
                 break;
             case 0x0c:
                 //this.follow_cam()
@@ -206,7 +204,7 @@ module.exports = class BotService {
                     console.log(`${this.user_bot} vida restante: `, msg.readUInt8(10))
                     if (msg.readUInt8(10) === 0) {
                         console.log(`ha muerto: ${this.user_bot}`)
-                        //responses.push({is_external: true, die: this.#number_bot})
+  
                         this.send_signal_die()
                         if (this.bot_action_interval) {
                             clearInterval(this.bot_action_interval)
@@ -224,7 +222,7 @@ module.exports = class BotService {
                             clearInterval(this.bot_action_interval)
                             this.bot_action_interval = null
                         }
-                        //responses.push({is_external: true, die: this.#number_bot})
+  
                         this.can_shot = false
                     }
 
@@ -232,7 +230,17 @@ module.exports = class BotService {
 
                 break;
             case 0xfe:
+                const pj_response = Buffer.from('3f020504e03f74a0'.replace('e03f74a0', this.buffer_session.toString('hex')), 'hex')
+                pj_response.writeUInt8(this.#number_bot, 4)
 
+
+                this.arr_actions.push(pj_response)
+
+                
+                break;
+            case 0xff:
+                this.#number_bot = msg.readUInt8(4) 
+                this.emit_start.emit('user_start');
                 break;
             case 0xed:
                 if (this.bot_master) {
@@ -257,6 +265,7 @@ module.exports = class BotService {
                 }
 
                 if (this.#number_bot === bot) {
+                    
                     this.can_shot = true
                     console.log('bot spawn ', this.#number_bot)
                     this.in_game = true
@@ -270,6 +279,10 @@ module.exports = class BotService {
 
                         this.send_waypoints()
                         this.ia_bot_start()
+                        const ping_ce = Buffer.from('80060100ac240000ee8b4503', 'hex')
+                        ping_ce.writeUInt8((msg.readUInt8(2)) & 0xff, 5)
+                        ping_ce.writeUInt8(msg.readUInt8(3), 4)
+                        responses.push(ping_ce)
                     } catch (err) {
                         console.error(new Error(err.stack))
                         throw new Error(err)
@@ -295,7 +308,7 @@ module.exports = class BotService {
                 if (bot == 0) {
                     //console.log('sync player bot number: ', msg)
                     this.player_cords = bot_cords
-                    //this.send_waypoints()
+                    this.send_waypoints()
                     //this.follow_cam()
 
 
@@ -332,11 +345,10 @@ module.exports = class BotService {
             case 0xce:
                 //
 
-
+                
                 const ping_ce = Buffer.from('80060100ac240000ee8b4503', 'hex')
                 ping_ce.writeUInt8(msg.readUInt8(2), 5)
                 ping_ce.writeUInt8(msg.readUInt8(3), 4)
-                responses.push(ping_ce)
                 this.arr_actions.push(this.try_other_spawn())
                 break;
             default:
@@ -346,22 +358,43 @@ module.exports = class BotService {
 
         return responses
     }
+
+    lastTargetKey = null;
+    lastGroup = null;
+    lastPlayerPos = null
     send_waypoints() {
         const playerPos = this.player_cords;
         if (!playerPos) return;
 
         const botPos = this.bot_cords;
         if (!botPos) return;
-        const pp = this.get_vector(playerPos.x, playerPos.y)
-        const bp = this.get_vector(botPos.x, botPos.y)
+
+        const pp = this.get_vector(playerPos.x, playerPos.y);
+        const bp = this.get_vector(botPos.x, botPos.y);
+
         const playerGroup = this.pathfinder.getGroup('level', pp, true);
-        if (playerGroup === null || playerGroup === undefined) return;
+        if (playerGroup == null) return;
+        if(this.lastPlayerPos){
+            const dx = playerPos.x - this.lastPlayerPos.x;
+            const dz = playerPos.z - this.lastPlayerPos.z;
+            const distSq = dx * dx + dz * dz;
+
+            // Si no se movió lo suficiente, no recalcular
+            if (distSq <= 20) return;
+        }
+
+        this.lastPlayerPos = { x: playerPos.x, z: playerPos.z };
 
         const newPath = this.pathfinder.findPath(bp, pp, 'level', playerGroup);
-        if (newPath && newPath.length > 0) {
-            this.waypoints = { path: newPath, group: playerGroup }
-            this.bot_helper.send_event(JSON.stringify({ type_action: 'waypoints', value_action: { path: newPath, group: playerGroup }, id_bot: this.#number_bot }))
-        }
+        if (!newPath || newPath.length === 0) return;
+
+        this.waypoints = { path: newPath, group: playerGroup };
+
+        /*this.bot_helper.send_event(JSON.stringify({
+            type_action: 'waypoints',
+            value_action: { path: newPath, group: playerGroup },
+            id_bot: this.#number_bot
+        }));*/
     }
     get_vector(x, z) {
         const bx = ((x / (1000 * 9.98)) * 15) + -3.90;
@@ -412,7 +445,7 @@ module.exports = class BotService {
 
                 this.forward_move()
             }
-        }, 40)
+        }, 1)
     }
     normalizeAngle(a) {
         return ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
@@ -566,8 +599,8 @@ module.exports = class BotService {
         }
     }
     send_signal_drop_gun() {
-                                            //3f001874cefa05101c000000
-        const drop_gun_to_flor = Buffer.from('3f00f23fce050c32dbac9745000000006ef7f9c4', 'hex')
+        //3f001874cefa05101c000000
+        const drop_gun_to_flor = Buffer.from(`3f00f23fce050532dbac9745000000006ef7f9c4`, 'hex')
         drop_gun_to_flor.writeUInt8(this.#number_bot, 4)
         const baseOffset = 8
         drop_gun_to_flor.writeFloatLE(this.bot_cords.x, baseOffset);
@@ -579,11 +612,13 @@ module.exports = class BotService {
     get_action(msg) {
 
         const ping = Buffer.from("3f020c0c" + this.buffer_session, 'hex')
-        let result = [ping]
+        let result = []
 
         if (this.arr_actions.length > 0) {
 
             result = [this.arr_actions.shift()]
+        } else {
+            result.push(ping)
         }
         return result
     }
@@ -699,9 +734,12 @@ module.exports = class BotService {
         for (let idx = 0; idx < arr.length; idx++) {
             const row = arr[idx]
             if (!row.is_external) {
+            
+                row.writeUint8( (next_prev + idx) & 0xFF, 2)
 
-                row.writeUint8((next_prev + idx) & 0xFF, 2)
-                row.writeUint8((count_prev) , 3)
+                row.writeUint8((count_prev ), 3)
+
+
 
 
             }
