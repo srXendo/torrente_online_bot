@@ -127,6 +127,8 @@ module.exports = class BotService {
                 break;
             case 0x0003:
                 this.party = this.extract_data(msg)
+                console.log(this.party)
+                this.#number_bot = this.party.currentPlayers
                 return [Buffer.from("8801000006000100" + this.buffer_session + "c2091002", 'hex')]
                 break;
             case 0x3f08:
@@ -239,8 +241,13 @@ module.exports = class BotService {
                 
                 break;
             case 0xff:
-                this.#number_bot = msg.readUInt8(4) 
+                console.log(`cambio de id?: ${this.#number_bot} : ${msg.readUInt8(4)}`)
+                this.#number_bot = msg.readUInt8(4)
+                this.user_bot = Buffer.from(('Bot' + `${this.#number_bot }`.padStart(2, "0")), 'ascii')
                 this.emit_start.emit('user_start');
+                
+                this.send_waypoints()
+                this.ia_bot_start()
                 break;
             case 0xed:
                 if (this.bot_master) {
@@ -277,12 +284,10 @@ module.exports = class BotService {
                     this.bot_helper.send_event(JSON.stringify({ type_action: 'spawn', value_action: bot_cords, id_bot: this.#number_bot }))
                     try {
 
-                        this.send_waypoints()
-                        this.ia_bot_start()
                         const ping_ce = Buffer.from('80060100ac240000ee8b4503', 'hex')
                         ping_ce.writeUInt8((msg.readUInt8(2)) & 0xff, 5)
                         ping_ce.writeUInt8(msg.readUInt8(3), 4)
-                        responses.push(ping_ce)
+                        //responses.push(ping_ce)
                     } catch (err) {
                         console.error(new Error(err.stack))
                         throw new Error(err)
@@ -380,7 +385,7 @@ module.exports = class BotService {
             const distSq = dx * dx + dz * dz;
 
             // Si no se movió lo suficiente, no recalcular
-            if (distSq <= 20) return;
+            if (distSq <= 400) return;
         }
 
         this.lastPlayerPos = { x: playerPos.x, z: playerPos.z };
@@ -418,33 +423,64 @@ module.exports = class BotService {
 
             const dx = waypointPos.x - botPos.x;
             const dz = waypointPos.z - botPos.z;
-            const distSq = dx * dx + dz * dz;
+            if(this.lastPlayerPos){
+                const dxp = playerPos.x - botPos.x;
+                const dzp = playerPos.z - botPos.z;
+                const distToPlayer = dxp * dxp + dzp * dzp;
 
-            // ¿Llegamos al waypoint?
-            if (distSq <= 0.09) {
-                this.waypoints.path.shift();
-                return;
+                // Si no se movió lo suficiente, no recalcular
+                if (distToPlayer <= 400){
+                    const target = this.normalizeAngle(this.angleToTargetFront(botPos.x, botPos.z, playerPos.x, playerPos.z) + Math.PI);
+                    const r = -(this.bot_cords.r / 256) * Math.PI * 2
+                    const current = this.normalizeAngle(-r);
+
+                    let diff = current - target;
+                    if (diff > Math.PI) diff -= 2 * Math.PI;
+                    if (diff < -Math.PI) diff += 2 * Math.PI;
+
+                    if (diff > 0.05) {
+
+                        this.camera_left()
+
+                    } else if (diff < -0.05) {
+                        this.camera_right()
+
+                    } else {
+
+                        this.forward_move()
+                    }
+                }else{
+                    // ¿Llegamos al waypoint?
+                    const distSq = dx * dx + dz * dz;
+                    if (distSq <= 0.09) {
+                        this.waypoints.path.shift();
+                        return;
+                    }
+
+                    const target = this.normalizeAngle(this.angleToTargetFront(botPos.x, botPos.z, waypointPos.x, waypointPos.z) + Math.PI);
+                    const r = -(this.bot_cords.r / 256) * Math.PI * 2
+                    const current = this.normalizeAngle(-r);
+
+                    let diff = current - target;
+                    if (diff > Math.PI) diff -= 2 * Math.PI;
+                    if (diff < -Math.PI) diff += 2 * Math.PI;
+
+                    if (diff > 0.05) {
+
+                        this.camera_left()
+
+                    } else if (diff < -0.05) {
+                        this.camera_right()
+
+                    } else {
+
+                        this.forward_move()
+                    }
+                };
             }
+            
 
-            const target = this.normalizeAngle(this.angleToTargetFront(botPos.x, botPos.z, waypointPos.x, waypointPos.z) + Math.PI);
-            const r = -(this.bot_cords.r / 256) * Math.PI * 2
-            const current = this.normalizeAngle(-r);
 
-            let diff = current - target;
-            if (diff > Math.PI) diff -= 2 * Math.PI;
-            if (diff < -Math.PI) diff += 2 * Math.PI;
-
-            if (diff > 0.05) {
-
-                this.camera_left()
-
-            } else if (diff < -0.05) {
-                this.camera_right()
-
-            } else {
-
-                this.forward_move()
-            }
         }, 1)
     }
     normalizeAngle(a) {

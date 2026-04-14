@@ -202,7 +202,7 @@ class publicApi {
       idBotMapper: {},
       ipServer: this.ip_server,
       portServer: this.port_server,
-      intervalMs: 1,
+      intervalMs: 5,
       logging: this.loggin
     })
     await this.start_bots(() => this.starter(), this.number_bot_starts)
@@ -320,6 +320,9 @@ class publicApi {
     this.packetQueue.mapper[obj_starter.port].is_first_msg = false
     this.packetQueue.mapper[obj_starter.port].bot.emit_start.on('user_start', () => {
       first_msg_callback()
+    });
+    this.packetQueue.mapper[obj_starter.port].bot.emit_start.on('user_set_number_bot', (number_bot) => {
+      
     });
     this.packetQueue.mapper[obj_starter.port].server.on('message', (msg, rconf) => {
       const now = new Date();
