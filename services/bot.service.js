@@ -1,7 +1,9 @@
 
+const { Console } = require('console');
 const EventEmitter = require('events');
 const THREE = require('three')
-module.exports = class BotService {
+const { parentPort, workerData } = require('worker_threads');
+ class BotService {
     #server;
     #ip_server = '192.168.1.134'
     #port_server = 8888
@@ -14,7 +16,7 @@ module.exports = class BotService {
     start = false
     arr_actions = []
     in_game = false
-    bot_helper = null
+
     last_byte_send = null
     last_byte_send_next = null
     bot_master = null
@@ -24,20 +26,93 @@ module.exports = class BotService {
     pathfinder = null
     waypoints = null
     last_bnSeq = null
+    bot_helper = {send_event: (obj_json)=>{
+        this.#send_msg_worker("msg_to_frontend", this.#number_bot, obj_json)
+    }}
     last_bnRecv = null
-    constructor(number_bot, bot_helper, bot_master, pathfinder) {
-
+    constructor(number_bot, bot_helper, bot_master, body_data, ZONE) {
+        const dgram = require('dgram')
+        this.#server = dgram.createSocket('udp4');
+        
         this.bot_master = bot_master
         this.can_response = true
-        this.pathfinder = pathfinder
-        this.bot_helper = bot_helper
+        this.body_data = body_data
+
         this.#number_bot = number_bot
         this.buffer_session = (this.buffer_session + `${number_bot}`.padStart(2, '0'))
         this.user_bot = Buffer.from(('Bot' + `${number_bot}`.padStart(2, "0")), 'ascii')
+        const THREE = require('three');
+        const { Pathfinding } = require('three-pathfinding');
+        this.pathfinder = new Pathfinding();
+
+        const { positions, index } = body_data;
+
+        const geometry = new THREE.BufferGeometry();
+
+        geometry.setAttribute(
+          'position',
+          new THREE.BufferAttribute(
+            new Float32Array(positions),
+            3
+          )
+        );
+
+        if (index) {
+          geometry.setIndex(
+            new THREE.BufferAttribute(
+              new Uint32Array(index),
+              1
+            )
+          );
+        }
+
+        const zone = Pathfinding.createZone(geometry);
+        this.pathfinder.setZoneData(ZONE, zone);
+
+    }
+    #send_msg_worker(type, number_worker, data){
+        try{
+            parentPort.postMessage(JSON.stringify({type, number_worker, data}))
+        }catch(err){
+            console.error(new Error(err.stack))
+            throw new Error(err)
+        }
+    }
+    start_bot(){
+        this.#server.on('listening', () => {
+            const address = this.#server.address();
+            this.#send_msg_worker('listening', this.#number_bot, {port: address.port})
+            this.connect_bot()
+            
+        });
+        this.#server.on('error', (err) => {
+            console.error(`Error en el servidor: ${err.message}`);
+            this.#server.close();
+        });
+        this.#server.on('message', (msg)=>{
+            console.log('bot recv msg: ', msg.toString('hex'))
+            const responses = this.handler_message(msg)
+            if(responses){
+                for(let msg_to_server of responses){
+                    if(!msg_to_server.is_external){
+                        console.log('bot send msg: ', msg_to_server.toString('hex'))
+                        this.#server.send(msg_to_server, 8888, '192.168.1.128', (err)=>{
+                            if(err){
+                                console.error(new Error(err))
+                                throw new Error(err.stack)
+                            }
+                        })
+                    }
+                }
+            }
+        })
+        const HOST = '0.0.0.0';
+        this.#server.bind(HOST);
     }
     handler_message(msg, rconf) {
         const headers = msg.readUInt16BE(0)
         switch (headers) {
+            case 0x3f03:
             case 0x3f01:
             case 0x3701:
                 /*let action_response = Buffer.from("3f020c0c" + this.buffer_session, 'hex')
@@ -178,12 +253,12 @@ module.exports = class BotService {
                 return []
                 break;
             case 0x0d:
-                console.log('player change gun ', bot, this.#number_bot)
+                //console.log('player change gun ', bot, this.#number_bot)
                 
                 break;
             case 0x0c:
                 //this.follow_cam()
-                console.log("move any: ", msg)
+                //console.log("move any: ", msg)
                 //this.follow_cam()
                 if (msg.readUInt8(6) === 0x03 && this.#number_bot === 0) {
                     //this.player_cords = this.predecirMovimientoForward(this.player_cords, 10)
@@ -192,7 +267,7 @@ module.exports = class BotService {
 
                 break;
             case 0x0a:
-                console.log('camera any: ', msg)
+                //console.log('camera any: ', msg)
 
                 //this.user_camera(msg)
                 break;
@@ -207,24 +282,24 @@ module.exports = class BotService {
                     if (msg.readUInt8(10) === 0) {
                         console.log(`ha muerto: ${this.user_bot}`)
   
-                        this.send_signal_die()
+                        
                         if (this.bot_action_interval) {
                             clearInterval(this.bot_action_interval)
                             this.bot_action_interval = null
                         }
-
+                        this.send_signal_die()
                         this.can_shot = false
 
 
                     }
                     if (msg.readUInt8(10) === 255) {
                         console.log(`ha muerto: ${this.user_bot}`)
-                        this.send_signal_die()
+                        
                         if (this.bot_action_interval) {
                             clearInterval(this.bot_action_interval)
                             this.bot_action_interval = null
                         }
-  
+                        this.send_signal_die()
                         this.can_shot = false
                     }
 
@@ -245,9 +320,9 @@ module.exports = class BotService {
                 this.#number_bot = msg.readUInt8(4)
                 this.user_bot = Buffer.from(('Bot' + `${this.#number_bot }`.padStart(2, "0")), 'ascii')
                 this.emit_start.emit('user_start');
-                
-                this.send_waypoints()
-                this.ia_bot_start()
+                this.#send_msg_worker('next', this.#number_bot, null)
+                //this.send_waypoints()
+                //this.ia_bot_start()
                 break;
             case 0xed:
                 if (this.bot_master) {
@@ -276,7 +351,7 @@ module.exports = class BotService {
                     this.can_shot = true
                     console.log('bot spawn ', this.#number_bot)
                     this.in_game = true
-                    this.start = true
+                    
                     const bot_cords = this.extractRespawnXZR(msg, bot)
                     //const pj_response = Buffer.from('3f00800d010d1000010000e55e1d465c55b244ba37d045f6a30000', 'hex')
                     //pj_response.writeInt8(this.#number_bot, 4)
@@ -287,6 +362,11 @@ module.exports = class BotService {
                         const ping_ce = Buffer.from('80060100ac240000ee8b4503', 'hex')
                         ping_ce.writeUInt8((msg.readUInt8(2)) & 0xff, 5)
                         ping_ce.writeUInt8(msg.readUInt8(3), 4)
+                        //this.send_waypoints()
+                        if(!this.start){
+                            this.ia_bot_start()
+                        }
+                        this.start = true
                         //responses.push(ping_ce)
                     } catch (err) {
                         console.error(new Error(err.stack))
@@ -313,13 +393,13 @@ module.exports = class BotService {
                 if (bot == 0) {
                     //console.log('sync player bot number: ', msg)
                     this.player_cords = bot_cords
-                    this.send_waypoints()
+                    //this.send_waypoints()
                     //this.follow_cam()
 
 
                 }
 
-                console.log('sync package: ', this.#number_bot, bot, this.bot_master, msg)
+                //console.log('sync package: ', this.#number_bot, bot, this.bot_master, msg)
 
                 if (this.bot_master) {
 
@@ -355,6 +435,7 @@ module.exports = class BotService {
                 ping_ce.writeUInt8(msg.readUInt8(2), 5)
                 ping_ce.writeUInt8(msg.readUInt8(3), 4)
                 this.arr_actions.push(this.try_other_spawn())
+
                 break;
             default:
 
@@ -385,7 +466,7 @@ module.exports = class BotService {
             const distSq = dx * dx + dz * dz;
 
             // Si no se movió lo suficiente, no recalcular
-            if (distSq <= 400) return;
+            if (distSq <= 200) return;
         }
 
         this.lastPlayerPos = { x: playerPos.x, z: playerPos.z };
@@ -409,86 +490,114 @@ module.exports = class BotService {
     }
     ia_bot_start() {
         this.bot_action_interval = setInterval(() => {
+            //console.log('interval start!')
             const playerPos = this.player_cords;
             if (!playerPos) return;
+            //console.log('interval start!', 2)
             const pp = this.get_vector(playerPos.x, playerPos.y)
 
-            if (!this.waypoints || this.waypoints.path.length === 0) return;
-
+            //console.log('interval start!', 3)
             if (!this.bot_cords) return;
-
+            //console.log('interval start!', 4)
             const botPos = this.get_vector(this.bot_cords.x, this.bot_cords.y)
+     
 
-            const waypointPos = this.waypoints.path[0];
+            const dxp = playerPos.x - botPos.x;
+            const dzp = playerPos.y - botPos.z;
+            const distToPlayer = dxp * dxp + dzp * dzp;
+            if ((!this.waypoints || this.waypoints.path.length === 0)){
+                const playerPos = this.player_cords;
+                if (!playerPos) return;
+                const pp = this.get_vector(playerPos.x, playerPos.y)
 
-            const dx = waypointPos.x - botPos.x;
-            const dz = waypointPos.z - botPos.z;
-            if(this.lastPlayerPos){
-                const dxp = playerPos.x - botPos.x;
-                const dzp = playerPos.z - botPos.z;
-                const distToPlayer = dxp * dxp + dzp * dzp;
 
-                // Si no se movió lo suficiente, no recalcular
-                if (distToPlayer <= 400){
-                    const target = this.normalizeAngle(this.angleToTargetFront(botPos.x, botPos.z, playerPos.x, playerPos.z) + Math.PI);
-                    const r = -(this.bot_cords.r / 256) * Math.PI * 2
-                    const current = this.normalizeAngle(-r);
 
-                    let diff = current - target;
-                    if (diff > Math.PI) diff -= 2 * Math.PI;
-                    if (diff < -Math.PI) diff += 2 * Math.PI;
+                if (!this.bot_cords) return;
 
-                    if (diff > 0.05) {
+                const botPos = this.get_vector(this.bot_cords.x, this.bot_cords.y)
 
-                        this.camera_left()
+                const waypointPos = pp//this.waypoints.path[0];
 
-                    } else if (diff < -0.05) {
-                        this.camera_right()
+                const dx = waypointPos.x - botPos.x;
+                const dz = waypointPos.z - botPos.z;
+                const distSq = dx * dx + dz * dz;
+                if(distSq < 0.09){
+                    this.shot()
+                }
+                // ¿Llegamos al waypoint?
+                /*if (distSq <= 0.09) {
+                    this.waypoints.path.shift();
+                    return;
+                }*/
 
-                    } else {
+                const target = this.normalizeAngle(
+                    this.angleToTargetFront(botPos.x, botPos.z, waypointPos.x, waypointPos.z)
+                    + Math.PI / 2   // ← corrección de 90°
+                );
+                const r = -(this.bot_cords.r / 256) * Math.PI * 2
+                const current = this.normalizeAngle(-r);
 
-                        this.forward_move()
-                    }
-                }else{
-                    // ¿Llegamos al waypoint?
-                    const distSq = dx * dx + dz * dz;
-                    if (distSq <= 0.09) {
-                        this.waypoints.path.shift();
-                        return;
-                    }
+                let diff = current - target;
+                if (diff > Math.PI) diff -= 2 * Math.PI;
+                if (diff < -Math.PI) diff += 2 * Math.PI;
+                //console.log('diff: ', diff, ' --- botR: ', this.bot_cords.r, ' --- playerR: ', this.player_cords.r)
+                if (diff > 0.05) {
 
-                    const target = this.normalizeAngle(this.angleToTargetFront(botPos.x, botPos.z, waypointPos.x, waypointPos.z) + Math.PI);
-                    const r = -(this.bot_cords.r / 256) * Math.PI * 2
-                    const current = this.normalizeAngle(-r);
+                    this.camera_left()
 
-                    let diff = current - target;
-                    if (diff > Math.PI) diff -= 2 * Math.PI;
-                    if (diff < -Math.PI) diff += 2 * Math.PI;
+                } else if (diff < -0.05) {
+                    this.camera_right()
 
-                    if (diff > 0.05) {
+                } else {
 
-                        this.camera_left()
+                    this.forward_move()
+                }
+            }else if((this.waypoints && this.waypoints.path.length > 0) && distToPlayer > 400){
+                
+                const waypointPos = this.waypoints.path[0];
 
-                    } else if (diff < -0.05) {
-                        this.camera_right()
+                const dx = waypointPos.x - botPos.x;
+                const dz = waypointPos.z - botPos.z;
+                console.log('interval start!', 5)       
+                // ¿Llegamos al waypoint?
+                const distSq = dx * dx + dz * dz;
+                if (distSq <= 0.09) {
+                    this.waypoints.path.shift();
+                    return;
+                }
 
-                    } else {
+                const target = this.normalizeAngle(this.angleToTargetFront(botPos.x, botPos.z, waypointPos.x, waypointPos.z) + Math.PI);
+                const r = -(this.bot_cords.r / 256) * Math.PI * 2
+                const current = this.normalizeAngle(-r);
 
-                        this.forward_move()
-                    }
-                };
-            }
+                let diff = current - target;
+                if (diff > Math.PI) diff -= 2 * Math.PI;
+                if (diff < -Math.PI) diff += 2 * Math.PI;
+
+                if (diff > 0.05) {
+
+                    this.camera_left()
+
+                } else if (diff < -0.05) {
+                    this.camera_right()
+
+                } else {
+
+                    this.forward_move()
+                }
+            };
+            
             
 
 
-        }, 1)
+        }, 100)
     }
     normalizeAngle(a) {
         return ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
     }
 
     angleToTargetFront(botX, botZ, targetX, targetZ) {
-        return Math.atan2(targetZ - botZ, targetX - botX) - Math.PI / 2;
+        return Math.atan2(targetZ - botZ, targetX - botX);
     }
     generarPaqueteBot(botData) {
         // Calcular movimiento hacia adelante
@@ -651,7 +760,7 @@ module.exports = class BotService {
         let result = []
 
         if (this.arr_actions.length > 0) {
-
+            console.log(`${this.#number_bot}_actions: `, this.arr_actions.length)
             result = [this.arr_actions.shift()]
         } else {
             result.push(ping)
@@ -729,7 +838,6 @@ module.exports = class BotService {
     }
     spawn(cords) {
         console.log('bot spawn: ', this.#number_bot)
-        this.start = true
         //this.bot_cords = cords
         //const pj_response = Buffer.from('3f00800d000d1000010000e55e1d465c55b244ba37d045f6a30000'.replace('261370c5', this.buffer_session.toString('hex')), 'hex')
         //pj_response.writeUInt8(this.bot_number+1, 4)
@@ -864,33 +972,28 @@ module.exports = class BotService {
     async shot() {
 
         console.log('shot bot')
-        //for(let i = 0; i < 1; i++){ 
-        //const shot = Buffer.from('3f00790e00262602714ea644f91e2143860ed745','hex')
-
-        //shot.writeFloatLE(this.player_cords.x, 8);
-        //shot.writeFloatLE(this.player_cords.y, 8 + 8);
-        /*const dificult = 0.3 //'hen' // 0.00 to 1.00 1.23 is god value
+        const dificult = 0.3 //'hen' // 0.00 to 1.00 1.23 is god value
         const random = Math.random()
 
-            const random_shot =  dificult > random
-            console.log('shot test!', random_shot, random, this.can_shot)
-            if(this.can_shot){
-                if(random_shot){
-                    const shot = Buffer.from('3f00d8af01fc120d1403001905','hex')
-                    shot.writeUInt8(this.#number_bot, 4)
-                    this.arr_actions.push(shot)
-                }else{
-                    const fail_shot = Buffer.from('3f00790e00262602714ea644f91e2143860ed745','hex')
-                    
-                    fail_shot.writeFloatLE(this.player_cords.x, 8);
-                    fail_shot.writeFloatLE(this.player_cords.y, 8 + 8);
-                    this.arr_actions.push(fail_shot)
-                }
-                this.in_shot ++
+        const random_shot =  dificult > random
+        console.log('shot test!', random_shot, random, this.can_shot)
+        if(this.can_shot){
+            if(random_shot){
+                const shot = Buffer.from('3f00d8af01fc120d1403001905','hex')
+                shot.writeUInt8(this.#number_bot, 4)
+                this.arr_actions.push(shot)
+            }else{
+                const fail_shot = Buffer.from('3f00790e00262602714ea644f91e2143860ed745','hex')
+                
+                fail_shot.writeFloatLE(this.player_cords.x, 8);
+                fail_shot.writeFloatLE(this.player_cords.y, 8 + 8);
+                this.arr_actions.push(fail_shot)
             }
+            this.in_shot ++
+        }
 
            
-        //}*/
+        
     }
     async forward_move() {
 
@@ -940,4 +1043,39 @@ module.exports = class BotService {
         ]
 
     }
+    connect_bot(number_bot){
+
+
+        const helloClient = Buffer.from("00026128011242191fb8bb154e4401763631007932","hex")
+        console.log('sended hello client: ', helloClient)
+        this.#server.send(helloClient, 8888, '192.168.1.128', (err)=>{
+            if(err){
+                console.error(new Error(err))
+                throw new Error(err.stack)
+            }
+            
+        })
+    }
 }
+module.exports = workerData
+const botService = new BotService(workerData.number_bot, undefined, workerData.bot_master, false, workerData.body_data, workerData.ZONE)
+parentPort.on("message", (msg_worker)=>{
+    try{
+        const {type, data} = JSON.parse(msg_worker)
+        switch(type){
+            case 'connect':
+                botService.connect_bot(data)
+            break;
+            case 'disconnect':
+                botService.disconnect()
+                break;
+            default:
+                
+                break;
+        }
+    }catch(err){
+        console.error(new Error(err.stack))
+        throw new Error(err)
+    }
+})
+botService.start_bot()

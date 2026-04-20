@@ -1,20 +1,21 @@
 const routerApi = require("./router.api");
 const fs = require('fs')
-
+const { Worker } = require('worker_threads');
 
 
 
 
 let AUsers = null
 const dgram = require('dgram');
-const BotService = require('./../services/bot.service')
+//const BotService = require('./../services/bot.service')
 const PacketQueue = require('./../helpers/packetQueue')
 class publicApi {
   router = new routerApi('');
   bot = null
   ip_server = "";
   port_server = 0;
-
+  #path_worker = './services/bot.service.js'
+  #workers = []
   num_bots = 0;
   mapper = {}
   id_bot_mapper = {}
@@ -22,6 +23,7 @@ class publicApi {
   bot_master = true
   packetQueue = null
   pathfinding = null
+
   constructor(bot) {
     this.bot = bot
     this.registerRoutes();
@@ -168,13 +170,55 @@ class publicApi {
       console.log(`create new bot order! ${this.number_bot_starts}`)
       this.number_bot_starts++
       this.start_bots(() => this.starter(), this.number_bot_starts).then(async () => {
-        const helloClient = Buffer.from("000221a5011242191fb8bb154e4401763631007932", "hex")
-        const hello_response = await this.send_package_to_server(this.number_bot_starts, helloClient)
       }).catch(err => new Error(err))
 
 
     }
   }
+    action_msg(obj_msg, first_msg_callback){
+        const {type, number_worker, data} = obj_msg
+        switch(type){
+            case 'listening':
+                console.log(type, number_worker, data)
+
+                break;
+            case 'start':
+                
+            break;
+            case 'msg_to_frontend':
+                this.bot.send_event(data)
+            break;
+            case 'next':
+              first_msg_callback()
+            break;
+            default:
+                const err = new Error(`worker msg type ${type} not recongnice:`)
+                console.error(err)
+                throw new Error(err)
+                break;
+        }
+
+    }
+    #send_msg_to_worker(number_worker, type, data){
+        try{
+
+            this.#workers[number_worker].postMessage(JSON.stringify({
+                type,
+                data
+            }));
+        }catch(err){
+            console.error(new Error(err.stack))
+            throw new Error(err)            
+        }
+    }
+    process_msg(str_msg){
+        try{
+            return JSON.parse(str_msg) 
+        }catch(err){
+            console.error(new Error(err.stack))
+            throw new Error(err)
+        }
+    }
   async recive_start(stream, headers, params) {
     const response = {
       "access-control-allow-origin": `${process.env.PROT_FRONT}://${process.env.DOMAIN_FRONT}:${process.env.PORT_FRONT}`,
@@ -197,17 +241,9 @@ class publicApi {
     this.bot_master = true
 
     this.number_bot_starts = 1
-    this.packetQueue = new PacketQueue({
-      mapper: {},
-      idBotMapper: {},
-      ipServer: this.ip_server,
-      portServer: this.port_server,
-      intervalMs: 5,
-      logging: this.loggin
-    })
     await this.start_bots(() => this.starter(), this.number_bot_starts)
-    const helloClient = Buffer.from("000221a5011242191fb8bb154e4401763631007932", "hex")
-    const hello_response = await this.send_package_to_server(this.number_bot_starts, helloClient)
+    //const helloClient = Buffer.from("000221a5011242191fb8bb154e4401763631007932", "hex")
+    //const hello_response = await this.send_package_to_server(this.number_bot_starts, helloClient)
 
     //stream.respond(response)
     stream.write('')
@@ -234,6 +270,8 @@ class publicApi {
         const { Pathfinding } = require('three-pathfinding');
 
         const ZONE = 'level';
+        this.body_data = body.data
+        this.ZONE = ZONE
         this.pathfinder = new Pathfinding();
 
         const { positions, index } = body.data;
@@ -265,17 +303,7 @@ class publicApi {
         return
       }
 
-      const bot_port = this.packetQueue.idBotMapper[body.id_bot]
-      if (body.state_bot === 'attack') {
 
-        const change_gun = Buffer.from('3f006f0c000d05', 'hex')
-        change_gun.writeInt8(body.id_bot, 4)
-        await this.send_package_to_server(body.id_bot, change_gun)
-        //const shot = Buffer.from('3f00f2320101803f104620c65b55b244608c08c64507f013','hex')
-
-
-        await this.packetQueue.mapper[bot_port].bot.shot()
-      }
 
 
       /*if ('forward_move' === body.state_bot) {
@@ -308,41 +336,23 @@ class publicApi {
     if (this.loggin) {
       console.log(`new bot: id_bot${i} port: ${obj_starter.port}`);
     }
-    this.packetQueue.mapper[obj_starter.port] = {
-      server: obj_starter.server,
-      number_bot: i,
-      port_bot: obj_starter.port,
-      bot: new BotService(i, this.bot, this.bot_master, this.pathfinder, this.ZONE)
-    }
-    this.packetQueue.mapper[obj_starter.port] = this.packetQueue.mapper[obj_starter.port]
+    const worker = new Worker(this.#path_worker, {
+      workerData: {number_bot: i, body_data: this.body_data, bot_master: this.bot_master, bot_helper: this.bot, ZONE: this.ZONE }
+    });
     this.bot_master = false
-    this.packetQueue.idBotMapper[i] = obj_starter.port
-    this.packetQueue.mapper[obj_starter.port].is_first_msg = false
-    this.packetQueue.mapper[obj_starter.port].bot.emit_start.on('user_start', () => {
-      first_msg_callback()
+    this.#workers.push(worker)
+    worker.on('message', (msg_worker) => {
+      this.action_msg(this.process_msg(msg_worker), first_msg_callback)
     });
-    this.packetQueue.mapper[obj_starter.port].bot.emit_start.on('user_set_number_bot', (number_bot) => {
-      
+    worker.on('error', (err) => {
+      console.error(new Error(err.stack))
+      throw new Error(err)
     });
-    this.packetQueue.mapper[obj_starter.port].server.on('message', (msg, rconf) => {
-      const now = new Date();
-
-      const pad = (n) => n.toString().padStart(2, '0');
-
-      const formattedDate =
-          pad(now.getDate()) + '/' +
-          pad(now.getMonth() + 1) + '/' +
-          now.getFullYear() + ' ' +
-          pad(now.getHours()) + ':' +
-          pad(now.getMinutes()) + ':' +
-          pad(now.getSeconds()) + '.' +
-          now.getMilliseconds().toString().padStart(3, '0');
-      console.log(`${formattedDate}: Nuevo mensaje recibido bot_${i}: `, msg.toString('hex'))
-      this.handler_message(msg, rconf, obj_starter)
-    })
-
-    return Promise.resolve()
-
+    worker.on('exit', (code) => {
+      if (code !== 0)
+        return Promise.reject(new Error(`Worker stopped with exit code ${code}`));
+    });
+    
   }
   get_server_and_port(i) {
     return new Promise((resolve, reject) => {
@@ -383,13 +393,13 @@ class publicApi {
 
         const pad = (n) => n.toString().padStart(2, '0');
         const formattedDate =
-            pad(now.getDate()) + '/' +
-            pad(now.getMonth() + 1) + '/' +
-            now.getFullYear() + ' ' +
-            pad(now.getHours()) + ':' +
-            pad(now.getMinutes()) + ':' +
-            pad(now.getSeconds()) + '.' +
-            now.getMilliseconds().toString().padStart(3, '0');
+          pad(now.getDate()) + '/' +
+          pad(now.getMonth() + 1) + '/' +
+          now.getFullYear() + ' ' +
+          pad(now.getHours()) + ':' +
+          pad(now.getMinutes()) + ':' +
+          pad(now.getSeconds()) + '.' +
+          now.getMilliseconds().toString().padStart(3, '0');
         console.log(`${formattedDate}: Nueva resupuesta enviada bot_${id_bot}: ${msg_to_server.toString('hex')} al mensaje: ${msg.toString('hex')}`)
         await this.send_package_to_server(id_bot, msg_to_server)
       } else {
@@ -441,11 +451,8 @@ class publicApi {
   }
   async disconnect_from_api(stream, headers, params) {
     console.log('!disconnect all bots')
-
-    for (let bot of Object.values(this.packetQueue.mapper)) {
-      const responses = await bot.bot.disconnect()
-
-
+    for (let bot in this.#workers) {
+      this.#send_msg_to_worker(bot, 'disconnect')
     }
     stream.write('')
     stream.end()
@@ -454,9 +461,8 @@ class publicApi {
   }
   async disconnect(stream, headers, params) {
 
-    for (let bot of Object.values(this.packetQueue.mapper)) {
-      const responses = await bot.bot.disconnect()
-
+    for (let bot in this.#workers) {
+      this.#send_msg_to_worker(bot, 'disconnect')
     }
 
 

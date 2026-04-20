@@ -400,6 +400,7 @@
                     }
 
                 } else if (data.type_action === 'spawn' && data.value_action) {
+                    console.log('spawn: ', data)
                     const idBot = Number(data.id_bot ?? data.value_action?.bot);
                     if (idBot <= 0) return;
 
@@ -415,6 +416,8 @@
                 }else if(data.type_action === 'waypoints'){
                     console.log('¡waypoints recive!: ', data)
                     _regenPath(data.id_bot, data.value_action.path, data.value_action.group);
+                }else if(data.type_action === 'die'){
+                    console.log('bot is death: ', data.id_bot)
                 }
             } catch (err) {
                 console.error('SSE parse error', err);
