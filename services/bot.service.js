@@ -16,7 +16,7 @@ const { parentPort, workerData } = require('worker_threads');
     start = false
     arr_actions = []
     in_game = false
-
+    bot_forware_start = false
     last_byte_send = null
     last_byte_send_next = null
     bot_master = null
@@ -90,12 +90,12 @@ const { parentPort, workerData } = require('worker_threads');
             this.#server.close();
         });
         this.#server.on('message', (msg)=>{
-            console.log('bot recv msg: ', msg.toString('hex'))
+            console.log(`bot recv msg ${this.#number_bot}: `, msg.toString('hex'))
             const responses = this.handler_message(msg)
             if(responses){
                 for(let msg_to_server of responses){
                     if(!msg_to_server.is_external){
-                        console.log('bot send msg: ', msg_to_server.toString('hex'))
+                        console.log(`bot send msg  ${this.#number_bot}: `, msg_to_server.toString('hex'))
                         this.#server.send(msg_to_server, 8888, '192.168.1.128', (err)=>{
                             if(err){
                                 console.error(new Error(err))
@@ -488,9 +488,16 @@ const { parentPort, workerData } = require('worker_threads');
         const pp = new THREE.Vector3(bx, 0.5, bz);
         return pp
     }
+    last_time_execute = 0
     ia_bot_start() {
         this.bot_action_interval = setInterval(() => {
             //console.log('interval start!')
+            const now = new Date().getTime()
+            if(now - this.last_time_execute > 250){
+                this.send_sync()
+                this.last_time_execute = now
+            }
+            
             const playerPos = this.player_cords;
             if (!playerPos) return;
             //console.log('interval start!', 2)
@@ -542,10 +549,16 @@ const { parentPort, workerData } = require('worker_threads');
                 if (diff < -Math.PI) diff += 2 * Math.PI;
                 //console.log('diff: ', diff, ' --- botR: ', this.bot_cords.r, ' --- playerR: ', this.player_cords.r)
                 if (diff > 0.05) {
-
+                    if(this.bot_forware_start){
+                        this.forward_move_stop()
+                    }
+                    
                     this.camera_left()
 
                 } else if (diff < -0.05) {
+                    if(this.bot_forware_start){
+                        this.forward_move_stop()
+                    }
                     this.camera_right()
 
                 } else {
@@ -575,10 +588,15 @@ const { parentPort, workerData } = require('worker_threads');
                 if (diff < -Math.PI) diff += 2 * Math.PI;
 
                 if (diff > 0.05) {
-
+                    if(this.bot_forware_start){
+                        this.forward_move_stop()
+                    }
                     this.camera_left()
 
                 } else if (diff < -0.05) {
+                    if(this.bot_forware_start){
+                        this.forward_move_stop()
+                    }
                     this.camera_right()
 
                 } else {
@@ -587,10 +605,8 @@ const { parentPort, workerData } = require('worker_threads');
                 }
             };
             
-            
 
-
-        }, 100)
+        }, 70)
     }
     normalizeAngle(a) {
         return ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
@@ -599,46 +615,46 @@ const { parentPort, workerData } = require('worker_threads');
     angleToTargetFront(botX, botZ, targetX, targetZ) {
         return Math.atan2(targetZ - botZ, targetX - botX);
     }
+    
     generarPaqueteBot(botData) {
         // Calcular movimiento hacia adelante
-        const speed = 50.0;
-        const radian = (botData.r / 256) * Math.PI * 2;  // O SIN EL NEGATIVO, LO QUE FUNCIONE
+            if(!this.bot_forware_start){
+                const speed = 60.0;
+                const radian = (botData.r / 256) * Math.PI * 2;  // O SIN EL NEGATIVO, LO QUE FUNCIONE
 
-        const newX = botData.x + Math.sin(radian) * speed;
-        const newZ = botData.z;
-        const newY = botData.y + Math.cos(radian) * speed;
-        const newR = botData.r;  // LA MISMA ROTACIÓN
+                const newX = botData.x + Math.sin(radian) * speed;
+                const newZ = botData.z;
+                const newY = botData.y + Math.cos(radian) * speed;
+                const newR = botData.r;  // LA MISMA ROTACIÓN
 
-        // 2. BUFFER DE 26 BYTES
-        const buf = Buffer.from('3f009e7b01017f55b58a1bc5e1ec564493ebe845769ad5d5010ac1927421', 'hex');
+                // 2. BUFFER DE 26 BYTES
+                const buffStart = Buffer.from('3f003214000c03', 'hex')
 
-        // X (8-11)
-        buf.writeFloatLE(newX, 8);
-        buf.writeFloatLE(newZ, 12);
-        buf.writeFloatLE(newY, 16);
+                this.bot_cords.x = newX;
+                this.bot_cords.y = newY;
+                this.bot_cords.z = newZ;
+                this.bot_cords.r = newR;
+                // 3. ENVIAR JSON CON LAS COORDENADAS NUEVAS
+                this.bot_helper.send_event(JSON.stringify({
+                    type_action: 'sync',
+                    value_action: {
+                        bot: this.#number_bot,
+                        x: newX,  // ✅ X NUEVA
+                        y: newY,  // ✅ Y NUEVA
+                        z: newZ,  // ✅ Z NUEVA
+                        r: newR   // ✅ R NUEVA
+                    },
+                    id_bot: this.#number_bot
+                }));
+                buffStart.writeUInt8(this.#number_bot, 4)
 
-        // R (20) - uint8, no float32
-        buf.writeUInt8(newR, 21);
-        this.bot_cords.x = newX;
-        this.bot_cords.y = newY;
-        this.bot_cords.z = newZ;
-        this.bot_cords.r = newR;
-        // 3. ENVIAR JSON CON LAS COORDENADAS NUEVAS
-        this.bot_helper.send_event(JSON.stringify({
-            type_action: 'sync',
-            value_action: {
-                bot: this.#number_bot,
-                x: newX,  // ✅ X NUEVA
-                y: newY,  // ✅ Y NUEVA
-                z: newZ,  // ✅ Z NUEVA
-                r: newR   // ✅ R NUEVA
-            },
-            id_bot: this.#number_bot
-        }));
-
-
-
-        return buf;
+                this.bot_forware_start = true
+                this.arr_actions.push(buffStart)
+                setTimeout(()=>{
+                    this.forward_move_stop()
+                },30)
+            }
+        return [];
     }
     generate_pack_camera_right(botData) {
         let view = 0        // Calcular movimiento hacia adelante
@@ -651,15 +667,7 @@ const { parentPort, workerData } = require('worker_threads');
 
 
         // 2. BUFFER DE 26 BYTES
-        const buf = Buffer.from('3f009e7b01017f55b58a1bc5e1ec564493ebe845769ad5d5010ac1927421', 'hex');
 
-        // X (8-11)
-        buf.writeFloatLE(botData.x, 8);
-        buf.writeFloatLE(botData.z, 12);
-        buf.writeFloatLE(botData.y, 16);
-
-        // R (20) - uint8, no float32
-        buf.writeUInt8(this.bot_cords.r, 21);
 
         // 3. ENVIAR JSON CON LAS COORDENADAS NUEVAS
         this.bot_helper.send_event(JSON.stringify({
@@ -693,17 +701,6 @@ const { parentPort, workerData } = require('worker_threads');
         }
 
 
-        // 2. BUFFER DE 26 BYTES
-        const buf = Buffer.from('3f009e7b01017f55b58a1bc5e1ec564493ebe845769ad5d5010ac1927421', 'hex');
-
-        // X (8-11)
-        buf.writeFloatLE(botData.x, 8);
-        buf.writeFloatLE(botData.z, 12);
-        buf.writeFloatLE(botData.y, 16);
-
-        // R (20) - uint8, no float32
-        buf.writeUInt8(this.bot_cords.r, 21);
-
         // 3. ENVIAR JSON CON LAS COORDENADAS NUEVAS
         this.bot_helper.send_event(JSON.stringify({
             type_action: 'sync',
@@ -734,11 +731,12 @@ const { parentPort, workerData } = require('worker_threads');
         this.arr_actions.push(chat)
         this.bot_helper.send_event(JSON.stringify({ type_action: 'die', id_bot: this.#number_bot }))
         // 3f00bd30000c15000d1000017f554004254690571541062da5c5bbb2d5d5
-
-        const respawn_buffer = Buffer.from('3f00ad2f000e190058039f5390e32a040000000000776900020b1900', 'hex')
-        respawn_buffer.writeUInt8(this.#number_bot, 4)
-        respawn_buffer.writeUInt8(0x02, 25)
-        this.arr_actions.push(respawn_buffer)
+        const pj_setup = Buffer.from('3f005f0c010e000000000000000000000363011070b21900020b0610'.replace('123123332323133313213', this.buffer_session.toString('hex')), 'hex')
+        //console.log('send spawn: ', this.#number_bot)
+        pj_setup.writeUInt8(this.#number_bot, 4) //byte ultimo numero de jugadores en partida 0x00
+        pj_setup.writeUInt8(0x02, 25) //modelo byte 0x00 torrente 0x0b yonki
+        //pj_setup.writeUInt8(0x02, 24) //equipo byte 0x02 random 0x01 amarillo 0x00 rojo
+        this.arr_actions.push(pj_setup)
         if (this.bot_cords) {
             this.send_signal_drop_gun()
         }
@@ -995,6 +993,20 @@ const { parentPort, workerData } = require('worker_threads');
            
         
     }
+    send_sync(){
+        const buf = Buffer.from('3f009e7b01017f55b58a1bc5e1ec564493ebe845769ad5d5010ac1927421', 'hex');
+
+        // X (8-11)
+        buf.writeFloatLE(this.bot_cords.x, 8);
+        buf.writeFloatLE(this.bot_cords.z, 12);
+        buf.writeFloatLE(this.bot_cords.y, 16);
+
+        // R (20) - uint8, no float32
+        buf.writeUInt8(this.bot_cords.r, 21);
+        buf.writeUInt8(this.#number_bot, 4);
+        this.arr_actions.push(buf)
+        return
+    }
     async forward_move() {
 
         /*const buf_forware = Buffer.from('3f008e10000c03','hex')
@@ -1005,10 +1017,18 @@ const { parentPort, workerData } = require('worker_threads');
         buf_sforware.writeUInt8(this.#number_bot, 4)
         this.arr_actions.push(buf_sforware)*/
 
-        const sync_pack = this.generarPaqueteBot(this.bot_cords)
-        sync_pack.writeUInt8(this.#number_bot, 4)
-        this.arr_actions.push(sync_pack)
+        this.generarPaqueteBot(this.bot_cords)
+
+        //this.arr_actions.push(sync_pack[1])
         //this.bot_cords = 
+        return
+    }
+    async forward_move_stop(){
+        const buffStop = Buffer.from('3f003214000c15', 'hex')
+        buffStop.writeUInt8(this.#number_bot, 4)
+
+        this.arr_actions.push(buffStop)
+        this.bot_forware_start = false
         return
     }
     camera_right() {
