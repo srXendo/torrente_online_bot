@@ -26,11 +26,12 @@ const { parentPort, workerData } = require('worker_threads');
     pathfinder = null
     waypoints = null
     last_bnSeq = null
+    can_move = false
     bot_helper = {send_event: (obj_json)=>{
         this.#send_msg_worker("msg_to_frontend", this.#number_bot, obj_json)
     }}
     last_bnRecv = null
-    constructor(number_bot, bot_helper, bot_master, body_data, ZONE) {
+    constructor(number_bot, bot_helper, bot_master, body_data, ZONE, none, ip, port) {
         const dgram = require('dgram')
         this.#server = dgram.createSocket('udp4');
         
@@ -39,6 +40,9 @@ const { parentPort, workerData } = require('worker_threads');
         this.body_data = body_data
 
         this.#number_bot = number_bot
+        this.#ip_server = ip
+        console.log('port server : ', port, ip)
+        this.#port_server = port
         this.buffer_session = (this.buffer_session + `${number_bot}`.padStart(2, '0'))
         this.user_bot = Buffer.from(('Bot' + `${number_bot}`.padStart(2, "0")), 'ascii')
         const THREE = require('three');
@@ -82,7 +86,7 @@ const { parentPort, workerData } = require('worker_threads');
         this.#server.on('listening', () => {
             const address = this.#server.address();
             this.#send_msg_worker('listening', this.#number_bot, {port: address.port})
-            this.connect_bot()
+            this.connect_bot(undefined, this.#ip_server, this.#port_server)
             
         });
         this.#server.on('error', (err) => {
@@ -96,7 +100,7 @@ const { parentPort, workerData } = require('worker_threads');
                 for(let msg_to_server of responses){
                     if(!msg_to_server.is_external){
                         console.log(`bot send msg  ${this.#number_bot}: `, msg_to_server.toString('hex'))
-                        this.#server.send(msg_to_server, 8888, '192.168.1.128', (err)=>{
+                        this.#server.send(msg_to_server, this.#port_server, this.#ip_server, (err)=>{
                             if(err){
                                 console.error(new Error(err))
                                 throw new Error(err.stack)
@@ -244,6 +248,7 @@ const { parentPort, workerData } = require('worker_threads');
                 }
                     this.emit_start.emit('user_start');
                     this.#send_msg_worker('next', this.#number_bot, null)
+                    
                 break;
             case 0xd4:
 
@@ -289,11 +294,12 @@ const { parentPort, workerData } = require('worker_threads');
                     console.log(`${this.user_bot} vida restante: `, msg.readUInt8(10))
                     if (msg.readUInt8(10) === 0) {
                         console.log(`ha muerto: ${this.user_bot}`)
-  
+                        this.can_move = false
                         
                         if (this.bot_action_interval) {
                             clearInterval(this.bot_action_interval)
                             this.bot_action_interval = null
+                            
                         }
                         this.send_signal_die()
                         this.can_shot = false
@@ -354,7 +360,7 @@ const { parentPort, workerData } = require('worker_threads');
                     this.player_cords = this.extractRespawnXZR(msg, bot)
                     //this.start_move()
                 }
-
+                
                 if (this.#number_bot === bot) {
                     
                     this.can_shot = true
@@ -372,6 +378,7 @@ const { parentPort, workerData } = require('worker_threads');
                         ping_ce.writeUInt8((msg.readUInt8(2)) & 0xff, 5)
                         ping_ce.writeUInt8(msg.readUInt8(3), 4)
                         //this.send_waypoints()
+                        this.can_move = true
                         this.ia_bot_start()
                         
                     
@@ -545,7 +552,7 @@ const { parentPort, workerData } = require('worker_threads');
                 const dx = waypointPos.x - botPos.x;
                 const dz = waypointPos.z - botPos.z;
                 const distSq = dx * dx + dz * dz;
-                if(distSq < 0.09){
+                if(distSq < 0.02){
                     this.shot()
                 }
                 // ¿Llegamos al waypoint?
@@ -565,22 +572,25 @@ const { parentPort, workerData } = require('worker_threads');
                 if (diff > Math.PI) diff -= 2 * Math.PI;
                 if (diff < -Math.PI) diff += 2 * Math.PI;
                 //console.log('diff: ', diff, ' --- botR: ', this.bot_cords.r, ' --- playerR: ', this.player_cords.r)
-                if (diff > 0.05) {
-                    if(this.bot_forware_start){
-                        this.forward_move_stop()
+                if(this.can_move){
+
+                    if (diff > 0.05) {
+                        if(this.bot_forware_start){
+                            this.forward_move_stop()
+                        }
+                        
+                        this.camera_left()
+
+                    } else if (diff < -0.05) {
+                        if(this.bot_forware_start){
+                            this.forward_move_stop()
+                        }
+                        this.camera_right()
+
+                    } else {
+
+                        this.forward_move()
                     }
-                    
-                    this.camera_left()
-
-                } else if (diff < -0.05) {
-                    if(this.bot_forware_start){
-                        this.forward_move_stop()
-                    }
-                    this.camera_right()
-
-                } else {
-
-                    this.forward_move()
                 }
             }else if((this.waypoints && this.waypoints.path.length > 0) && distToPlayer > 400){
                 
@@ -603,27 +613,28 @@ const { parentPort, workerData } = require('worker_threads');
                 let diff = current - target;
                 if (diff > Math.PI) diff -= 2 * Math.PI;
                 if (diff < -Math.PI) diff += 2 * Math.PI;
+                if(this.can_move){
+                    if (diff > 0.05) {
+                        if(this.bot_forware_start){
+                            this.forward_move_stop()
+                        }
+                        this.camera_left()
 
-                if (diff > 0.05) {
-                    if(this.bot_forware_start){
-                        this.forward_move_stop()
+                    } else if (diff < -0.05) {
+                        if(this.bot_forware_start){
+                            this.forward_move_stop()
+                        }
+                        this.camera_right()
+
+                    } else {
+
+                        this.forward_move()
                     }
-                    this.camera_left()
-
-                } else if (diff < -0.05) {
-                    if(this.bot_forware_start){
-                        this.forward_move_stop()
-                    }
-                    this.camera_right()
-
-                } else {
-
-                    this.forward_move()
                 }
             };
             
 
-        }, 70)
+        }, 88)
     }
     normalizeAngle(a) {
         return ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
@@ -636,7 +647,7 @@ const { parentPort, workerData } = require('worker_threads');
     generarPaqueteBot(botData) {
         // Calcular movimiento hacia adelante
             if(!this.bot_forware_start){
-                const speed = 60.1;
+                const speed = 45.1;
                 const radian = (botData.r / 256) * Math.PI * 2;  // O SIN EL NEGATIVO, LO QUE FUNCIONE
 
                 const newX = botData.x + Math.sin(radian) * speed;
@@ -666,10 +677,12 @@ const { parentPort, workerData } = require('worker_threads');
                 buffStart.writeUInt8(this.#number_bot, 4)
 
                 this.bot_forware_start = true
-                this.arr_actions.push(buffStart)
+                //this.arr_actions.push(buffStart)
+                
                 setTimeout(()=>{
                     this.forward_move_stop()
-                },250)
+                    
+                },20)
             }
         return [];
     }
@@ -748,15 +761,25 @@ const { parentPort, workerData } = require('worker_threads');
         this.arr_actions.push(chat)
         this.bot_helper.send_event(JSON.stringify({ type_action: 'die', id_bot: this.#number_bot }))
         // 3f00bd30000c15000d1000017f554004254690571541062da5c5bbb2d5d5
+        if (this.bot_cords) {
+            this.send_signal_drop_gun()
+        }
         const pj_setup = Buffer.from('3f005f0c010e000000000000000000000363011070b21900020b0610'.replace('123123332323133313213', this.buffer_session.toString('hex')), 'hex')
         //console.log('send spawn: ', this.#number_bot)
         pj_setup.writeUInt8(this.#number_bot, 4) //byte ultimo numero de jugadores en partida 0x00
         pj_setup.writeUInt8(0x02, 25) //modelo byte 0x00 torrente 0x0b yonki
         //pj_setup.writeUInt8(0x02, 24) //equipo byte 0x02 random 0x01 amarillo 0x00 rojo
+
+
+        pj_setup.writeFloatLE(this.bot_cords.x, 8);
+        pj_setup.writeFloatLE(this.bot_cords.z, 8 + 4);
+        pj_setup.writeFloatLE(this.bot_cords.y, 8 + 8);
+        pj_setup.writeUInt8(this.bot_cords.r, 8 + 13);
+
+
+
         this.arr_actions.push(pj_setup)
-        if (this.bot_cords) {
-            this.send_signal_drop_gun()
-        }
+
     }
     send_signal_drop_gun() {
         //3f001874cefa05101c000000
@@ -1042,10 +1065,10 @@ const { parentPort, workerData } = require('worker_threads');
         return
     }
     async forward_move_stop(){
-        /*const buffStop = Buffer.from('3f003214000c15', 'hex')
+        const buffStop = Buffer.from('3f00da0b0027', 'hex')
         buffStop.writeUInt8(this.#number_bot, 4)
 
-        this.arr_actions.push(buffStop)*/
+        this.arr_actions.push(buffStop)
         this.bot_forware_start = false
         return
     }
@@ -1081,12 +1104,13 @@ const { parentPort, workerData } = require('worker_threads');
         ]
 
     }
-    connect_bot(number_bot){
+    connect_bot(number_bot, ip, port){
 
 
-        const helloClient = Buffer.from("00026128011242191fb8bb154e4401763631007932","hex")
+        const helloClient = Buffer.from("0002F18A011242191FB8BB154E4401763631007932","hex")
         console.log('sended hello client: ', helloClient)
-        this.#server.send(helloClient, 8888, '192.168.1.128', (err)=>{
+        console.log('port server: ', ip, typeof port)
+        this.#server.send(helloClient, this.#port_server, this.#ip_server, (err)=>{
             if(err){
                 console.error(new Error(err))
                 throw new Error(err.stack)
@@ -1096,13 +1120,14 @@ const { parentPort, workerData } = require('worker_threads');
     }
 }
 module.exports = workerData
-const botService = new BotService(workerData.number_bot, undefined, workerData.bot_master, false, workerData.body_data, workerData.ZONE)
+console.log( workerData.ip_connect, typeof workerData.port_connect, workerData)
+const botService = new BotService(workerData.number_bot, undefined, workerData.bot_master, false, workerData.body_data, workerData.ZONE, workerData.ip_connect, workerData.port_connect)
 parentPort.on("message", (msg_worker)=>{
     try{
         const {type, data} = JSON.parse(msg_worker)
         switch(type){
             case 'connect':
-                botService.connect_bot(data)
+                botService.connect_bot(data, workerData.ip_connect, workerData.port_connect)
             break;
             case 'disconnect':
                 botService.disconnect()

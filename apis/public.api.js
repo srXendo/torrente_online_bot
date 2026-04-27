@@ -6,6 +6,7 @@ const { Worker } = require('worker_threads');
 
 
 let AUsers = null
+const path = require('path')
 const dgram = require('dgram');
 //const BotService = require('./../services/bot.service')
 const PacketQueue = require('./../helpers/packetQueue')
@@ -14,7 +15,7 @@ class publicApi {
   bot = null
   ip_server = "";
   port_server = 0;
-  #path_worker = './services/bot.service.js'
+  #path_worker = path.join(__dirname, './../services/bot.service.js')
   #workers = []
   num_bots = 0;
   mapper = {}
@@ -55,7 +56,9 @@ class publicApi {
       'content-type': 'text/html; charset=utf-8',
       ":status": 200,
     }
-    const html = fs.readFileSync('./public/index.html');
+
+    const indexpath  = path.join(__dirname, './../public/index.html');
+    const html = fs.readFileSync(indexpath);
     stream.respond(response)
     stream.write(html)
     stream.end()
@@ -70,7 +73,8 @@ class publicApi {
       'content-type': 'text/css; charset=utf-8',
       ":status": 200,
     }
-    const style_css = fs.readFileSync('./public/styles.css');
+    const csspath  = path.join(__dirname, './../public/styles.css');
+    const style_css = fs.readFileSync(csspath);
     stream.respond(response)
     stream.write(style_css)
     stream.end()
@@ -85,7 +89,8 @@ class publicApi {
       'content-type': 'text/javascript; charset=utf-8',
       ":status": 200,
     }
-    const index_js = fs.readFileSync('./public/pathfinder.worker.js');
+    const pathworker  = path.join(__dirname, './../public/pathfinder.worker.js');
+    const index_js = fs.readFileSync(pathworker);
     stream.respond(response)
     stream.write(index_js)
     stream.end()
@@ -100,7 +105,8 @@ class publicApi {
       'content-type': 'text/javascript; charset=utf-8',
       ":status": 200,
     }
-    const index_js = fs.readFileSync('./public/index.js');
+    const pathjs  = path.join(__dirname, './../public/index.js');    
+    const index_js = fs.readFileSync(pathjs);
     stream.respond(response)
     stream.write(index_js)
     stream.end()
@@ -116,7 +122,9 @@ class publicApi {
       'content-type': 'text/plain; charset=utf-8',
       ":status": 200,
     }
-    const map = fs.readFileSync('./public/navmesh.glb');
+    
+    const pathmap  = path.join(__dirname, './../public/navmesh.glb');    
+    const map = fs.readFileSync(pathmap);
     stream.respond(response)
     stream.write(map)
     stream.end()
@@ -131,7 +139,8 @@ class publicApi {
       'content-type': 'text/plain; charset=utf-8',
       ":status": 200,
     }
-    const map = fs.readFileSync('./public/map.obj');
+    const pathmap  = path.join(__dirname, './../public/map.obj');    
+    const map = fs.readFileSync(pathmap);
     stream.respond(response)
     stream.write(map)
     stream.end()
@@ -146,7 +155,8 @@ class publicApi {
       'content-type': 'text/plain; charset=utf-8',
       ":status": 200,
     }
-    const model = fs.readFileSync('./public/model.bot.obj');
+    const pathmodel  = path.join(__dirname, './../public/model.bot.obj');  
+    const model = fs.readFileSync(pathmodel);
     stream.respond(response)
     stream.write(model)
     stream.end()
@@ -337,7 +347,7 @@ class publicApi {
       console.log(`new bot: id_bot${i} port: ${obj_starter.port}`);
     }
     const worker = new Worker(this.#path_worker, {
-      workerData: {number_bot: i, body_data: this.body_data, bot_master: this.bot_master, bot_helper: this.bot, ZONE: this.ZONE }
+      workerData: {number_bot: i, body_data: this.body_data, bot_master: this.bot_master, bot_helper: this.bot, ZONE: this.ZONE, ip_connect: this.ip_server, port_connect: this.port_server}
     });
     this.bot_master = false
     this.#workers.push(worker)

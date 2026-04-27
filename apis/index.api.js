@@ -1,6 +1,6 @@
 const http2 = require("http2");
 const fs = require("fs");
-
+const path = require('path')
 class apis{
   server 
   constructor(bot_helper){
@@ -14,10 +14,15 @@ class apis{
     ];
     this.publicApi = publicApi
     // 🔹 Crear servidor HTTP/2 seguro
+    const certPath = path.join(__dirname, 'server.crt');
+    const keyPath  = path.join(__dirname, 'server.key');
+
+    const cert = fs.readFileSync(certPath);
+    const key  = fs.readFileSync(keyPath);
     const server = http2.createSecureServer(
       {
-        key: fs.readFileSync("server.key"),
-        cert: fs.readFileSync("server.crt"),
+        key: key,
+        cert: cert,
         allowHTTP1: true, // compatibilidad con clientes HTTP/1.1
       }
     );
