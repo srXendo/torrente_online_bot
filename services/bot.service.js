@@ -227,29 +227,37 @@ const { parentPort, workerData } = require('worker_threads');
         switch (action) {
             case 0xd2:
 
-
+  
+                
+               
                 if (msg.readUInt8(msg.length - 1) === 0xde) {
 
+
+                        setTimeout(()=>{
+
+                        }, 200)
+                        
+                        
 
                     //this.player_cords = this.predecirMovimientoForward(this.player_cords, 10)
 
                 }
+                    this.emit_start.emit('user_start');
+                    this.#send_msg_worker('next', this.#number_bot, null)
                 break;
             case 0xd4:
-                /*const change_gun = Buffer.from('3f006f0c000d05', 'hex')
-                change_gun.writeInt8(this.#number_bot, 4)
 
-                this.arr_actions.push(change_gun)*/
-
+                
 
                 break;
             case 0xd8:
                 console.log('bot can shot: ')
                 this.can_shot = true
-                
+
             //this.send_signal_die()
 
             case 0xfb:
+
                 return []
                 break;
             case 0x0d:
@@ -319,8 +327,9 @@ const { parentPort, workerData } = require('worker_threads');
                 console.log(`cambio de id?: ${this.#number_bot} : ${msg.readUInt8(4)}`)
                 this.#number_bot = msg.readUInt8(4)
                 this.user_bot = Buffer.from(('Bot' + `${this.#number_bot }`.padStart(2, "0")), 'ascii')
-                this.emit_start.emit('user_start');
-                this.#send_msg_worker('next', this.#number_bot, null)
+
+                
+
                 //this.send_waypoints()
                 //this.ia_bot_start()
                 break;
@@ -363,9 +372,9 @@ const { parentPort, workerData } = require('worker_threads');
                         ping_ce.writeUInt8((msg.readUInt8(2)) & 0xff, 5)
                         ping_ce.writeUInt8(msg.readUInt8(3), 4)
                         //this.send_waypoints()
-                        if(!this.start){
-                            this.ia_bot_start()
-                        }
+                        this.ia_bot_start()
+                        
+                    
                         this.start = true
                         //responses.push(ping_ce)
                     } catch (err) {
@@ -386,6 +395,9 @@ const { parentPort, workerData } = require('worker_threads');
                 break;
             case 0x26:
                 // console.log('shot air', msg)    
+                break;
+            case 0x00:
+
                 break;
             case 0x01:
                 const bot_cords = this.extractRespawnXZR(msg, bot)
@@ -409,7 +421,7 @@ const { parentPort, workerData } = require('worker_threads');
                 if (bot == this.#number_bot) {
 
                     this.in_game = true
-                    this.bot_cords = this.extractRespawnXZR(msg, bot)
+                    //this.bot_cords = this.extractRespawnXZR(msg, bot)
                     this.bot_helper.send_event(JSON.stringify({ type_action: 'sync', value_action: { bot: bot, x: bot_cords.x, y: bot_cords.y, z: bot_cords.z, r: bot_cords.r }, id_bot: bot }))
 
                     //this.follow_cam()
@@ -430,11 +442,16 @@ const { parentPort, workerData } = require('worker_threads');
             case 0xce:
                 //
 
-                
                 const ping_ce = Buffer.from('80060100ac240000ee8b4503', 'hex')
                 ping_ce.writeUInt8(msg.readUInt8(2), 5)
                 ping_ce.writeUInt8(msg.readUInt8(3), 4)
                 this.arr_actions.push(this.try_other_spawn())
+                /*setTimeout(()=>{
+                    
+                        if(!this.bot_action_interval){
+                            this.ia_bot_start()
+                        }
+                }, 200)*/
 
                 break;
             default:
@@ -619,23 +636,23 @@ const { parentPort, workerData } = require('worker_threads');
     generarPaqueteBot(botData) {
         // Calcular movimiento hacia adelante
             if(!this.bot_forware_start){
-                const speed = 60.0;
+                const speed = 60.1;
                 const radian = (botData.r / 256) * Math.PI * 2;  // O SIN EL NEGATIVO, LO QUE FUNCIONE
 
                 const newX = botData.x + Math.sin(radian) * speed;
-                const newZ = botData.z;
+                const newZ = botData.z ;
                 const newY = botData.y + Math.cos(radian) * speed;
-                const newR = botData.r;  // LA MISMA ROTACIÓN
+
 
                 // 2. BUFFER DE 26 BYTES
-                const buffStart = Buffer.from('3f003214000c03', 'hex')
+                const buffStart = Buffer.from('3f00fb0d000c03', 'hex')
 
                 this.bot_cords.x = newX;
                 this.bot_cords.y = newY;
                 this.bot_cords.z = newZ;
-                this.bot_cords.r = newR;
+
                 // 3. ENVIAR JSON CON LAS COORDENADAS NUEVAS
-                this.bot_helper.send_event(JSON.stringify({
+                /*this.bot_helper.send_event(JSON.stringify({
                     type_action: 'sync',
                     value_action: {
                         bot: this.#number_bot,
@@ -645,14 +662,14 @@ const { parentPort, workerData } = require('worker_threads');
                         r: newR   // ✅ R NUEVA
                     },
                     id_bot: this.#number_bot
-                }));
+                }));*/
                 buffStart.writeUInt8(this.#number_bot, 4)
 
                 this.bot_forware_start = true
                 this.arr_actions.push(buffStart)
                 setTimeout(()=>{
                     this.forward_move_stop()
-                },30)
+                },250)
             }
         return [];
     }
@@ -681,7 +698,7 @@ const { parentPort, workerData } = require('worker_threads');
             },
             id_bot: this.#number_bot
         }));
-        const row = Buffer.from('3f002e1d000a77b3d60a', 'hex')
+        const row = Buffer.from('3f00720a000abf4cd6ab00f8', 'hex')
         row.writeUInt8(this.#number_bot, 4)
         //row.writeUint16LE( Math.floor(Math.random() * 180) , 8)
         row.writeUint8(this.bot_cords.r, 7)
@@ -713,7 +730,7 @@ const { parentPort, workerData } = require('worker_threads');
             },
             id_bot: this.#number_bot
         }));
-        const row = Buffer.from('3f002e1d000a77b3d60a', 'hex')
+        const row = Buffer.from('3f00720a000abf4cd6ab00f8', 'hex')
         row.writeUInt8(this.#number_bot, 4)
         //row.writeUint16LE( Math.floor(Math.random() * 180) , 8)
         row.writeUint8(this.bot_cords.r, 7)
@@ -759,7 +776,7 @@ const { parentPort, workerData } = require('worker_threads');
 
         if (this.arr_actions.length > 0) {
             console.log(`${this.#number_bot}_actions: `, this.arr_actions.length)
-            result = [this.arr_actions.shift()]
+            result.push(this.arr_actions.shift())
         } else {
             result.push(ping)
         }
@@ -879,7 +896,7 @@ const { parentPort, workerData } = require('worker_threads');
             
                 row.writeUint8( (next_prev + idx) & 0xFF, 2)
 
-                row.writeUint8((count_prev ), 3)
+                row.writeUint8(count_prev , 3)
 
 
 
@@ -995,16 +1012,17 @@ const { parentPort, workerData } = require('worker_threads');
     }
     send_sync(){
         const buf = Buffer.from('3f009e7b01017f55b58a1bc5e1ec564493ebe845769ad5d5010ac1927421', 'hex');
+        if(this.bot_cords){
+            // X (8-11)
+            buf.writeFloatLE(this.bot_cords.x, 8);
+            buf.writeFloatLE(this.bot_cords.z, 12);
+            buf.writeFloatLE(this.bot_cords.y, 16);
 
-        // X (8-11)
-        buf.writeFloatLE(this.bot_cords.x, 8);
-        buf.writeFloatLE(this.bot_cords.z, 12);
-        buf.writeFloatLE(this.bot_cords.y, 16);
-
-        // R (20) - uint8, no float32
-        buf.writeUInt8(this.bot_cords.r, 21);
-        buf.writeUInt8(this.#number_bot, 4);
-        this.arr_actions.push(buf)
+            // R (20) - uint8, no float32
+            buf.writeUInt8(this.bot_cords.r, 21);
+            buf.writeUInt8(this.#number_bot, 4);
+            this.arr_actions.push(buf)
+        }
         return
     }
     async forward_move() {
@@ -1024,10 +1042,10 @@ const { parentPort, workerData } = require('worker_threads');
         return
     }
     async forward_move_stop(){
-        const buffStop = Buffer.from('3f003214000c15', 'hex')
+        /*const buffStop = Buffer.from('3f003214000c15', 'hex')
         buffStop.writeUInt8(this.#number_bot, 4)
 
-        this.arr_actions.push(buffStop)
+        this.arr_actions.push(buffStop)*/
         this.bot_forware_start = false
         return
     }
