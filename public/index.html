@@ -229,7 +229,7 @@
 
             targetPosition.copy(intersects[0].point);
             helper.reset().setPlayerPosition(playerPosition);
-
+            
             if (event.metaKey || event.ctrlKey || event.button === 2) {
                 path    = null;
                 groupID = pathfinder.getGroup(ZONE, targetPosition, true);
@@ -312,7 +312,7 @@
             const playerGroup = pathfinder.getGroup(ZONE, playerPos, true);
             if (playerGroup === null || playerGroup === undefined) return;
 
-            const newPath = pathfinder.findPath(botPos, playerPos, ZONE, playerGroup);
+            
             if (path && path.length > 0) {
                 botsWaypoints[id] = { path: path, group: group };
                 helper.setPath(path);

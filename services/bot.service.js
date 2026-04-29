@@ -31,7 +31,7 @@ const { parentPort, workerData } = require('worker_threads');
         this.#send_msg_worker("msg_to_frontend", this.#number_bot, obj_json)
     }}
     last_bnRecv = null
-    constructor(number_bot, bot_helper, bot_master, body_data, ZONE, none, ip, port) {
+    constructor(number_bot, bot_helper, bot_master, body_data, ZONE, ip, port) {
         const dgram = require('dgram')
         this.#server = dgram.createSocket('udp4');
         
@@ -48,7 +48,7 @@ const { parentPort, workerData } = require('worker_threads');
         const THREE = require('three');
         const { Pathfinding } = require('three-pathfinding');
         this.pathfinder = new Pathfinding();
-
+        console.log(body_data)
         const { positions, index } = body_data;
 
         const geometry = new THREE.BufferGeometry();
@@ -71,7 +71,8 @@ const { parentPort, workerData } = require('worker_threads');
         }
 
         const zone = Pathfinding.createZone(geometry);
-        this.pathfinder.setZoneData(ZONE, zone);
+        this.pathfinder.setZoneData('level', zone);
+        console.log("zones: ",this.pathfinder.zones, geometry)
 
     }
     #send_msg_worker(type, number_worker, data){
@@ -234,11 +235,12 @@ const { parentPort, workerData } = require('worker_threads');
   
                 
                
-                if (msg.readUInt8(msg.length - 1) === 0xde) {
+                if (!(~msg.toString('ascii').indexOf('se ha conectado'))) {
 
 
                         setTimeout(()=>{
-
+                            this.emit_start.emit('user_start');
+                            this.#send_msg_worker('next', this.#number_bot, null)
                         }, 200)
                         
                         
@@ -246,8 +248,7 @@ const { parentPort, workerData } = require('worker_threads');
                     //this.player_cords = this.predecirMovimientoForward(this.player_cords, 10)
 
                 }
-                    this.emit_start.emit('user_start');
-                    this.#send_msg_worker('next', this.#number_bot, null)
+
                     
                 break;
             case 0xd4:
@@ -373,7 +374,7 @@ const { parentPort, workerData } = require('worker_threads');
                     this.bot_cords = bot_cords
                     this.bot_helper.send_event(JSON.stringify({ type_action: 'spawn', value_action: bot_cords, id_bot: this.#number_bot }))
                     try {
-
+                        
                         const ping_ce = Buffer.from('80060100ac240000ee8b4503', 'hex')
                         ping_ce.writeUInt8((msg.readUInt8(2)) & 0xff, 5)
                         ping_ce.writeUInt8(msg.readUInt8(3), 4)
@@ -408,13 +409,13 @@ const { parentPort, workerData } = require('worker_threads');
                 break;
             case 0x01:
                 const bot_cords = this.extractRespawnXZR(msg, bot)
-
+                //this.send_sync()
                 if (bot == 0) {
                     //console.log('sync player bot number: ', msg)
                     this.player_cords = bot_cords
-                    //this.send_waypoints()
+                    
                     //this.follow_cam()
-
+                    this.send_waypoints()
 
                 }
 
@@ -473,26 +474,35 @@ const { parentPort, workerData } = require('worker_threads');
     lastGroup = null;
     lastPlayerPos = null
     send_waypoints() {
+        console.log("waypoints 1:")
         const playerPos = this.player_cords;
         if (!playerPos) return;
-
-        const botPos = this.bot_cords;
-        if (!botPos) return;
-
-        const pp = this.get_vector(playerPos.x, playerPos.y);
-        const bp = this.get_vector(botPos.x, botPos.y);
-
-        const playerGroup = this.pathfinder.getGroup('level', pp, true);
-        if (playerGroup == null) return;
+        console.log("waypoints 2:")
+        if(!this.lastPlayerPos ){
+            this.lastPlayerPos = playerPos
+        }
         if(this.lastPlayerPos){
             const dx = playerPos.x - this.lastPlayerPos.x;
             const dz = playerPos.z - this.lastPlayerPos.z;
             const distSq = dx * dx + dz * dz;
-
+             
             // Si no se movió lo suficiente, no recalcular
-            if (distSq <= 200) return;
+            if (distSq <= 100) {
+                return;
+            }
         }
+        const botPos = this.bot_cords;
+        if (!botPos) return;
+       
+        const pp = this.get_vector(playerPos.x, playerPos.y);
+        const bp = this.get_vector(botPos.x, botPos.y);
+        console.log(pp, bp)
+        console.log("waypoints 3:", pp)
+        const playerGroup = this.pathfinder.getGroup('level', pp, true);
+        if (playerGroup == null) return;
+        console.log("waypoints 4:")
 
+        console.log("waypoints 5:")
         this.lastPlayerPos = { x: playerPos.x, z: playerPos.z };
 
         const newPath = this.pathfinder.findPath(bp, pp, 'level', playerGroup);
@@ -500,11 +510,11 @@ const { parentPort, workerData } = require('worker_threads');
 
         this.waypoints = { path: newPath, group: playerGroup };
 
-        /*this.bot_helper.send_event(JSON.stringify({
+        this.bot_helper.send_event(JSON.stringify({
             type_action: 'waypoints',
             value_action: { path: newPath, group: playerGroup },
             id_bot: this.#number_bot
-        }));*/
+        }));
     }
     get_vector(x, z) {
         const bx = ((x / (1000 * 9.98)) * 15) + -3.90;
@@ -536,6 +546,7 @@ const { parentPort, workerData } = require('worker_threads');
             const dxp = playerPos.x - botPos.x;
             const dzp = playerPos.y - botPos.z;
             const distToPlayer = dxp * dxp + dzp * dzp;
+            console.log("waypoionts", this.waypoints, !this.waypoints || this.waypoints.path.length === 0)
             if ((!this.waypoints || this.waypoints.path.length === 0)){
                 const playerPos = this.player_cords;
                 if (!playerPos) return;
@@ -555,11 +566,6 @@ const { parentPort, workerData } = require('worker_threads');
                 if(distSq < 0.02){
                     this.shot()
                 }
-                // ¿Llegamos al waypoint?
-                /*if (distSq <= 0.09) {
-                    this.waypoints.path.shift();
-                    return;
-                }*/
 
                 const target = this.normalizeAngle(
                     this.angleToTargetFront(botPos.x, botPos.z, waypointPos.x, waypointPos.z)
@@ -592,32 +598,49 @@ const { parentPort, workerData } = require('worker_threads');
                         this.forward_move()
                     }
                 }
-            }else if((this.waypoints && this.waypoints.path.length > 0) && distToPlayer > 400){
+            }else if((this.waypoints && this.waypoints.path.length > 0) ){
                 
+                const playerPos = this.player_cords;
+                if (!playerPos) return;
+                const pp = this.get_vector(playerPos.x, playerPos.y)
+
+
+
+                if (!this.bot_cords) return;
+
+                const botPos = this.get_vector(this.bot_cords.x, this.bot_cords.y)
+
                 const waypointPos = this.waypoints.path[0];
 
                 const dx = waypointPos.x - botPos.x;
                 const dz = waypointPos.z - botPos.z;
-                console.log('interval start!', 5)       
-                // ¿Llegamos al waypoint?
                 const distSq = dx * dx + dz * dz;
-                if (distSq <= 0.09) {
+                if(distSq < 0.02){
+                                   
                     this.waypoints.path.shift();
                     return;
+   
+
                 }
 
-                const target = this.normalizeAngle(this.angleToTargetFront(botPos.x, botPos.z, waypointPos.x, waypointPos.z) + Math.PI);
+                const target = this.normalizeAngle(
+                    this.angleToTargetFront(botPos.x, botPos.z, waypointPos.x, waypointPos.z)
+                    + Math.PI / 2   // ← corrección de 90°
+                );
                 const r = -(this.bot_cords.r / 256) * Math.PI * 2
                 const current = this.normalizeAngle(-r);
 
                 let diff = current - target;
                 if (diff > Math.PI) diff -= 2 * Math.PI;
                 if (diff < -Math.PI) diff += 2 * Math.PI;
+                //console.log('diff: ', diff, ' --- botR: ', this.bot_cords.r, ' --- playerR: ', this.player_cords.r)
                 if(this.can_move){
+
                     if (diff > 0.05) {
                         if(this.bot_forware_start){
                             this.forward_move_stop()
                         }
+                        
                         this.camera_left()
 
                     } else if (diff < -0.05) {
@@ -634,7 +657,7 @@ const { parentPort, workerData } = require('worker_threads');
             };
             
 
-        }, 88)
+        }, 65)
     }
     normalizeAngle(a) {
         return ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
@@ -689,10 +712,10 @@ const { parentPort, workerData } = require('worker_threads');
     generate_pack_camera_right(botData) {
         let view = 0        // Calcular movimiento hacia adelante
 
-        if (this.bot_cords.r + 2 > 255) {
-            this.bot_cords.r = (this.bot_cords.r + 2) - 255
+        if (this.bot_cords.r + 4 > 255) {
+            this.bot_cords.r = (this.bot_cords.r + 4) - 255
         } else {
-            this.bot_cords.r = this.bot_cords.r + 2
+            this.bot_cords.r = this.bot_cords.r + 4
         }
 
 
@@ -724,10 +747,10 @@ const { parentPort, workerData } = require('worker_threads');
     generate_pack_camera_left(botData) {
         let view = 0        // Calcular movimiento hacia adelante
 
-        if (this.bot_cords.r - 2 < 0) {
-            this.bot_cords.r = (this.bot_cords.r - 2) + 255
+        if (this.bot_cords.r - 4 < 0) {
+            this.bot_cords.r = (this.bot_cords.r - 4) + 255
         } else {
-            this.bot_cords.r = this.bot_cords.r - 2
+            this.bot_cords.r = this.bot_cords.r - 4
         }
 
 
@@ -769,12 +792,15 @@ const { parentPort, workerData } = require('worker_threads');
         pj_setup.writeUInt8(this.#number_bot, 4) //byte ultimo numero de jugadores en partida 0x00
         pj_setup.writeUInt8(0x02, 25) //modelo byte 0x00 torrente 0x0b yonki
         //pj_setup.writeUInt8(0x02, 24) //equipo byte 0x02 random 0x01 amarillo 0x00 rojo
+        this.bot_cords = this.extractRespawnXZR(pj_setup)
+        if(this.bot_cords){
+            pj_setup.writeFloatLE(this.bot_cords.x, 8);
+            pj_setup.writeFloatLE(this.bot_cords.z, 8 + 4);
+            pj_setup.writeFloatLE(this.bot_cords.y, 8 + 8);
+            pj_setup.writeUInt8(this.bot_cords.r, 8 + 13);
 
+        }
 
-        pj_setup.writeFloatLE(this.bot_cords.x, 8);
-        pj_setup.writeFloatLE(this.bot_cords.z, 8 + 4);
-        pj_setup.writeFloatLE(this.bot_cords.y, 8 + 8);
-        pj_setup.writeUInt8(this.bot_cords.r, 8 + 13);
 
 
 
@@ -782,8 +808,16 @@ const { parentPort, workerData } = require('worker_threads');
 
     }
     send_signal_drop_gun() {
-        //3f001874cefa05101c000000
-        const drop_gun_to_flor = Buffer.from(`3f00f23fce050532dbac9745000000006ef7f9c4`, 'hex')
+        //3f001510000510784f8a2546905715416652a6c5
+        const dificult = 0.16 //'hen' // 0.00 to 1.00 1.23 is god value
+        const random = Math.random()
+
+        const random_drop =  dificult > random
+        let drop_gun_to_flor = Buffer.from(`3f00f23fce050532dbac9745000000006ef7f9c4`, 'hex')
+        if(random_drop){
+            drop_gun_to_flor = Buffer.from(`3f001510000510784f8a2546905715416652a6c5`, 'hex')
+        }
+        
         drop_gun_to_flor.writeUInt8(this.#number_bot, 4)
         const baseOffset = 8
         drop_gun_to_flor.writeFloatLE(this.bot_cords.x, baseOffset);
@@ -800,9 +834,9 @@ const { parentPort, workerData } = require('worker_threads');
         if (this.arr_actions.length > 0) {
             console.log(`${this.#number_bot}_actions: `, this.arr_actions.length)
             result.push(this.arr_actions.shift())
-        } else {
+        } 
             result.push(ping)
-        }
+
         return result
     }
     try_other_spawn() {
@@ -1121,7 +1155,7 @@ const { parentPort, workerData } = require('worker_threads');
 }
 module.exports = workerData
 console.log( workerData.ip_connect, typeof workerData.port_connect, workerData)
-const botService = new BotService(workerData.number_bot, undefined, workerData.bot_master, false, workerData.body_data, workerData.ZONE, workerData.ip_connect, workerData.port_connect)
+const botService = new BotService(workerData.number_bot, undefined, workerData.bot_master, workerData.body_data, workerData.ZONE, workerData.ip_connect, workerData.port_connect)
 parentPort.on("message", (msg_worker)=>{
     try{
         const {type, data} = JSON.parse(msg_worker)
