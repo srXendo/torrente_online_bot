@@ -16,7 +16,9 @@ class publicApi {
   ip_server = "";
   port_server = 0;
   #path_worker = path.join(__dirname, './../services/bot.service.js')
+  #path_waypoints_worker = path.join(__dirname, './../services/waypoints.service.js')
   #workers = []
+  #waypoints_worker = null
   num_bots = 0;
   mapper = {}
   id_bot_mapper = {}
@@ -57,7 +59,7 @@ class publicApi {
       ":status": 200,
     }
 
-    const indexpath  = path.join(__dirname, './../public/index.html');
+    const indexpath = path.join(__dirname, './../public/index.html');
     const html = fs.readFileSync(indexpath);
     stream.respond(response)
     stream.write(html)
@@ -73,7 +75,7 @@ class publicApi {
       'content-type': 'text/css; charset=utf-8',
       ":status": 200,
     }
-    const csspath  = path.join(__dirname, './../public/styles.css');
+    const csspath = path.join(__dirname, './../public/styles.css');
     const style_css = fs.readFileSync(csspath);
     stream.respond(response)
     stream.write(style_css)
@@ -89,7 +91,7 @@ class publicApi {
       'content-type': 'text/javascript; charset=utf-8',
       ":status": 200,
     }
-    const pathworker  = path.join(__dirname, './../public/pathfinder.worker.js');
+    const pathworker = path.join(__dirname, './../public/pathfinder.worker.js');
     const index_js = fs.readFileSync(pathworker);
     stream.respond(response)
     stream.write(index_js)
@@ -105,7 +107,7 @@ class publicApi {
       'content-type': 'text/javascript; charset=utf-8',
       ":status": 200,
     }
-    const pathjs  = path.join(__dirname, './../public/index.js');    
+    const pathjs = path.join(__dirname, './../public/index.js');
     const index_js = fs.readFileSync(pathjs);
     stream.respond(response)
     stream.write(index_js)
@@ -122,8 +124,8 @@ class publicApi {
       'content-type': 'text/plain; charset=utf-8',
       ":status": 200,
     }
-    
-    const pathmap  = path.join(__dirname, './../public/navmesh.glb');    
+
+    const pathmap = path.join(__dirname, './../public/navmesh.glb');
     const map = fs.readFileSync(pathmap);
     stream.respond(response)
     stream.write(map)
@@ -139,7 +141,7 @@ class publicApi {
       'content-type': 'text/plain; charset=utf-8',
       ":status": 200,
     }
-    const pathmap  = path.join(__dirname, './../public/map.obj');    
+    const pathmap = path.join(__dirname, './../public/map.obj');
     const map = fs.readFileSync(pathmap);
     stream.respond(response)
     stream.write(map)
@@ -155,7 +157,7 @@ class publicApi {
       'content-type': 'text/plain; charset=utf-8',
       ":status": 200,
     }
-    const pathmodel  = path.join(__dirname, './../public/model.bot.obj');  
+    const pathmodel = path.join(__dirname, './../public/model.bot.obj');
     const model = fs.readFileSync(pathmodel);
     stream.respond(response)
     stream.write(model)
@@ -185,50 +187,57 @@ class publicApi {
 
     }
   }
-    action_msg(obj_msg, first_msg_callback){
-        const {type, number_worker, data} = obj_msg
-        switch(type){
-            case 'listening':
-                console.log(type, number_worker, data)
+  action_msg(obj_msg, first_msg_callback, number_worker_dad) {
+    const { type, number_worker, data } = obj_msg
+    switch (type) {
+      case 'listening':
+        console.log(type, number_worker, data)
 
-                break;
-            case 'start':
-                
-            break;
-            case 'msg_to_frontend':
-                this.bot.send_event(data)
-            break;
-            case 'next':
-              first_msg_callback()
-            break;
-            default:
-                const err = new Error(`worker msg type ${type} not recongnice:`)
-                console.error(err)
-                throw new Error(err)
-                break;
-        }
+        break;
+      case 'start':
 
+        break;
+      case 'msg_to_frontend':
+        this.bot.send_event(data)
+        break;
+      case 'next':
+        first_msg_callback()
+        break;
+      case 'calc_waypoints':
+        this.#waypoints_worker.postMessage(JSON.stringify({ type: 'calc_waypoints', data: { player_cords: data.player_cords, bot_cords: data.bot_cords, number_worker: number_worker_dad } }))
+        break;
+      case 'waypoints':
+        console.log('data', data, "'set_waypoints', { waypoints: data.waypoints }': ", 'set_waypoints', { waypoints: data.waypoints }, number_worker)
+        this.#send_msg_to_worker(number_worker, 'set_waypoints', { waypoints: data.waypoints })
+        break;
+      default:
+        const err = new Error(`worker msg type ${type} not recongnice:`)
+        console.error(err)
+        throw new Error(err)
+        break;
     }
-    #send_msg_to_worker(number_worker, type, data){
-        try{
 
-            this.#workers[number_worker].postMessage(JSON.stringify({
-                type,
-                data
-            }));
-        }catch(err){
-            console.error(new Error(err.stack))
-            throw new Error(err)            
-        }
+  }
+  #send_msg_to_worker(number_worker, type, data) {
+    try {
+      console.log(`this.#workers[number_worker]: ${this.#workers.length}: number_worker: ${number_worker}`)
+      this.#workers[number_worker].postMessage(JSON.stringify({
+        type,
+        data
+      }));
+    } catch (err) {
+      console.error(new Error(err.stack))
+      throw new Error(err.stack)
     }
-    process_msg(str_msg){
-        try{
-            return JSON.parse(str_msg) 
-        }catch(err){
-            console.error(new Error(err.stack))
-            throw new Error(err)
-        }
+  }
+  process_msg(str_msg) {
+    try {
+      return JSON.parse(str_msg)
+    } catch (err) {
+      console.error(new Error(err.stack))
+      throw new Error(err.stack)
     }
+  }
   async recive_start(stream, headers, params) {
     const response = {
       "access-control-allow-origin": `${process.env.PROT_FRONT}://${process.env.DOMAIN_FRONT}:${process.env.PORT_FRONT}`,
@@ -251,7 +260,9 @@ class publicApi {
     this.bot_master = true
 
     this.number_bot_starts = 1
+
     await this.start_bots(() => this.starter(), this.number_bot_starts)
+
     //const helloClient = Buffer.from("000221a5011242191fb8bb154e4401763631007932", "hex")
     //const hello_response = await this.send_package_to_server(this.number_bot_starts, helloClient)
 
@@ -276,38 +287,21 @@ class publicApi {
 
       if (body.state_bot === "navmesh_load" && body.data) {
         console.log('prepare pathfinding', body.data)
-        const THREE = require('three');
-        const { Pathfinding } = require('three-pathfinding');
 
-        const ZONE = 'level';
-        this.body_data = body.data
-        this.ZONE = ZONE
-        this.pathfinder = new Pathfinding();
-
-        const { positions, index } = body.data;
-
-        const geometry = new THREE.BufferGeometry();
-
-        geometry.setAttribute(
-          'position',
-          new THREE.BufferAttribute(
-            new Float32Array(positions),
-            3
-          )
-        );
-
-        if (index) {
-          geometry.setIndex(
-            new THREE.BufferAttribute(
-              new Uint32Array(index),
-              1
-            )
-          );
-        }
-
-        const zone = Pathfinding.createZone(geometry);
-        this.pathfinder.setZoneData(ZONE, zone);
-
+        this.#waypoints_worker = new Worker(this.#path_waypoints_worker, {
+          workerData: { body_data: body.data, ZONE: this.ZONE }
+        });
+        this.#waypoints_worker.on('message', (msg_worker) => {
+          this.action_msg(this.process_msg(msg_worker))
+        });
+        this.#waypoints_worker.on('error', (err) => {
+          console.error(new Error(err.stack))
+          throw new Error(err.stack)
+        });
+        this.#waypoints_worker.on('exit', (code) => {
+          if (code !== 0)
+            return Promise.reject(new Error(`Worker stopped with exit code ${code}`));
+        });
         stream.write('')
         stream.end()
         return
@@ -347,22 +341,24 @@ class publicApi {
       console.log(`new bot: id_bot${i} port: ${obj_starter.port}`);
     }
     const worker = new Worker(this.#path_worker, {
-      workerData: {number_bot: i, body_data: this.body_data, bot_master: this.bot_master, bot_helper: this.bot, ZONE: this.ZONE, ip_connect: this.ip_server, port_connect: this.port_server}
+      workerData: { number_bot: i, body_data: this.body_data, bot_master: this.bot_master, bot_helper: this.bot, ZONE: this.ZONE, ip_connect: this.ip_server, port_connect: this.port_server }
     });
+
     this.bot_master = false
     this.#workers.push(worker)
+    const number_worker = this.#workers.length -1
     worker.on('message', (msg_worker) => {
-      this.action_msg(this.process_msg(msg_worker), first_msg_callback)
+      this.action_msg(this.process_msg(msg_worker), first_msg_callback, number_worker)
     });
     worker.on('error', (err) => {
       console.error(new Error(err.stack))
-      throw new Error(err)
+      throw new Error(err.stack)
     });
     worker.on('exit', (code) => {
       if (code !== 0)
         return Promise.reject(new Error(`Worker stopped with exit code ${code}`));
     });
-    
+
   }
   get_server_and_port(i) {
     return new Promise((resolve, reject) => {

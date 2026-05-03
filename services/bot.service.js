@@ -37,7 +37,7 @@ const { parentPort, workerData } = require('worker_threads');
         
         this.bot_master = bot_master
         this.can_response = true
-        this.body_data = body_data
+
 
         this.#number_bot = number_bot
         this.#ip_server = ip
@@ -45,34 +45,7 @@ const { parentPort, workerData } = require('worker_threads');
         this.#port_server = port
         this.buffer_session = (this.buffer_session + `${number_bot}`.padStart(2, '0'))
         this.user_bot = Buffer.from(('Bot' + `${number_bot}`.padStart(2, "0")), 'ascii')
-        const THREE = require('three');
-        const { Pathfinding } = require('three-pathfinding');
-        this.pathfinder = new Pathfinding();
-        console.log(body_data)
-        const { positions, index } = body_data;
 
-        const geometry = new THREE.BufferGeometry();
-
-        geometry.setAttribute(
-          'position',
-          new THREE.BufferAttribute(
-            new Float32Array(positions),
-            3
-          )
-        );
-
-        if (index) {
-          geometry.setIndex(
-            new THREE.BufferAttribute(
-              new Uint32Array(index),
-              1
-            )
-          );
-        }
-
-        const zone = Pathfinding.createZone(geometry);
-        this.pathfinder.setZoneData('level', zone);
-        console.log("zones: ",this.pathfinder.zones, geometry)
 
     }
     #send_msg_worker(type, number_worker, data){
@@ -474,47 +447,24 @@ const { parentPort, workerData } = require('worker_threads');
     lastGroup = null;
     lastPlayerPos = null
     send_waypoints() {
-        console.log("waypoints 1:")
         const playerPos = this.player_cords;
         if (!playerPos) return;
-        console.log("waypoints 2:")
-        if(!this.lastPlayerPos ){
-            this.lastPlayerPos = playerPos
-        }
-        if(this.lastPlayerPos){
-            const dx = playerPos.x - this.lastPlayerPos.x;
-            const dz = playerPos.z - this.lastPlayerPos.z;
-            const distSq = dx * dx + dz * dz;
-             
-            // Si no se movió lo suficiente, no recalcular
-            if (distSq <= 100) {
-                return;
-            }
-        }
         const botPos = this.bot_cords;
         if (!botPos) return;
-       
-        const pp = this.get_vector(playerPos.x, playerPos.y);
-        const bp = this.get_vector(botPos.x, botPos.y);
-        console.log(pp, bp)
-        console.log("waypoints 3:", pp)
-        const playerGroup = this.pathfinder.getGroup('level', pp, true);
-        if (playerGroup == null) return;
-        console.log("waypoints 4:")
+        this.#send_msg_worker("calc_waypoints", this.#number_bot, {player_cords:  this.player_cords, bot_cords: this.bot_cords})
+    }
+    set_waypoints(waypoints){
+        this.waypoints = waypoints
 
-        console.log("waypoints 5:")
-        this.lastPlayerPos = { x: playerPos.x, z: playerPos.z };
+        if(waypoints){
+            console.log('waypoints: ',waypoints)
+            this.bot_helper.send_event(JSON.stringify({
+                type_action: 'waypoints',
+                value_action: { path: waypoints.path, group: waypoints.group },
+                id_bot: this.#number_bot
+            }));
+        }
 
-        const newPath = this.pathfinder.findPath(bp, pp, 'level', playerGroup);
-        if (!newPath || newPath.length === 0) return;
-
-        this.waypoints = { path: newPath, group: playerGroup };
-
-        this.bot_helper.send_event(JSON.stringify({
-            type_action: 'waypoints',
-            value_action: { path: newPath, group: playerGroup },
-            id_bot: this.#number_bot
-        }));
     }
     get_vector(x, z) {
         const bx = ((x / (1000 * 9.98)) * 15) + -3.90;
@@ -655,8 +605,6 @@ const { parentPort, workerData } = require('worker_threads');
                     }
                 }
             };
-            
-
         }, 65)
     }
     normalizeAngle(a) {
@@ -1166,13 +1114,15 @@ parentPort.on("message", (msg_worker)=>{
             case 'disconnect':
                 botService.disconnect()
                 break;
+            case 'set_waypoints': 
+                botService.set_waypoints(data.waypoints)
             default:
                 
                 break;
         }
     }catch(err){
         console.error(new Error(err.stack))
-        throw new Error(err)
+        throw new Error(err.stack)
     }
 })
 botService.start_bot()
