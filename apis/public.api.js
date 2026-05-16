@@ -60,7 +60,17 @@ class publicApi {
     }
 
     const indexpath = path.join(__dirname, './../public/index.html');
-    const html = fs.readFileSync(indexpath);
+    let html = fs.readFileSync(indexpath);
+    
+    const pathconfig = path.join(__dirname, './../config');
+    const ip_port_config = fs.readFileSync(pathconfig, {encoding: 'ascii'});
+    console.log(ip_port_config.split('//'))
+    if(ip_port_config.split('//').length > 0){
+      html = html.toString("utf8").replace('value="192.168.1.128"', `value="${ip_port_config.split('//')[0]}"`)
+      html = html.toString("utf8").replace('value="8888"', `value="${parseInt(ip_port_config.split('//')[1])}"`)
+      html = Buffer.from(html, 'utf8')
+
+    }
     stream.respond(response)
     stream.write(html)
     stream.end()
@@ -255,7 +265,8 @@ class publicApi {
 
 
     this.num_bots = body.num_bots;
-
+    const pathmap = path.join(__dirname, './../config');
+    fs.writeFileSync(pathmap, `${this.ip_server}//${this.port_server}`);
 
     this.bot_master = true
 
@@ -346,7 +357,7 @@ class publicApi {
 
     this.bot_master = false
     this.#workers.push(worker)
-    const number_worker = this.#workers.length -1
+    const number_worker = this.#workers.length - 1
     worker.on('message', (msg_worker) => {
       this.action_msg(this.process_msg(msg_worker), first_msg_callback, number_worker)
     });
