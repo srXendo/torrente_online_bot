@@ -33,7 +33,7 @@ module.exports = (apis)=>{
   })
 
 
-}
+
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
       apis_external.disconnect().then(()=>{
@@ -48,3 +48,4 @@ module.exports = (apis)=>{
       
     }
   })
+}

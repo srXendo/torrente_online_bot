@@ -67,7 +67,7 @@ class publicApi {
     console.log(ip_port_config.split('//'))
     if(ip_port_config.split('//').length > 0){
       html = html.toString("utf8").replace('value="192.168.1.128"', `value="${ip_port_config.split('//')[0]}"`)
-      html = html.toString("utf8").replace('value="8888"', `value="${parseInt(ip_port_config.split('//')[1])}"`)
+      html = html.toString("utf8").replace('value="8888"', `value="${(ip_port_config.split('//')[1])}"`)
       html = Buffer.from(html, 'utf8')
 
     }
