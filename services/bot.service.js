@@ -738,7 +738,7 @@ const { parentPort, workerData } = require('worker_threads');
         const pj_setup = Buffer.from('3f005f0c010e000000000000000000000363011070b21900020b0610'.replace('123123332323133313213', this.buffer_session.toString('hex')), 'hex')
         //console.log('send spawn: ', this.#number_bot)
         pj_setup.writeUInt8(this.#number_bot, 4) //byte ultimo numero de jugadores en partida 0x00
-        pj_setup.writeUInt8(0x02, 25) //modelo byte 0x00 torrente 0x0b yonki
+        pj_setup.writeUInt8(0x00+this.#number_bot + 2, 25) //modelo byte 0x00 torrente 0x0b yonki
         //pj_setup.writeUInt8(0x02, 24) //equipo byte 0x02 random 0x01 amarillo 0x00 rojo
         this.bot_cords = this.extractRespawnXZR(pj_setup)
         if(this.bot_cords){
@@ -791,7 +791,7 @@ const { parentPort, workerData } = require('worker_threads');
         const pj_setup = Buffer.from('3f005f0c010e000000000000000000000363011070b21900020b0610'.replace('123123332323133313213', this.buffer_session.toString('hex')), 'hex')
         //console.log('send spawn: ', this.#number_bot)
         pj_setup.writeUInt8(this.#number_bot, 4) //byte ultimo numero de jugadores en partida 0x00
-        pj_setup.writeUInt8(0x02, 25) //modelo byte 0x00 torrente 0x0b yonki
+        pj_setup.writeUInt8(0x00+this.#number_bot + 2, 25) //modelo byte 0x00 torrente 0x0b yonki
         //pj_setup.writeUInt8(0x02, 24) //equipo byte 0x02 random 0x01 amarillo 0x00 rojo
 
         //pj_setup.writeUInt8(0x02, pj_setup.length- 10) //numero de jugador 0x01 jugador 1 0x02 jugador 2

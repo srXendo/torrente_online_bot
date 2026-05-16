@@ -271,8 +271,10 @@ class publicApi {
     this.bot_master = true
 
     this.number_bot_starts = 1
-
-    await this.start_bots(() => this.starter(), this.number_bot_starts)
+    setTimeout(async()=>{
+      await this.start_bots(() => this.starter(), this.number_bot_starts)
+    }, 1200)
+    
 
     //const helloClient = Buffer.from("000221a5011242191fb8bb154e4401763631007932", "hex")
     //const hello_response = await this.send_package_to_server(this.number_bot_starts, helloClient)
