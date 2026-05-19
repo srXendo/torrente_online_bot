@@ -190,8 +190,11 @@ class publicApi {
   starter() {
     if (this.number_bot_starts < this.num_bots) {
       console.log(`create new bot order! ${this.number_bot_starts}`)
-      this.number_bot_starts++
-      this.start_bots(() => this.starter(), this.number_bot_starts).then(async () => {
+      
+      this.start_bots(() => {
+        
+        this.starter()
+      }, this.number_bot_starts).then(async () => {
       }).catch(err => new Error(err))
 
 
@@ -356,6 +359,7 @@ class publicApi {
     const worker = new Worker(this.#path_worker, {
       workerData: { number_bot: i, body_data: this.body_data, bot_master: this.bot_master, bot_helper: this.bot, ZONE: this.ZONE, ip_connect: this.ip_server, port_connect: this.port_server }
     });
+    this.number_bot_starts++
 
     this.bot_master = false
     this.#workers.push(worker)

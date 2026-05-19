@@ -31,6 +31,7 @@ const { parentPort, workerData } = require('worker_threads');
         this.#send_msg_worker("msg_to_frontend", this.#number_bot, obj_json)
     }}
     last_bnRecv = null
+    #id_bot = null
     constructor(number_bot, bot_helper, bot_master, body_data, ZONE, ip, port) {
         const dgram = require('dgram')
         this.#server = dgram.createSocket('udp4');
@@ -46,11 +47,11 @@ const { parentPort, workerData } = require('worker_threads');
         this.buffer_session = (this.buffer_session + `${number_bot}`.padStart(2, '0'))
         this.user_bot = Buffer.from(('Bot' + `${number_bot}`.padStart(2, "0")), 'ascii')
 
-
+        this.#id_bot = number_bot
     }
     #send_msg_worker(type, number_worker, data){
         try{
-            parentPort.postMessage(JSON.stringify({type, number_worker, data}))
+            parentPort.postMessage(JSON.stringify({type, number_worker: this.#id_bot , data}))
         }catch(err){
             console.error(new Error(err.stack))
             throw new Error(err)
@@ -181,7 +182,7 @@ const { parentPort, workerData } = require('worker_threads');
             case 0x0003:
                 this.party = this.extract_data(msg)
                 console.log(this.party)
-                this.#number_bot = this.party.currentPlayers
+                //this.#number_bot = this.party.currentPlayers
                 return [Buffer.from("8801000006000100" + this.buffer_session + "c2091002", 'hex')]
                 break;
             case 0x3f08:
@@ -211,10 +212,7 @@ const { parentPort, workerData } = require('worker_threads');
                 if (!(~msg.toString('ascii').indexOf('se ha conectado'))) {
 
 
-                        setTimeout(()=>{
-                            this.emit_start.emit('user_start');
-                            this.#send_msg_worker('next', this.#number_bot, null)
-                        }, 200)
+
                         
                         
 
@@ -296,7 +294,7 @@ const { parentPort, workerData } = require('worker_threads');
                 break;
             case 0xfe:
                 const pj_response = Buffer.from('3f020504e03f74a0'.replace('e03f74a0', this.buffer_session.toString('hex')), 'hex')
-                pj_response.writeUInt8(this.#number_bot, 4)
+                //pj_response.writeUInt8(this.#number_bot, 4)
 
 
                 this.arr_actions.push(pj_response)
@@ -322,6 +320,8 @@ const { parentPort, workerData } = require('worker_threads');
                 break;
             case 0x0e:
                 //throw new Error('spwan palyer!!!')
+
+
 
                 const arr_respawns = this.extractAllPlayers(msg)
                 //console.log('spawns: ', arr_respawns.length, arr_respawns.map(i=>i.bot))
@@ -426,13 +426,13 @@ const { parentPort, workerData } = require('worker_threads');
                 const ping_ce = Buffer.from('80060100ac240000ee8b4503', 'hex')
                 ping_ce.writeUInt8(msg.readUInt8(2), 5)
                 ping_ce.writeUInt8(msg.readUInt8(3), 4)
-                this.arr_actions.push(this.try_other_spawn())
-                /*setTimeout(()=>{
+
+                
                     
-                        if(!this.bot_action_interval){
-                            this.ia_bot_start()
-                        }
-                }, 200)*/
+                    this.arr_actions.push(this.try_other_spawn())
+                    this.emit_start.emit('user_start');
+                    this.#send_msg_worker('next', this.#number_bot, null)
+            
 
                 break;
             default:
@@ -476,6 +476,7 @@ const { parentPort, workerData } = require('worker_threads');
     ia_bot_start() {
         this.bot_action_interval = setInterval(() => {
             //console.log('interval start!')
+            if (!this.bot_cords) return;
             const now = new Date().getTime()
             if(now - this.last_time_execute > 250){
                 this.send_sync()
@@ -488,7 +489,7 @@ const { parentPort, workerData } = require('worker_threads');
             const pp = this.get_vector(playerPos.x, playerPos.y)
 
             //console.log('interval start!', 3)
-            if (!this.bot_cords) return;
+           
             //console.log('interval start!', 4)
             const botPos = this.get_vector(this.bot_cords.x, this.bot_cords.y)
      
@@ -992,24 +993,30 @@ const { parentPort, workerData } = require('worker_threads');
     async shot() {
 
         console.log('shot bot')
-        const dificult = 0.3 //'hen' // 0.00 to 1.00 1.23 is god value
+        const dificult = 0.2 //'hen' // 0.00 to 1.00 1.23 is god value
         const random = Math.random()
+        const now = new Date().getTime()
 
         const random_shot =  dificult > random
         console.log('shot test!', random_shot, random, this.can_shot)
         if(this.can_shot){
+
             if(random_shot){
+
                 const shot = Buffer.from('3f00d8af01fc120d1403001905','hex')
                 shot.writeUInt8(this.#number_bot, 4)
                 this.arr_actions.push(shot)
             }else{
                 const fail_shot = Buffer.from('3f00790e00262602714ea644f91e2143860ed745','hex')
-                
+                this.can_shot = false
                 fail_shot.writeFloatLE(this.player_cords.x, 8);
                 fail_shot.writeFloatLE(this.player_cords.y, 8 + 8);
                 this.arr_actions.push(fail_shot)
             }
-            this.in_shot ++
+            this.can_shot = false
+            this.last_time_shot = now
+        }else if(!this.can_shot && now - this.last_time_shot > 120){
+            this.can_shot = true
         }
 
            
@@ -1073,18 +1080,23 @@ const { parentPort, workerData } = require('worker_threads');
         client action:  <Buffer 3f 01 dd 0e 00 02>
         client action:  <Buffer 3f 08 de 0e>
         */
+        if (this.bot_action_interval) {
+            clearInterval(this.bot_action_interval)
+            this.bot_action_interval = null
+            
+        }
         const disconnect = Buffer.from('3f001f170102', 'hex')
         const after_disconnect = Buffer.from('3f08f618', 'hex')
         disconnect.writeUint8(this.#number_bot, 4)
         this.arr_actions.push(disconnect)
         this.arr_actions.push(after_disconnect)
-        this.can_response = false
 
+        
         return [
             disconnect,
             after_disconnect
         ]
-
+        
     }
     connect_bot(number_bot, ip, port){
 
