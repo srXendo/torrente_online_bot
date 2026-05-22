@@ -294,7 +294,7 @@ const { parentPort, workerData } = require('worker_threads');
                 break;
             case 0xfe:
                 const pj_response = Buffer.from('3f020504e03f74a0'.replace('e03f74a0', this.buffer_session.toString('hex')), 'hex')
-                //pj_response.writeUInt8(this.#number_bot, 4)
+                pj_response.writeUInt8(this.#number_bot, 4)
 
 
                 this.arr_actions.push(pj_response)
@@ -353,6 +353,7 @@ const { parentPort, workerData } = require('worker_threads');
                         ping_ce.writeUInt8(msg.readUInt8(3), 4)
                         //this.send_waypoints()
                         this.can_move = true
+                        this.ia_planing()
                         this.ia_bot_start()
                         
                     
@@ -466,6 +467,23 @@ const { parentPort, workerData } = require('worker_threads');
         }
 
     }
+    calc_patrol_points(){
+        const botPos = this.bot_cords;
+        if (!botPos) return;
+        this.#send_msg_worker("calc_patrol_points", this.#number_bot, {player_cords:  null, bot_cords: this.bot_cords})
+    }
+    set_patrol_points(patrol_points){
+        this.patrol_points = patrol_points
+        
+        /*if(patrol_points){
+            console.log('patrol_points: ',patrol_points)
+            this.bot_helper.send_event(JSON.stringify({
+                type_action: 'patrol_points',
+                value_action: { path: patrol_points.path, group: patrol_points.group },
+                id_bot: this.#number_bot
+            }));
+        }*/
+    }
     get_vector(x, z) {
         const bx = ((x / (1000 * 9.98)) * 15) + -3.90;
         const bz = -(((z / (1000 * 8.47508)) * 15) + -1.60);
@@ -473,140 +491,256 @@ const { parentPort, workerData } = require('worker_threads');
         return pp
     }
     last_time_execute = 0
+    states = {
+        FOLLOW_TARGET: 'FOLLOW_TARGET',
+        SHOT_TARGET: 'SHOT_TARGET',
+        PATROL_ZONE: 'PATROL_ZONE'
+    }
+    #bot_state = null
+    ia_planing(){
+        this.#bot_state = this.states.PATROL_ZONE
+    }
     ia_bot_start() {
         this.bot_action_interval = setInterval(() => {
-            //console.log('interval start!')
-            if (!this.bot_cords) return;
-            const now = new Date().getTime()
-            if(now - this.last_time_execute > 250){
-                this.send_sync()
-                this.last_time_execute = now
+            let response = undefined
+            switch(this.#bot_state){
+                case this.states.FOLLOW_TARGET:
+                    response = this.ia_follow_target()
+                    if(!response) return;
+                    return true
+                    break;
+                case this.states.SHOT_TARGET:
+                    this.ia_shot_target();
+                    break;
+                case this.states.PATROL_ZONE:
+                    this.ia_patrol_zone();
+                    break;
             }
+        }, 65)
+    }
+    ia_patrol_zone(){
+        if(!this.patrol_points || this.patrol_points.length < 1){
+            this.calc_patrol_points()
+        }
+        if(this.patrol_points && this.patrol_points.length > 0){
+            const patrol_point = this.patrol_points[0]
+            const res_move_to_patrol_points = this.move_to(patrol_point)
+            if(res_move_to_patrol_points){
+                console.log('llega al punto: ')
+                this.patrol_points = []
+            }
+        }else{
+            console.log('no patrol: ')
+        }
+
+    }
+    move_to(next_pos){
+        const now = new Date().getTime()
+        if(now - this.last_time_execute > 250){
+            this.send_sync()
+            this.last_time_execute = now
+        }
+        
+        const patrolPos = next_pos;
+        if (!patrolPos) return;
+        //console.log('interval start!', 2)
+        const pp = this.get_vector(next_pos.x, next_pos.z)
+
+        if (!this.bot_cords) return;
+
+        const botPos = this.get_vector(this.bot_cords.x, this.bot_cords.y)
+
+
+        const dx = patrolPos.x - botPos.x;
+        const dz = patrolPos.z - botPos.z;
+        const distSq = dx * dx + dz * dz;
+        if(distSq < 0.02){
+            return true
+        }
+
+
+
+
+        const target = this.normalizeAngle(
+            this.angleToTargetFront(botPos.x, botPos.z, patrolPos.x, patrolPos.z)
+            + Math.PI / 2   // ← corrección de 90°
+        );
+        const r = -(this.bot_cords.r / 256) * Math.PI * 2
+        const current = this.normalizeAngle(-r);
+
+        let diff = current - target;
+        if (diff > Math.PI) diff -= 2 * Math.PI;
+        if (diff < -Math.PI) diff += 2 * Math.PI;
+        //console.log('diff: ', diff, ' --- botR: ', this.bot_cords.r, ' --- playerR: ', this.player_cords.r)
+        if(this.can_move){
+
+            if (diff > 0.05) {
+                if(this.bot_forware_start){
+                    this.forward_move_stop()
+                }
+                
+                this.camera_left()
+
+            } else if (diff < -0.05) {
+                if(this.bot_forware_start){
+                    this.forward_move_stop()
+                }
+                this.camera_right()
+
+            } else {
+
+                this.forward_move()
+            }
+        }
+
+        return false
+    }
+    ia_shot_target(){
+               
+        const playerPos = this.player_cords;
+        if (!playerPos) return;
+        //console.log('interval start!', 2)
+        const pp = this.get_vector(playerPos.x, playerPos.y)
+
+        if (!this.bot_cords) return;
+
+        const botPos = this.get_vector(this.bot_cords.x, this.bot_cords.y)
+
+        const dx = pp.x - botPos.x;
+        const dz = pp.z - botPos.z;
+        const distSq = dx * dx + dz * dz;
+        if(distSq < 0.02){
+            this.#bot_state = this.states.FOLLOW_TARGET
+            return this.shot()
+        }
+        return
+    }
+    ia_follow_target(){
+        const now = new Date().getTime()
+        if(now - this.last_time_execute > 250){
+            this.send_sync()
+            this.last_time_execute = now
+        }
+        
+        const playerPos = this.player_cords;
+        if (!playerPos) return;
+        //console.log('interval start!', 2)
+        const pp = this.get_vector(playerPos.x, playerPos.y)
+
+        if (!this.bot_cords) return;
+
+        const botPos = this.get_vector(this.bot_cords.x, this.bot_cords.y)
+
+        const waypointPos = pp//this.waypoints.path[0];
+
+        const dx = pp.x - botPos.x;
+        const dz = pp.z - botPos.z;
+        const distSq = dx * dx + dz * dz;
+        if(distSq < 0.02){
+            this.#bot_state = this.states.SHOT_TARGET
+            return true
+        }
+        if ((!this.waypoints || this.waypoints.path.length === 0)){
+            const playerPos = this.player_cords;
+            if (!playerPos) return;
+            const pp = this.get_vector(playerPos.x, playerPos.y)
+
+
+
+            if (!this.bot_cords) return;
+
+            const botPos = this.get_vector(this.bot_cords.x, this.bot_cords.y)
+
+
+            const target = this.normalizeAngle(
+                this.angleToTargetFront(botPos.x, botPos.z, pp.x, pp.z)
+                + Math.PI / 2   // ← corrección de 90°
+            );
+            const r = -(this.bot_cords.r / 256) * Math.PI * 2
+            const current = this.normalizeAngle(-r);
+
+            let diff = current - target;
+            if (diff > Math.PI) diff -= 2 * Math.PI;
+            if (diff < -Math.PI) diff += 2 * Math.PI;
+            //console.log('diff: ', diff, ' --- botR: ', this.bot_cords.r, ' --- playerR: ', this.player_cords.r)
+            if(this.can_move){
+
+                if (diff > 0.05) {
+                    if(this.bot_forware_start){
+                        this.forward_move_stop()
+                    }
+                    
+                    this.camera_left()
+
+                } else if (diff < -0.05) {
+                    if(this.bot_forware_start){
+                        this.forward_move_stop()
+                    }
+                    this.camera_right()
+
+                } else {
+
+                    this.forward_move()
+                }
+            }
+        }else if((this.waypoints && this.waypoints.path.length > 0) ){
             
             const playerPos = this.player_cords;
             if (!playerPos) return;
-            //console.log('interval start!', 2)
             const pp = this.get_vector(playerPos.x, playerPos.y)
 
-            //console.log('interval start!', 3)
-           
-            //console.log('interval start!', 4)
+
+
+            if (!this.bot_cords) return;
+
             const botPos = this.get_vector(this.bot_cords.x, this.bot_cords.y)
-     
 
-            const dxp = playerPos.x - botPos.x;
-            const dzp = playerPos.y - botPos.z;
-            const distToPlayer = dxp * dxp + dzp * dzp;
-            console.log("waypoionts", this.waypoints, !this.waypoints || this.waypoints.path.length === 0)
-            if ((!this.waypoints || this.waypoints.path.length === 0)){
-                const playerPos = this.player_cords;
-                if (!playerPos) return;
-                const pp = this.get_vector(playerPos.x, playerPos.y)
+            const waypointPos = this.waypoints.path[0];
+
+            const dx = waypointPos.x - botPos.x;
+            const dz = waypointPos.z - botPos.z;
+            const distSq = dx * dx + dz * dz;
+            if(distSq < 0.02){
+                            
+                this.waypoints.path.shift();
+                return false;
 
 
+            }
 
-                if (!this.bot_cords) return;
+            const target = this.normalizeAngle(
+                this.angleToTargetFront(botPos.x, botPos.z, waypointPos.x, waypointPos.z)
+                + Math.PI / 2   // ← corrección de 90°
+            );
+            const r = -(this.bot_cords.r / 256) * Math.PI * 2
+            const current = this.normalizeAngle(-r);
 
-                const botPos = this.get_vector(this.bot_cords.x, this.bot_cords.y)
+            let diff = current - target;
+            if (diff > Math.PI) diff -= 2 * Math.PI;
+            if (diff < -Math.PI) diff += 2 * Math.PI;
+            //console.log('diff: ', diff, ' --- botR: ', this.bot_cords.r, ' --- playerR: ', this.player_cords.r)
+            if(this.can_move){
 
-                const waypointPos = pp//this.waypoints.path[0];
-
-                const dx = waypointPos.x - botPos.x;
-                const dz = waypointPos.z - botPos.z;
-                const distSq = dx * dx + dz * dz;
-                if(distSq < 0.02){
-                    this.shot()
-                }
-
-                const target = this.normalizeAngle(
-                    this.angleToTargetFront(botPos.x, botPos.z, waypointPos.x, waypointPos.z)
-                    + Math.PI / 2   // ← corrección de 90°
-                );
-                const r = -(this.bot_cords.r / 256) * Math.PI * 2
-                const current = this.normalizeAngle(-r);
-
-                let diff = current - target;
-                if (diff > Math.PI) diff -= 2 * Math.PI;
-                if (diff < -Math.PI) diff += 2 * Math.PI;
-                //console.log('diff: ', diff, ' --- botR: ', this.bot_cords.r, ' --- playerR: ', this.player_cords.r)
-                if(this.can_move){
-
-                    if (diff > 0.05) {
-                        if(this.bot_forware_start){
-                            this.forward_move_stop()
-                        }
-                        
-                        this.camera_left()
-
-                    } else if (diff < -0.05) {
-                        if(this.bot_forware_start){
-                            this.forward_move_stop()
-                        }
-                        this.camera_right()
-
-                    } else {
-
-                        this.forward_move()
+                if (diff > 0.05) {
+                    if(this.bot_forware_start){
+                        this.forward_move_stop()
                     }
-                }
-            }else if((this.waypoints && this.waypoints.path.length > 0) ){
-                
-                const playerPos = this.player_cords;
-                if (!playerPos) return;
-                const pp = this.get_vector(playerPos.x, playerPos.y)
+                    
+                    this.camera_left()
 
-
-
-                if (!this.bot_cords) return;
-
-                const botPos = this.get_vector(this.bot_cords.x, this.bot_cords.y)
-
-                const waypointPos = this.waypoints.path[0];
-
-                const dx = waypointPos.x - botPos.x;
-                const dz = waypointPos.z - botPos.z;
-                const distSq = dx * dx + dz * dz;
-                if(distSq < 0.02){
-                                   
-                    this.waypoints.path.shift();
-                    return;
-   
-
-                }
-
-                const target = this.normalizeAngle(
-                    this.angleToTargetFront(botPos.x, botPos.z, waypointPos.x, waypointPos.z)
-                    + Math.PI / 2   // ← corrección de 90°
-                );
-                const r = -(this.bot_cords.r / 256) * Math.PI * 2
-                const current = this.normalizeAngle(-r);
-
-                let diff = current - target;
-                if (diff > Math.PI) diff -= 2 * Math.PI;
-                if (diff < -Math.PI) diff += 2 * Math.PI;
-                //console.log('diff: ', diff, ' --- botR: ', this.bot_cords.r, ' --- playerR: ', this.player_cords.r)
-                if(this.can_move){
-
-                    if (diff > 0.05) {
-                        if(this.bot_forware_start){
-                            this.forward_move_stop()
-                        }
-                        
-                        this.camera_left()
-
-                    } else if (diff < -0.05) {
-                        if(this.bot_forware_start){
-                            this.forward_move_stop()
-                        }
-                        this.camera_right()
-
-                    } else {
-
-                        this.forward_move()
+                } else if (diff < -0.05) {
+                    if(this.bot_forware_start){
+                        this.forward_move_stop()
                     }
+                    this.camera_right()
+
+                } else {
+
+                    this.forward_move()
                 }
-            };
-        }, 65)
+            }
+        };
+        return false
     }
     normalizeAngle(a) {
         return ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
@@ -1128,6 +1262,10 @@ parentPort.on("message", (msg_worker)=>{
                 break;
             case 'set_waypoints': 
                 botService.set_waypoints(data.waypoints)
+                break;
+            case 'set_patrol_points':
+                botService.set_patrol_points(data.patrol_points)
+            break; 
             default:
                 
                 break;

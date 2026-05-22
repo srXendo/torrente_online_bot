@@ -223,6 +223,13 @@ class publicApi {
         console.log('data', data, "'set_waypoints', { waypoints: data.waypoints }': ", 'set_waypoints', { waypoints: data.waypoints }, number_worker)
         this.#send_msg_to_worker(number_worker, 'set_waypoints', { waypoints: data.waypoints })
         break;
+      case 'calc_patrol_points':
+        this.#waypoints_worker.postMessage(JSON.stringify({ type: 'calc_patrol_points', data: { player_cords: data.player_cords, bot_cords: data.bot_cords, number_worker: number_worker_dad } }))
+        break;
+      case 'patrol_points':
+        console.log('data', data, "'set_patrol_points', { patrol_points: data.patrol_points }': ", 'set_patrol_points', { patrol_points: data.patrol_points }, number_worker)
+        this.#send_msg_to_worker(number_worker, 'set_patrol_points', { patrol_points: data.patrol_points })
+        break;  
       default:
         const err = new Error(`worker msg type ${type} not recongnice:`)
         console.error(err)
