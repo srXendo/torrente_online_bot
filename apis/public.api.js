@@ -217,7 +217,14 @@ class publicApi {
         first_msg_callback()
         break;
       case 'calc_waypoints':
-        this.#waypoints_worker.postMessage(JSON.stringify({ type: 'calc_waypoints', data: { player_cords: data.player_cords, bot_cords: data.bot_cords, number_worker: number_worker_dad } }))
+        console.log('recive new msg worker: calc_waypoints: ', data, this.#waypoints_worker.postMessage)
+        setTimeout(()=>{
+          const res = this.#waypoints_worker.postMessage(JSON.stringify({ type: 'calc_waypoints', data: { player_cords: data.player_cords, bot_cords: data.bot_cords, number_worker: number_worker_dad } }))
+          console.log('res calc_waypoints in api: ', res)
+        },10)
+
+        //this.#waypoints_worker.postMessage(JSON.stringify({ type: 'calc', data: { player_cords: data.player_cords, bot_cords: data.bot_cords, number_worker: number_worker_dad } }))
+        //this.#waypoints_worker.postMessage(JSON.stringify({ type: 'calc_patrol_points', data: { player_cords: data.player_cords, bot_cords: data.bot_cords, number_worker: number_worker_dad } }))
         break;
       case 'waypoints':
         console.log('data', data, "'set_waypoints', { waypoints: data.waypoints }': ", 'set_waypoints', { waypoints: data.waypoints }, number_worker)

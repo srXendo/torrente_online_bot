@@ -9,7 +9,7 @@ class WaypointsService {
         const { Pathfinding } = require('three-pathfinding');
 
         this.body_data = body_data
-        this.ZONE = ZONE
+        this.ZONE = 'level'
         this.pathfinder = new Pathfinding();
 
         const { positions, index } = body_data;
@@ -35,7 +35,7 @@ class WaypointsService {
         console.log('positions, index: ', positions, index)
         const zone = Pathfinding.createZone(geometry);
         console.log('geometry: ', geometry)
-        this.pathfinder.setZoneData(ZONE, zone);
+        this.pathfinder.setZoneData(this.ZONE, zone);
         console.log("waypoints zones: ", this.pathfinder.zones, geometry)
 
     }
@@ -47,17 +47,16 @@ class WaypointsService {
             throw new Error(err)
         }
     }
-    get_waypoints(player_cords, bot_cords) {
+    get_waypoints(target_position, bot_cords) {
         console.log("waypoints 1:")
-        const playerPos = player_cords;
-        if (!playerPos) return;
+        if (!target_position) return;
         console.log("waypoints 2:")
 
         const botPos = bot_cords;
         if (!botPos) return;
 
 
-        const pp = this.get_vector(playerPos.x, playerPos.y);
+        const pp = this.get_vector(target_position.x, target_position.y);
         const bp = this.get_vector(botPos.x, botPos.y);
         console.log(pp, bp)
         console.log("waypoints 3:", pp)
@@ -69,7 +68,7 @@ class WaypointsService {
 
         const newPath = this.pathfinder.findPath(bp, pp, this.ZONE, playerGroup);
         if (!newPath || newPath.length === 0) return;
-
+        console.log("waypoints 6:")
         return { path: newPath, group: playerGroup };
 
     }
@@ -77,105 +76,83 @@ class WaypointsService {
         this.#send_msg_worker('waypoints', number_worker, { waypoints })
     }
     get_patrol_points(bot_cords) {
-        const startPos = this.get_vector(bot_cords.x, bot_cords.y);
+        const botPos = this.get_vector(bot_cords.x, bot_cords.y);
 
-        const group = this.pathfinder.getGroup(
+        const groupID = this.pathfinder.getGroup(
             this.ZONE,
-            startPos,
+            botPos,
             true
         );
 
-        if (group == null) return [];
+        if (groupID == null) return null;
 
         const zone = this.pathfinder.zones[this.ZONE];
-        const nodes = zone.groups[group];
+        const group = zone.groups[groupID];
 
-        if (!nodes?.length) return [];
+        if (!group || group.length < 4) return null;
 
-        const points = [];
-        let currentPos = startPos.clone();
+        const patrolPoints = [];
 
-        const MIN_DISTANCE = 3;
-        const MAX_DISTANCE = 12;
+        // Punto inicial
+        patrolPoints.push({
+            x: botPos.x,
+            y: botPos.y,
+            z: botPos.z
+        });
 
-        for (let i = 0; i < 3; i++) {
+        let currentPos = botPos;
+        const usedNodes = new Set();
+
+        for (let i = 0; i < 2; i++) {
             let selected = null;
 
-            for (let attempt = 0; attempt < 100; attempt++) {
+            for (let attempt = 0; attempt < 30; attempt++) {
 
                 const node =
-                    nodes[Math.floor(Math.random() * nodes.length)];
+                    group[Math.floor(Math.random() * group.length)];
 
-                const candidate = node.centroid;
-
-                const dx = candidate.x - currentPos.x;
-                const dz = candidate.z - currentPos.z;
-
-                const distance = Math.sqrt(dx * dx + dz * dz);
-
-                if (
-                    distance < MIN_DISTANCE ||
-                    distance > MAX_DISTANCE
-                ) {
+                if (usedNodes.has(node.id))
                     continue;
-                }
 
-                // evitar puntos repetidos
-                const tooClose = points.some(p => {
-                    const ddx = p.x - candidate.x;
-                    const ddz = p.z - candidate.z;
-
-                    return Math.sqrt(ddx * ddx + ddz * ddz) < 2;
-                });
-
-                if (tooClose) continue;
+                const center = node.centroid;
 
                 const path = this.pathfinder.findPath(
                     currentPos,
-                    candidate,
+                    center,
                     this.ZONE,
-                    group
+                    groupID
                 );
 
-                if (!path || path.length === 0) {
+                if (!path || path.length === 0)
                     continue;
-                }
 
-                selected = candidate;
+                selected = center;
+                usedNodes.add(node.id);
                 break;
             }
 
-            if (!selected) break;
+            if (!selected)
+                return null;
 
-            points.push({
+            patrolPoints.push({
                 x: selected.x,
                 y: selected.y,
                 z: selected.z
             });
 
-            currentPos = selected.clone();
+            currentPos = selected;
         }
 
-        // verificar que puede volver al inicio
-        const returnPath = this.pathfinder.findPath(
-            currentPos,
-            startPos,
-            this.ZONE,
-            group
-        );
-
-        if (!returnPath || returnPath.length === 0) {
-            return [];
-        }
-
-        points.push({
-            x: startPos.x,
-            y: startPos.y,
-            z: startPos.z
+        // Último punto = volver al inicio
+        patrolPoints.push({
+            x: botPos.x,
+            y: botPos.y,
+            z: botPos.z
         });
 
-        return points;
+        return patrolPoints.map(patroPoint=>this.get_server_coords(patroPoint.x, patroPoint.z));
     }
+
     send_patrol_points(patrol_points, number_worker) {
         this.#send_msg_worker('patrol_points', number_worker, { patrol_points })
     }
@@ -185,6 +162,13 @@ class WaypointsService {
         const pp = new THREE.Vector3(bx, 0.5, bz);
         return pp
     }
+    get_server_coords(x, z) {
+        return {
+            x: ((x + 3.90) / 15) * (1000 * 9.98),
+            y: 0.5,
+            z: ((1.60 - z) / 15) * (1000 * 8.47508)
+        };
+    }
 }
 
 
@@ -193,7 +177,9 @@ console.log("worker_waypoints start")
 const waypointsService = new WaypointsService(workerData.body_data, workerData.ZONE)
 parentPort.on("message", (msg_worker) => {
     try {
+        
         const { type, data, number_bot } = JSON.parse(msg_worker)
+        console.log(`waypoints recive msg: `, type)
         switch (type) {
             case 'calc_waypoints':
                 console.log('calc_waypoints: ', data, 'number_bot: ', data.number_worker)
@@ -205,7 +191,7 @@ parentPort.on("message", (msg_worker) => {
                 waypointsService.send_patrol_points(res_patrol_points, data.number_worker)
                 break;
             default:
-
+                console.error(`msg_worker_waypoints_no_recognice ${type}`)
                 break;
         }
     } catch (err) {

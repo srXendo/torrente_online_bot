@@ -1,7 +1,8 @@
 
 const { Console } = require('console');
 const EventEmitter = require('events');
-const THREE = require('three')
+const THREE = require('three');
+const { Value } = require('three/examples/jsm/inspector/ui/Values.js');
 const { parentPort, workerData } = require('worker_threads');
  class BotService {
     #server;
@@ -24,7 +25,7 @@ const { parentPort, workerData } = require('worker_threads');
     can_response = true
     emit_start = new EventEmitter()
     pathfinder = null
-    waypoints = null
+    waypoints = {path: []}
     last_bnSeq = null
     can_move = false
     bot_helper = {send_event: (obj_json)=>{
@@ -389,7 +390,7 @@ const { parentPort, workerData } = require('worker_threads');
                     this.player_cords = bot_cords
                     
                     //this.follow_cam()
-                    this.send_waypoints()
+                    //this.send_waypoints()
 
                 }
 
@@ -454,26 +455,43 @@ const { parentPort, workerData } = require('worker_threads');
         if (!botPos) return;
         this.#send_msg_worker("calc_waypoints", this.#number_bot, {player_cords:  this.player_cords, bot_cords: this.bot_cords})
     }
+    prepare_waypoints(target_position, start_position){
+  
+        if (!target_position) return;
+        
+        if (!start_position) return;
+        console.log('prepare_waypoints', target_position, start_position)
+        this.#send_msg_worker("calc_waypoints", this.#number_bot, {player_cords:  target_position, bot_cords: start_position})
+        return true
+    }
     set_waypoints(waypoints){
-        this.waypoints = waypoints
-
-        if(waypoints){
+        
+        console.log('set_waypoints: ', waypoints)
+        if(waypoints && waypoints.path.length > 0){
+            
             console.log('waypoints: ',waypoints)
+            this.waypoints = waypoints
+            this.#bot_state = this.states.FOLLOW_TARGET
             this.bot_helper.send_event(JSON.stringify({
                 type_action: 'waypoints',
                 value_action: { path: waypoints.path, group: waypoints.group },
                 id_bot: this.#number_bot
             }));
+             
         }
 
     }
     calc_patrol_points(){
-        const botPos = this.bot_cords;
-        if (!botPos) return;
-        this.#send_msg_worker("calc_patrol_points", this.#number_bot, {player_cords:  null, bot_cords: this.bot_cords})
+        const start_position = this.bot_cords;
+        if (!start_position) return;
+        this.#send_msg_worker("calc_patrol_points", this.#id_bot, {player_cords:  null, bot_cords: start_position})
     }
     set_patrol_points(patrol_points){
         this.patrol_points = patrol_points
+        console.log('set_patrol_points: ', patrol_points)
+        
+        this.prepare_waypoints(patrol_points[0], this.bot_cords)
+        this.patrol_points.shift()
         
         /*if(patrol_points){
             console.log('patrol_points: ',patrol_points)
@@ -494,12 +512,29 @@ const { parentPort, workerData } = require('worker_threads');
     states = {
         FOLLOW_TARGET: 'FOLLOW_TARGET',
         SHOT_TARGET: 'SHOT_TARGET',
-        PATROL_ZONE: 'PATROL_ZONE'
+        PATROL_ZONE: 'PATROL_ZONE',
+        WAIT_WAYPOINTS: 'WAIT_WAYPOINTS',
+        PREPARE_FIND_TARGET: 'PREPARE_FIND_TARGET'
     }
-    #bot_state = null
+    #_bot_state = null
+    #_last_bot_state = null
+    #last_bot_state
+    set #bot_state(value){
+        console.log('change bot_state: ', value)
+        if(this.states.PATROL_ZONE === this.#bot_state  || this.states.PREPARE_FIND_TARGET === this.#bot_state ){
+            this.#_last_bot_state = this.#_bot_state
+        }
+        
+        this.#_bot_state = value
+    }
+    get #bot_state(){
+        return this.#_bot_state
+    }
     ia_planing(){
         this.#bot_state = this.states.PATROL_ZONE
+        this.#last_bot_state = this.states.PATROL_ZONE
     }
+
     ia_bot_start() {
         this.bot_action_interval = setInterval(() => {
             let response = undefined
@@ -507,6 +542,39 @@ const { parentPort, workerData } = require('worker_threads');
                 case this.states.FOLLOW_TARGET:
                     response = this.ia_follow_target()
                     if(!response) return;
+                    const playerPos = this.player_cords;
+                    if (!playerPos) return;
+
+                    const pp = this.get_vector(playerPos.x, playerPos.y)
+
+                    if (!this.bot_cords) return;
+
+                    const botPos = this.get_vector(this.bot_cords.x, this.bot_cords.y)
+
+                    const dx = pp.x - botPos.x;
+                    const dz = pp.z - botPos.z;
+                    const distSq = dx * dx + dz * dz;
+                    if(distSq < 240){
+                        if(this.#bot_state !== this.states.PREPARE_FIND_TARGET || (this.waypoints && this.waypoints.path.length < 1)){
+                            this.#bot_state = this.states.PREPARE_FIND_TARGET
+                            this.#last_bot_state = this.states.PREPARE_FIND_TARGET
+            
+                            return false
+                        }
+                        
+                        return true
+                    }
+                    if(this.#last_bot_state === this.states.PATROL_ZONE){
+                        
+                        if(this.patrol_points.length > 0){
+                            const last = this.patrol_points.shift()
+                            this.prepare_waypoints(last, this.bot_cords)
+                            this.#bot_state = this.states.WAIT_WAYPOINTS
+                        }else{
+                            this.#bot_state = this.states.PATROL_ZONE
+                            this.#last_bot_state = this.states.PATROL_ZONE
+                        }
+                    }
                     return true
                     break;
                 case this.states.SHOT_TARGET:
@@ -515,24 +583,34 @@ const { parentPort, workerData } = require('worker_threads');
                 case this.states.PATROL_ZONE:
                     this.ia_patrol_zone();
                     break;
+                case this.states.WAIT_WAYPOINTS:
+                    break;
+                case this.states.PREPARE_FIND_TARGET:
+                    this.prepare_waypoints_to_target()    
+                break;
             }
         }, 65)
     }
     ia_patrol_zone(){
         if(!this.patrol_points || this.patrol_points.length < 1){
             this.calc_patrol_points()
+            this.#bot_state = this.states.WAIT_WAYPOINTS
         }
         if(this.patrol_points && this.patrol_points.length > 0){
-            const patrol_point = this.patrol_points[0]
-            const res_move_to_patrol_points = this.move_to(patrol_point)
-            if(res_move_to_patrol_points){
-                console.log('llega al punto: ')
-                this.patrol_points = []
-            }
-        }else{
-            console.log('no patrol: ')
+            //this.#bot_state = this.states.FOLLOW_TARGET
+            
+            //console.log('llega al punto: ')
+            //this.patrol_points.shift()
+            
+        
         }
 
+    }
+    prepare_waypoints_to_target(){
+        if(this.prepare_waypoints(this.player_cords, this.bot_cords)){
+            this.#bot_state = this.states.WAIT_WAYPOINTS
+        }
+        
     }
     move_to(next_pos){
         const now = new Date().getTime()
@@ -551,18 +629,16 @@ const { parentPort, workerData } = require('worker_threads');
         const botPos = this.get_vector(this.bot_cords.x, this.bot_cords.y)
 
 
-        const dx = patrolPos.x - botPos.x;
-        const dz = patrolPos.z - botPos.z;
+        const dx = pp.x - botPos.x;
+        const dz = pp.z - botPos.z;
         const distSq = dx * dx + dz * dz;
         if(distSq < 0.02){
             return true
         }
 
 
-
-
         const target = this.normalizeAngle(
-            this.angleToTargetFront(botPos.x, botPos.z, patrolPos.x, patrolPos.z)
+            this.angleToTargetFront(botPos.x, botPos.z, pp.x, pp.z)
             + Math.PI / 2   // ← corrección de 90°
         );
         const r = -(this.bot_cords.r / 256) * Math.PI * 2
@@ -610,13 +686,14 @@ const { parentPort, workerData } = require('worker_threads');
         const dz = pp.z - botPos.z;
         const distSq = dx * dx + dz * dz;
         if(distSq < 0.02){
-            this.#bot_state = this.states.FOLLOW_TARGET
+            
             return this.shot()
         }
         return
     }
     ia_follow_target(){
         const now = new Date().getTime()
+        console.log('ia_follow_target')
         if(now - this.last_time_execute > 250){
             this.send_sync()
             this.last_time_execute = now
@@ -624,75 +701,45 @@ const { parentPort, workerData } = require('worker_threads');
         
         const playerPos = this.player_cords;
         if (!playerPos) return;
+        console.log('ia_follow_target 2')
         //console.log('interval start!', 2)
         const pp = this.get_vector(playerPos.x, playerPos.y)
 
         if (!this.bot_cords) return;
-
+console.log('ia_follow_target 3')
         const botPos = this.get_vector(this.bot_cords.x, this.bot_cords.y)
-
-        const waypointPos = pp//this.waypoints.path[0];
 
         const dx = pp.x - botPos.x;
         const dz = pp.z - botPos.z;
         const distSq = dx * dx + dz * dz;
         if(distSq < 0.02){
             this.#bot_state = this.states.SHOT_TARGET
+            return false
+        }
+        if(distSq < 0.40){
+            if(this.#bot_state !== this.states.PREPARE_FIND_TARGET || (this.waypoints && this.waypoints.path.length < 1)){
+                this.#bot_state = this.states.PREPARE_FIND_TARGET
+                this.#last_bot_state = this.states.PREPARE_FIND_TARGET
+ 
+                return false
+            }
+            
             return true
         }
-        if ((!this.waypoints || this.waypoints.path.length === 0)){
+        console.log('ia_follow_target 4')
+
+        console.log('ia_follow_target 5', this.waypoints)
+        if((this.waypoints && this.waypoints.path.length > 0) ){
+            console.log('ia_follow_target 6')
             const playerPos = this.player_cords;
             if (!playerPos) return;
+            console.log('ia_follow_target 7')
             const pp = this.get_vector(playerPos.x, playerPos.y)
 
 
 
             if (!this.bot_cords) return;
-
-            const botPos = this.get_vector(this.bot_cords.x, this.bot_cords.y)
-
-
-            const target = this.normalizeAngle(
-                this.angleToTargetFront(botPos.x, botPos.z, pp.x, pp.z)
-                + Math.PI / 2   // ← corrección de 90°
-            );
-            const r = -(this.bot_cords.r / 256) * Math.PI * 2
-            const current = this.normalizeAngle(-r);
-
-            let diff = current - target;
-            if (diff > Math.PI) diff -= 2 * Math.PI;
-            if (diff < -Math.PI) diff += 2 * Math.PI;
-            //console.log('diff: ', diff, ' --- botR: ', this.bot_cords.r, ' --- playerR: ', this.player_cords.r)
-            if(this.can_move){
-
-                if (diff > 0.05) {
-                    if(this.bot_forware_start){
-                        this.forward_move_stop()
-                    }
-                    
-                    this.camera_left()
-
-                } else if (diff < -0.05) {
-                    if(this.bot_forware_start){
-                        this.forward_move_stop()
-                    }
-                    this.camera_right()
-
-                } else {
-
-                    this.forward_move()
-                }
-            }
-        }else if((this.waypoints && this.waypoints.path.length > 0) ){
-            
-            const playerPos = this.player_cords;
-            if (!playerPos) return;
-            const pp = this.get_vector(playerPos.x, playerPos.y)
-
-
-
-            if (!this.bot_cords) return;
-
+            console.log('ia_follow_target 8')
             const botPos = this.get_vector(this.bot_cords.x, this.bot_cords.y)
 
             const waypointPos = this.waypoints.path[0];
@@ -703,11 +750,14 @@ const { parentPort, workerData } = require('worker_threads');
             if(distSq < 0.02){
                             
                 this.waypoints.path.shift();
+                if(this.waypoints.path.length < 1){
+                    return true
+                }
                 return false;
 
 
             }
-
+            console.log('ia_follow_target 9')
             const target = this.normalizeAngle(
                 this.angleToTargetFront(botPos.x, botPos.z, waypointPos.x, waypointPos.z)
                 + Math.PI / 2   // ← corrección de 90°
@@ -719,8 +769,9 @@ const { parentPort, workerData } = require('worker_threads');
             if (diff > Math.PI) diff -= 2 * Math.PI;
             if (diff < -Math.PI) diff += 2 * Math.PI;
             //console.log('diff: ', diff, ' --- botR: ', this.bot_cords.r, ' --- playerR: ', this.player_cords.r)
+            console.log('ia_follow_target 10')
             if(this.can_move){
-
+                console.log('ia_follow_target 11: ', diff)
                 if (diff > 0.05) {
                     if(this.bot_forware_start){
                         this.forward_move_stop()
@@ -1261,9 +1312,11 @@ parentPort.on("message", (msg_worker)=>{
                 botService.disconnect()
                 break;
             case 'set_waypoints': 
+                console.log("set_waypoints", data)
                 botService.set_waypoints(data.waypoints)
                 break;
             case 'set_patrol_points':
+                
                 botService.set_patrol_points(data.patrol_points)
             break; 
             default:
