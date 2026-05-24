@@ -542,28 +542,7 @@ const { parentPort, workerData } = require('worker_threads');
                 case this.states.FOLLOW_TARGET:
                     response = this.ia_follow_target()
                     if(!response) return;
-                    const playerPos = this.player_cords;
-                    if (!playerPos) return;
 
-                    const pp = this.get_vector(playerPos.x, playerPos.y)
-
-                    if (!this.bot_cords) return;
-
-                    const botPos = this.get_vector(this.bot_cords.x, this.bot_cords.y)
-
-                    const dx = pp.x - botPos.x;
-                    const dz = pp.z - botPos.z;
-                    const distSq = dx * dx + dz * dz;
-                    if(distSq < 240){
-                        if(this.#bot_state !== this.states.PREPARE_FIND_TARGET || (this.waypoints && this.waypoints.path.length < 1)){
-                            this.#bot_state = this.states.PREPARE_FIND_TARGET
-                            this.#last_bot_state = this.states.PREPARE_FIND_TARGET
-            
-                            return false
-                        }
-                        
-                        return true
-                    }
                     if(this.#last_bot_state === this.states.PATROL_ZONE){
                         
                         if(this.patrol_points.length > 0){
@@ -706,7 +685,7 @@ const { parentPort, workerData } = require('worker_threads');
         const pp = this.get_vector(playerPos.x, playerPos.y)
 
         if (!this.bot_cords) return;
-console.log('ia_follow_target 3')
+        console.log('ia_follow_target 3')
         const botPos = this.get_vector(this.bot_cords.x, this.bot_cords.y)
 
         const dx = pp.x - botPos.x;
@@ -716,15 +695,11 @@ console.log('ia_follow_target 3')
             this.#bot_state = this.states.SHOT_TARGET
             return false
         }
-        if(distSq < 0.40){
-            if(this.#bot_state !== this.states.PREPARE_FIND_TARGET || (this.waypoints && this.waypoints.path.length < 1)){
-                this.#bot_state = this.states.PREPARE_FIND_TARGET
-                this.#last_bot_state = this.states.PREPARE_FIND_TARGET
- 
-                return false
+        if(distSq < 125){
+            if((this.waypoints && this.waypoints.path.length < 2)){
+                this.prepare_waypoints_to_target()
+
             }
-            
-            return true
         }
         console.log('ia_follow_target 4')
 
