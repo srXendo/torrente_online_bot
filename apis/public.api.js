@@ -68,6 +68,8 @@ class publicApi {
     if(ip_port_config.split('//').length > 0){
       html = html.toString("utf8").replace('value="192.168.1.128"', `value="${ip_port_config.split('//')[0]}"`)
       html = html.toString("utf8").replace('value="8888"', `value="${(ip_port_config.split('//')[1])}"`)
+      html = html.toString("utf8").replace('value="2"', `value="${(ip_port_config.split('//')[2])}"`)
+      html = html.toString("utf8").replace('checked>', `${(ip_port_config.split('//')[3])==='true'  ? 'checked' : ''}>`) 
       html = Buffer.from(html, 'utf8')
 
     }
@@ -217,7 +219,7 @@ class publicApi {
         first_msg_callback()
         break;
       case 'calc_waypoints':
-        console.log('recive new msg worker: calc_waypoints: ', data, this.#waypoints_worker.postMessage)
+        
         setTimeout(()=>{
           const res = this.#waypoints_worker.postMessage(JSON.stringify({ type: 'calc_waypoints', data: { player_cords: data.player_cords, bot_cords: data.bot_cords, number_worker: number_worker_dad } }))
           console.log('res calc_waypoints in api: ', res)
@@ -279,12 +281,12 @@ class publicApi {
 
     this.ip_server = body.ip_server;
     this.port_server = body.port_server;
-
-
     this.num_bots = body.num_bots;
-    const pathmap = path.join(__dirname, './../config');
-    fs.writeFileSync(pathmap, `${this.ip_server}//${this.port_server}`);
+    this.bots_can_talk = body.bots_can_talk
 
+    const pathmap = path.join(__dirname, './../config');
+    fs.writeFileSync(pathmap, `${this.ip_server}//${this.port_server}//${this.num_bots}//${this.bots_can_talk}`);
+    
     this.bot_master = true
 
     this.number_bot_starts = 1
@@ -371,7 +373,7 @@ class publicApi {
       console.log(`new bot: id_bot${i} port: ${obj_starter.port}`);
     }
     const worker = new Worker(this.#path_worker, {
-      workerData: { number_bot: i, body_data: this.body_data, bot_master: this.bot_master, bot_helper: this.bot, ZONE: this.ZONE, ip_connect: this.ip_server, port_connect: this.port_server }
+      workerData: {bots_can_talk: this.bots_can_talk, number_bot: i, body_data: this.body_data, bot_master: this.bot_master, bot_helper: this.bot, ZONE: this.ZONE, ip_connect: this.ip_server, port_connect: this.port_server }
     });
     this.number_bot_starts++
 

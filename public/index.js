@@ -6,6 +6,7 @@ async function btnocultar() {
 		const ipv4 = document.getElementById("ipv4").value;
 		const puerto = document.getElementById("puerto").value;
 		const numbots = document.getElementById("numbots").value;
+		const bots_can_talk = document.getElementById("botsTalk").checked
 		if (isNaN(parseInt(numbots))&& numbots > 32) {
 			alert('bot num max permitido: 32')
 			return;
@@ -17,9 +18,11 @@ async function btnocultar() {
 			alert('Escribe un puerto valido')
 			return;
 		}
+
 		console.log("La dirección IP es: ", ipv4);
 		console.log("El puerto es: ", puerto);
 		console.log("El numero de bots es: ", numbots);
+		console.log("¿Los bots pueden hablar?: ", bots_can_talk)
 		document.getElementById('boton').value = "Desconectar"
 		const response_connection = await fetch('/api/recive_start',{
 			method: 'POST',
@@ -30,7 +33,8 @@ async function btnocultar() {
 				
 				"ip_server": ipv4,
 				"port_server": parseInt(puerto),
-				"num_bots": parseInt(numbots)
+				"num_bots": parseInt(numbots),
+				"bots_can_talk": bots_can_talk
 			}),
 
 		})

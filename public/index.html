@@ -439,11 +439,12 @@
     </script>
 
     <div class="formulario">
-        <div class="tituloformulario"><span>CONECTAR BOTS</span></div>
+        <div class="tituloformulario"><span>Añadir bots en la partida</span></div>
         <div class="datosformulario">
             <label>Dirección IP:<br><input type="text" id="ipv4" value="192.168.1.128"></label>
             <label>Puerto:<br><input type="number" id="puerto" value="8888"></label>
             <label>Número de bots:<br><input type="number" id="numbots" max="32" value="2"></label>
+            <label>Bots hablan cuando mueren:<br><input type="checkbox" id="botsTalk" checked></label>
         </div>
     </div>
 
@@ -458,20 +459,23 @@
         font-family: monospace; font-size: 13px;
         display: flex; flex-direction: column; gap: 8px; min-width: 240px;">
 
-        <span style="font-weight:bold; margin-bottom:4px;">Ajuste de offset</span>
+        <span style="font-weight:bold; margin-bottom:4px;">Conectar</span>
         <input id="boton" type="button" value="Conectar" onclick="btnocultar()">
 
-        <label>Offset X: <span id="lx">0.00</span>
-            <input id="offsetX" type="range" min="-20" max="20" step="0.1" value="-3.9"
-                oninput="offsetX = parseFloat(this.value); document.getElementById('lx').textContent = offsetX.toFixed(2);"
-                style="width:100%; margin-top:4px;">
-        </label>
-
-        <label>Offset Z: <span id="lz">0.00</span>
+        <div style="display:none">
+            <label>Offset X: <span id="lx">0.00</span>
+                <input id="offsetX" type="range" min="-20" max="20" step="0.1" value="-3.9"
+                    oninput="offsetX = parseFloat(this.value); document.getElementById('lx').textContent = offsetX.toFixed(2);"
+                    style="width:100%; margin-top:4px;">
+            </label>
+        </div>
+        <div style="display:none">
+            <label>Offset Z: <span id="lz">0.00</span>
             <input id="offsetZ" type="range" min="-20" max="20" step="0.1" value="-1.6"
                 oninput="offsetZ = parseFloat(this.value); document.getElementById('lz').textContent = offsetZ.toFixed(2);"
                 style="width:100%; margin-top:4px;">
-        </label>
+            </label>
+        </div>
     </div>
 
     <script src="index.js"></script>

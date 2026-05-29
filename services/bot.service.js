@@ -32,8 +32,9 @@ const { parentPort, workerData } = require('worker_threads');
         this.#send_msg_worker("msg_to_frontend", this.#number_bot, obj_json)
     }}
     last_bnRecv = null
+    bots_can_talk = true
     #id_bot = null
-    constructor(number_bot, bot_helper, bot_master, body_data, ZONE, ip, port) {
+    constructor(bots_can_talk, number_bot, bot_helper, bot_master, body_data, ZONE, ip, port) {
         const dgram = require('dgram')
         this.#server = dgram.createSocket('udp4');
         
@@ -47,7 +48,7 @@ const { parentPort, workerData } = require('worker_threads');
         this.#port_server = port
         this.buffer_session = (this.buffer_session + `${number_bot}`.padStart(2, '0'))
         this.user_bot = Buffer.from(('Bot' + `${number_bot}`.padStart(2, "0")), 'ascii')
-
+        this.bots_can_talk = bots_can_talk
         this.#id_bot = number_bot
     }
     #send_msg_worker(type, number_worker, data){
@@ -473,6 +474,10 @@ const { parentPort, workerData } = require('worker_threads');
         
         if (!start_position) return;
         console.log('prepare_waypoints', target_position, start_position)
+
+        if (!target_position) return;
+
+        if (!start_position) return;
         this.#send_msg_worker("calc_waypoints", this.#number_bot, {player_cords:  target_position, bot_cords: start_position})
         return true
     }
@@ -959,7 +964,9 @@ const { parentPort, workerData } = require('worker_threads');
         const chat = Buffer.concat([header, text, end_buf])
 
         chat.writeUInt8(this.#number_bot, 4)
-        this.arr_actions.push(chat)
+        if(this.bots_can_talk){
+            this.arr_actions.push(chat)
+        }
         this.bot_helper.send_event(JSON.stringify({ type_action: 'die', id_bot: this.#number_bot }))
         // 3f00bd30000c15000d1000017f554004254690571541062da5c5bbb2d5d5
         if (this.bot_cords) {
@@ -1344,7 +1351,7 @@ const { parentPort, workerData } = require('worker_threads');
 }
 module.exports = workerData
 console.log( workerData.ip_connect, typeof workerData.port_connect, workerData)
-const botService = new BotService(workerData.number_bot, undefined, workerData.bot_master, workerData.body_data, workerData.ZONE, workerData.ip_connect, workerData.port_connect)
+const botService = new BotService(workerData.bots_can_talk, workerData.number_bot, undefined, workerData.bot_master, workerData.body_data, workerData.ZONE, workerData.ip_connect, workerData.port_connect)
 parentPort.on("message", (msg_worker)=>{
     try{
         const {type, data} = JSON.parse(msg_worker)
