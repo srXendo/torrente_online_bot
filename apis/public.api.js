@@ -188,7 +188,7 @@ class publicApi {
 
   }
   starter() {
-    if (this.number_bot_starts < this.num_bots) {
+    if (this.number_bot_starts <= this.num_bots) {
       console.log(`create new bot order! ${this.number_bot_starts}`)
       
       this.start_bots(() => {

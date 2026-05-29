@@ -139,6 +139,7 @@ const { parentPort, workerData } = require('worker_threads');
     
                 break;
             case 0x7f00:
+
                 const first_stage2 = Buffer.from("7f000202c3000000", 'hex')
                 first_stage2.writeUInt8(msg.readUInt8(3), 2)
                 first_stage2.writeUInt8(0, 3)
@@ -168,10 +169,11 @@ const { parentPort, workerData } = require('worker_threads');
             case 0x3f02:
 
                 //console.log('msg: ping: ', '0x3f02')
+                this.emit_start.emit('user_start');
+                this.#send_msg_worker('next', this.#number_bot, null)
                 return []
                 break;
             case 0x8802:
-                
                 //console.log('msg: firstStage: ', "0x8802")
                 const session = Buffer.from('7f000100c100000002000000070000005800000014000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000430068006100760061006c006f00740065000000', 'hex')
                 const pre1 = Buffer.from("8002010006000100" + this.buffer_session + "e665f602", "hex")
@@ -187,7 +189,18 @@ const { parentPort, workerData } = require('worker_threads');
                 return [Buffer.from("8801000006000100" + this.buffer_session + "c2091002", 'hex')]
                 break;
             case 0x3f08:
-                return []
+                const response_end_party = Buffer.from('8801000006000100ba005ea48e7e2600', 'hex')
+                response_end_party.writeUint8((msg.readUInt8(2)+1) & 0xff , 6)
+                response_end_party.writeUint8((msg.readUInt8(3)), 5)
+                setTimeout(()=>{
+                    this.arr_actions.push(response_end_party)
+                }, 200)
+                const ok4 = Buffer.from('8006010690b00009d043b03', 'hex')
+
+                ok4.writeUint8((msg.readUint8(2)) & 0xFF, 5)
+
+                ok4.writeUint8(msg.readUint8(3), 4)
+                return [ok4]
                 break;
             default:
                 console.log("err: msg not recognice: ", msg)
@@ -431,9 +444,8 @@ const { parentPort, workerData } = require('worker_threads');
 
                 
                     
-                    this.arr_actions.push(this.try_other_spawn())
-                    this.emit_start.emit('user_start');
-                    this.#send_msg_worker('next', this.#number_bot, null)
+                this.arr_actions.push(this.try_other_spawn())
+
             
 
                 break;
@@ -531,8 +543,8 @@ const { parentPort, workerData } = require('worker_threads');
         return this.#_bot_state
     }
     ia_planing(){
-        this.#bot_state = this.states.PATROL_ZONE
-        this.#last_bot_state = this.states.PATROL_ZONE
+        this.#bot_state = this.states.PREPARE_FIND_TARGET
+        this.#last_bot_state = this.states.PREPARE_FIND_TARGET
     }
 
     ia_bot_start() {
@@ -593,7 +605,7 @@ const { parentPort, workerData } = require('worker_threads');
     }
     move_to(next_pos){
         const now = new Date().getTime()
-        if(now - this.last_time_execute > 250){
+        if(now - this.last_time_execute > 200){
             this.send_sync()
             this.last_time_execute = now
         }
@@ -673,7 +685,7 @@ const { parentPort, workerData } = require('worker_threads');
     ia_follow_target(){
         const now = new Date().getTime()
         console.log('ia_follow_target')
-        if(now - this.last_time_execute > 250){
+        if(now - this.last_time_execute > 200){
             this.send_sync()
             this.last_time_execute = now
         }
@@ -695,16 +707,16 @@ const { parentPort, workerData } = require('worker_threads');
             this.#bot_state = this.states.SHOT_TARGET
             return false
         }
-        if(distSq < 125){
+        /*if(distSq < 125){
             if((this.waypoints && this.waypoints.path.length < 2)){
                 this.prepare_waypoints_to_target()
 
             }
-        }
+        }*/
         console.log('ia_follow_target 4')
 
         console.log('ia_follow_target 5', this.waypoints)
-        if((this.waypoints && this.waypoints.path.length > 0) ){
+        if((this.waypoints && this.waypoints.path.length > 0) && distSq > 0.8 ||false){
             console.log('ia_follow_target 6')
             const playerPos = this.player_cords;
             if (!playerPos) return;
@@ -728,6 +740,63 @@ const { parentPort, workerData } = require('worker_threads');
                 if(this.waypoints.path.length < 1){
                     return true
                 }
+                return false;
+
+
+            }
+            console.log('ia_follow_target 9')
+            const target = this.normalizeAngle(
+                this.angleToTargetFront(botPos.x, botPos.z, waypointPos.x, waypointPos.z)
+                + Math.PI / 2   // ← corrección de 90°
+            );
+            const r = -(this.bot_cords.r / 256) * Math.PI * 2
+            const current = this.normalizeAngle(-r);
+
+            let diff = current - target;
+            if (diff > Math.PI) diff -= 2 * Math.PI;
+            if (diff < -Math.PI) diff += 2 * Math.PI;
+            //console.log('diff: ', diff, ' --- botR: ', this.bot_cords.r, ' --- playerR: ', this.player_cords.r)
+            console.log('ia_follow_target 10')
+            if(this.can_move){
+                console.log('ia_follow_target 11: ', diff)
+                if (diff > 0.05) {
+                    if(this.bot_forware_start){
+                        this.forward_move_stop()
+                    }
+                    
+                    this.camera_left()
+
+                } else if (diff < -0.05) {
+                    if(this.bot_forware_start){
+                        this.forward_move_stop()
+                    }
+                    this.camera_right()
+
+                } else {
+
+                    this.forward_move()
+                }
+            }
+        }else if(distSq <= 0.8 || true){
+            console.log('ia_follow_target 6')
+            const playerPos = this.player_cords;
+            if (!playerPos) return;
+            console.log('ia_follow_target 7')
+            const pp = this.get_vector(playerPos.x, playerPos.y)
+
+
+
+            if (!this.bot_cords) return;
+            console.log('ia_follow_target 8')
+            const botPos = this.get_vector(this.bot_cords.x, this.bot_cords.y)
+
+            const waypointPos = pp;
+
+            const dx = waypointPos.x - botPos.x;
+            const dz = waypointPos.z - botPos.z;
+            const distSq = dx * dx + dz * dz;
+            if(distSq < 0.02){
+                            
                 return false;
 
 
@@ -918,7 +987,7 @@ const { parentPort, workerData } = require('worker_threads');
     }
     send_signal_drop_gun() {
         //3f001510000510784f8a2546905715416652a6c5
-        const dificult = 0.16 //'hen' // 0.00 to 1.00 1.23 is god value
+        const dificult = -0 //'hen' // 0.00 to 1.00 1.23 is god value
         const random = Math.random()
 
         const random_drop =  dificult > random
