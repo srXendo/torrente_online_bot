@@ -40,6 +40,7 @@
 
         let offsetX = -3.9;
         let offsetZ = -1.6;
+
         document.getElementById('offsetX').setAttribute('value', -3.9);
         document.getElementById('lx').textContent = offsetX.toFixed(2);
         document.getElementById('offsetZ').setAttribute('value', -1.6);
@@ -445,6 +446,7 @@
             <label>Puerto:<br><input type="number" id="puerto" value="8888"></label>
             <label>Número de bots:<br><input type="number" id="numbots" max="32" value="2"></label>
             <label>Bots hablan cuando mueren:<br><input type="checkbox" id="botsTalk" checked></label>
+            <label>Dificultad: <span id="difficult_span">0.00</span><br><input type="range" step="0.01" min="0" max="1" value="0.00" id="dificult" oninput="window.difficult = parseFloat(this.value); document.getElementById('difficult_span').textContent = window.difficult.toFixed(2);"><br> </slide></label>
         </div>
     </div>
 
@@ -457,7 +459,7 @@
         background: rgba(0,0,0,0.75); color: white;
         padding: 12px 16px; border-radius: 10px;
         font-family: monospace; font-size: 13px;
-        display: flex; flex-direction: column; gap: 8px; min-width: 240px;">
+        display: flex; flex-direction: column; gap: 8px; min-width: auto;">
 
         <span style="font-weight:bold; margin-bottom:4px;">Conectar</span>
         <input id="boton" type="button" value="Conectar" onclick="btnocultar()">

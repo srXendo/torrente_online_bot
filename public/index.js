@@ -1,3 +1,4 @@
+
 async function btnocultar() {
 	var x = document.getElementById("ocultar");
 	if (x.style.display === "none") {
@@ -23,6 +24,7 @@ async function btnocultar() {
 		console.log("El puerto es: ", puerto);
 		console.log("El numero de bots es: ", numbots);
 		console.log("¿Los bots pueden hablar?: ", bots_can_talk)
+		console.log("Dificultad de los bots: ", window.difficult)
 		document.getElementById('boton').value = "Desconectar"
 		const response_connection = await fetch('/api/recive_start',{
 			method: 'POST',
@@ -34,7 +36,8 @@ async function btnocultar() {
 				"ip_server": ipv4,
 				"port_server": parseInt(puerto),
 				"num_bots": parseInt(numbots),
-				"bots_can_talk": bots_can_talk
+				"bots_can_talk": bots_can_talk,
+				"difficult": window.difficult
 			}),
 
 		})

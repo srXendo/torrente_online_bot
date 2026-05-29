@@ -71,7 +71,7 @@ label {
 }
 #boton {
 	margin-top: 30px;
-	width: 110px;
+	width: 100%px;
 	height: 55px;
 	border-radius: 12px;
 	cursor: pointer;
