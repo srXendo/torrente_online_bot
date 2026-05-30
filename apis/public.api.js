@@ -70,7 +70,7 @@ class publicApi {
       html = html.toString("utf8").replace('value="8888"', `value="${(ip_port_config.split('//')[1])}"`)
       html = html.toString("utf8").replace('value="2"', `value="${(ip_port_config.split('//')[2])}"`)
       html = html.toString("utf8").replace('checked>', `${(ip_port_config.split('//')[3])==='true'  ? 'checked' : ''}>`) 
-      html = html.toString("utf8").replace('value="0.00"', `value="${(ip_port_config.split('//')[4]) ? ip_port_config.split('//')[4] : '0.00'}"`) 
+      html = html.toString("utf8").replace('value="0.00"', `value="${(ip_port_config.split('//')[4]) ? parseFloat(ip_port_config.split('//')[4]) : 0.00}"`) 
       html = html.toString("utf8").replace('"difficult_span">0.00', `"difficult_span">${(ip_port_config.split('//')[4]) ? ip_port_config.split('//')[4] : '0.00'}`)
       html = Buffer.from(html, 'utf8')
 

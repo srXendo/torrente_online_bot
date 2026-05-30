@@ -180,6 +180,8 @@ const { parentPort, workerData } = require('worker_threads');
                 //console.log('msg: firstStage: ', "0x8802")
                 const session = Buffer.from('7f000100c100000002000000070000005800000014000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000430068006100760061006c006f00740065000000', 'hex')
                 const pre1 = Buffer.from("8002010006000100" + this.buffer_session + "e665f602", "hex")
+                
+                pre1.writeUInt32LE(Date.now() & 0xFFFFFFFF >>> 0, 12);
                 const pre2 = Buffer.from("3f020000" + this.buffer_session + "", 'hex')
                 this.last_bnSeq = 0x01
                 this.last_bnRecv = 0x00
@@ -189,7 +191,11 @@ const { parentPort, workerData } = require('worker_threads');
                 this.party = this.extract_data(msg)
                 console.log(this.party)
                 //this.#number_bot = this.party.currentPlayers
-                return [Buffer.from("8801000006000100" + this.buffer_session + "c2091002", 'hex')]
+                let packet = Buffer.from("8801000006000100" + this.buffer_session + "c2091002", 'hex')
+                const timestamp = Date.now() & 0xFFFFFFFF;
+
+                packet.writeUInt32LE(timestamp >>> 0, 12);
+                return [packet]
                 break;
             case 0x3f08:
                 const response_end_party = Buffer.from('8801000006000100ba005ea48e7e2600', 'hex')
@@ -216,9 +222,7 @@ const { parentPort, workerData } = require('worker_threads');
         const bot = msg.readUInt8(4)
         const action = msg.readUInt8(5) //action player byte
         let responses = []
-        const ok2 = Buffer.from("3f020404" + this.buffer_session, 'hex')
-        ok2.writeUint8(msg.readUint8(3), 2)
-        ok2.writeUint8(msg.readUint8(2), 3)
+
         //console.log('action, bot: ', action, this.#number_bot)
         switch (action) {
             case 0xd2:
@@ -320,8 +324,8 @@ const { parentPort, workerData } = require('worker_threads');
                 break;
             case 0xff:
                 console.log(`cambio de id?: ${this.#number_bot} : ${msg.readUInt8(4)}`)
-                this.#number_bot = msg.readUInt8(4)
-                this.user_bot = Buffer.from(('Bot' + `${this.#number_bot }`.padStart(2, "0")), 'ascii')
+                //this.#number_bot = msg.readUInt8(4)
+                //this.user_bot = Buffer.from(('Bot' + `${this.#number_bot }`.padStart(2, "0")), 'ascii')
 
                 
 
@@ -365,17 +369,17 @@ const { parentPort, workerData } = require('worker_threads');
                     this.bot_helper.send_event(JSON.stringify({ type_action: 'spawn', value_action: bot_cords, id_bot: this.#number_bot }))
                     try {
                         
-                        const ping_ce = Buffer.from('80060100ac240000ee8b4503', 'hex')
-                        ping_ce.writeUInt8((msg.readUInt8(2)) & 0xff, 5)
-                        ping_ce.writeUInt8(msg.readUInt8(3), 4)
+
                         //this.send_waypoints()
+                        
                         this.can_move = true
                         this.ia_planing()
                         this.ia_bot_start()
                         
                     
                         this.start = true
-                        //responses.push(ping_ce)
+
+                        
                     } catch (err) {
                         console.error(new Error(err.stack))
                         throw new Error(err)
@@ -443,10 +447,10 @@ const { parentPort, workerData } = require('worker_threads');
 
                 const ping_ce = Buffer.from('80060100ac240000ee8b4503', 'hex')
                 ping_ce.writeUInt8(msg.readUInt8(2), 5)
-                ping_ce.writeUInt8(msg.readUInt8(3), 4)
+                ping_ce.writeUInt8((msg.readUInt8(3)+1) & 0xff, 4)
 
                 
-                    
+                responses.push(ping_ce)
                 this.arr_actions.push(this.try_other_spawn())
 
             

@@ -8,6 +8,8 @@ async function btnocultar() {
 		const puerto = document.getElementById("puerto").value;
 		const numbots = document.getElementById("numbots").value;
 		const bots_can_talk = document.getElementById("botsTalk").checked
+		console.log(document.getElementById('difficult'))
+		window.difficult = document.getElementById('dificult').value
 		if (isNaN(parseInt(numbots))&& numbots > 32) {
 			alert('bot num max permitido: 32')
 			return;

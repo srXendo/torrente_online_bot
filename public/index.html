@@ -446,7 +446,7 @@
             <label>Puerto:<br><input type="number" id="puerto" value="8888"></label>
             <label>Número de bots:<br><input type="number" id="numbots" max="32" value="2"></label>
             <label>Bots hablan cuando mueren:<br><input type="checkbox" id="botsTalk" checked></label>
-            <label>Dificultad: <span id="difficult_span">0.00</span><br><input type="range" step="0.01" min="0" max="1" value="0.00" id="dificult" oninput="window.difficult = parseFloat(this.value); document.getElementById('difficult_span').textContent = window.difficult.toFixed(2);"><br> </slide></label>
+            <label>Dificultad: <span id="difficult_span">0.00</span><br><input type="range" step="0.01" min="0" max="1" value="0.00" id="dificult" oninput="console.log('changes! range'); window.difficult = parseFloat(this.value); document.getElementById('difficult_span').textContent = window.difficult.toFixed(2);"><br> </slide></label>
         </div>
     </div>
 
