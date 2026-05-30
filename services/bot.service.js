@@ -33,8 +33,9 @@ const { parentPort, workerData } = require('worker_threads');
     }}
     last_bnRecv = null
     bots_can_talk = true
+    difficult = null
     #id_bot = null
-    constructor(bots_can_talk, number_bot, bot_helper, bot_master, body_data, ZONE, ip, port) {
+    constructor(difficult, bots_can_talk, number_bot, bot_helper, bot_master, body_data, ZONE, ip, port) {
         const dgram = require('dgram')
         this.#server = dgram.createSocket('udp4');
         
@@ -49,6 +50,7 @@ const { parentPort, workerData } = require('worker_threads');
         this.buffer_session = (this.buffer_session + `${number_bot}`.padStart(2, '0'))
         this.user_bot = Buffer.from(('Bot' + `${number_bot}`.padStart(2, "0")), 'ascii')
         this.bots_can_talk = bots_can_talk
+        this.difficult = difficult;
         this.#id_bot = number_bot
     }
     #send_msg_worker(type, number_worker, data){
@@ -994,10 +996,10 @@ const { parentPort, workerData } = require('worker_threads');
     }
     send_signal_drop_gun() {
         //3f001510000510784f8a2546905715416652a6c5
-        const dificult = -0 //'hen' // 0.00 to 1.00 1.23 is god value
+        const dificult = this.difficult //'hen' // 0.00 to 1.00 1.23 is god value
         const random = Math.random()
 
-        const random_drop =  dificult > random
+        const random_drop =  dificult < random
         let drop_gun_to_flor = Buffer.from(`3f00f23fce050532dbac9745000000006ef7f9c4`, 'hex')
         if(random_drop){
             drop_gun_to_flor = Buffer.from(`3f001510000510784f8a2546905715416652a6c5`, 'hex')
@@ -1229,7 +1231,7 @@ const { parentPort, workerData } = require('worker_threads');
     async shot() {
 
         console.log('shot bot')
-        const dificult = 0.2 //'hen' // 0.00 to 1.00 1.23 is god value
+        const dificult = this.difficult //'hen' // 0.00 to 1.00 1.23 is god value
         const random = Math.random()
         const now = new Date().getTime()
 
@@ -1244,7 +1246,7 @@ const { parentPort, workerData } = require('worker_threads');
                 this.arr_actions.push(shot)
             }else{
                 const fail_shot = Buffer.from('3f00790e00262602714ea644f91e2143860ed745','hex')
-                this.can_shot = false
+
                 fail_shot.writeFloatLE(this.player_cords.x, 8);
                 fail_shot.writeFloatLE(this.player_cords.y, 8 + 8);
                 this.arr_actions.push(fail_shot)
@@ -1351,7 +1353,7 @@ const { parentPort, workerData } = require('worker_threads');
 }
 module.exports = workerData
 console.log( workerData.ip_connect, typeof workerData.port_connect, workerData)
-const botService = new BotService(workerData.bots_can_talk, workerData.number_bot, undefined, workerData.bot_master, workerData.body_data, workerData.ZONE, workerData.ip_connect, workerData.port_connect)
+const botService = new BotService(workerData.difficult, workerData.bots_can_talk, workerData.number_bot, undefined, workerData.bot_master, workerData.body_data, workerData.ZONE, workerData.ip_connect, workerData.port_connect)
 parentPort.on("message", (msg_worker)=>{
     try{
         const {type, data} = JSON.parse(msg_worker)

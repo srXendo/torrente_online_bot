@@ -375,7 +375,7 @@ class publicApi {
       console.log(`new bot: id_bot${i} port: ${obj_starter.port}`);
     }
     const worker = new Worker(this.#path_worker, {
-      workerData: {bots_can_talk: this.bots_can_talk, number_bot: i, body_data: this.body_data, bot_master: this.bot_master, bot_helper: this.bot, ZONE: this.ZONE, ip_connect: this.ip_server, port_connect: this.port_server }
+      workerData: {difficult: this.difficult, bots_can_talk: this.bots_can_talk, number_bot: i, body_data: this.body_data, bot_master: this.bot_master, bot_helper: this.bot, ZONE: this.ZONE, ip_connect: this.ip_server, port_connect: this.port_server }
     });
     this.number_bot_starts++
 
