@@ -94,6 +94,7 @@ const { parentPort, workerData } = require('worker_threads');
     }
     handler_message(msg, rconf) {
         const headers = msg.readUInt16BE(0)
+        const timestamp = Date.now() & 0xFFFFFFFF;
         switch (headers) {
             case 0x3f03:
             case 0x3f01:
@@ -105,6 +106,10 @@ const { parentPort, workerData } = require('worker_threads');
                 ok3.writeUint8((msg.readUint8(2)) & 0xFF, 5)
 
                 ok3.writeUint8(msg.readUint8(3), 4)
+                  
+                
+
+                ok3.writeUInt32LE(timestamp >>> 0, 7);
                 return [ok3]
                 break;
             case 0x3700:
@@ -192,13 +197,14 @@ const { parentPort, workerData } = require('worker_threads');
                 console.log(this.party)
                 //this.#number_bot = this.party.currentPlayers
                 let packet = Buffer.from("8801000006000100" + this.buffer_session + "c2091002", 'hex')
-                const timestamp = Date.now() & 0xFFFFFFFF;
+
 
                 packet.writeUInt32LE(timestamp >>> 0, 12);
                 return [packet]
                 break;
             case 0x3f08:
-                const response_end_party = Buffer.from('8801000006000100ba005ea48e7e2600', 'hex')
+                const response_end_party = Buffer.from("8801000006000100" + this.buffer_session + "c2091002", 'hex')
+                response_end_party.writeUInt32LE(timestamp >>> 0, 12);
                 response_end_party.writeUint8((msg.readUInt8(2)+1) & 0xff , 6)
                 response_end_party.writeUint8((msg.readUInt8(3)), 5)
                 setTimeout(()=>{
@@ -209,6 +215,10 @@ const { parentPort, workerData } = require('worker_threads');
                 ok4.writeUint8((msg.readUint8(2)) & 0xFF, 5)
 
                 ok4.writeUint8(msg.readUint8(3), 4)
+                                  
+                
+
+                ok4.writeUInt32LE(timestamp >>> 0, 7);
                 return [ok4]
                 break;
             default:
@@ -446,8 +456,13 @@ const { parentPort, workerData } = require('worker_threads');
                 //
 
                 const ping_ce = Buffer.from('80060100ac240000ee8b4503', 'hex')
+  
+                const timestamp = Date.now() & 0xFFFFFFFF;
+
+                ping_ce.writeUInt32LE(timestamp >>> 0, 7);
                 ping_ce.writeUInt8(msg.readUInt8(2), 5)
                 ping_ce.writeUInt8((msg.readUInt8(3)+1) & 0xff, 4)
+                
 
                 
                 responses.push(ping_ce)
