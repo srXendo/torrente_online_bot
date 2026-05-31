@@ -177,8 +177,7 @@ const { parentPort, workerData } = require('worker_threads');
             case 0x3f02:
 
                 //console.log('msg: ping: ', '0x3f02')
-                this.emit_start.emit('user_start');
-                this.#send_msg_worker('next', this.#number_bot, null)
+
                 return []
                 break;
             case 0x8802:
@@ -240,7 +239,7 @@ const { parentPort, workerData } = require('worker_threads');
   
                 
                
-                if (!(~msg.toString('ascii').indexOf('se ha conectado'))) {
+                if (!(~msg.toString('ascii').indexOf(this.user_bot.toString('ascii')))) {
 
 
 
@@ -334,8 +333,12 @@ const { parentPort, workerData } = require('worker_threads');
                 break;
             case 0xff:
                 console.log(`cambio de id?: ${this.#number_bot} : ${msg.readUInt8(4)}`)
-                //this.#number_bot = msg.readUInt8(4)
-                //this.user_bot = Buffer.from(('Bot' + `${this.#number_bot }`.padStart(2, "0")), 'ascii')
+                if(0xfb !==  msg.readUInt8(4)){
+                    /*this.user_bot = Buffer.from(('Bot' + `${this.#number_bot }`.padStart(2, "0")), 'ascii')
+                    this.#number_bot = msg.readUInt8(4)*/
+
+                }
+                    //
 
                 
 
@@ -371,7 +374,7 @@ const { parentPort, workerData } = require('worker_threads');
                     this.can_shot = true
                     console.log('bot spawn ', this.#number_bot)
                     this.in_game = true
-                    
+
                     const bot_cords = this.extractRespawnXZR(msg, bot)
                     //const pj_response = Buffer.from('3f00800d010d1000010000e55e1d465c55b244ba37d045f6a30000', 'hex')
                     //pj_response.writeInt8(this.#number_bot, 4)
@@ -463,7 +466,11 @@ const { parentPort, workerData } = require('worker_threads');
                 ping_ce.writeUInt8(msg.readUInt8(2), 5)
                 ping_ce.writeUInt8((msg.readUInt8(3)+1) & 0xff, 4)
                 
-
+                    if(!this.next_start){
+                        this.next_start = true
+                        this.emit_start.emit('user_start');
+                        this.#send_msg_worker('next', this.#number_bot, null)
+                    }
                 
                 responses.push(ping_ce)
                 this.arr_actions.push(this.try_other_spawn())
@@ -1020,9 +1027,9 @@ const { parentPort, workerData } = require('worker_threads');
 
         const random_drop =  dificult < random
         let drop_gun_to_flor = Buffer.from(`3f00f23fce050532dbac9745000000006ef7f9c4`, 'hex')
-        if(random_drop){
-            drop_gun_to_flor = Buffer.from(`3f001510000510784f8a2546905715416652a6c5`, 'hex')
-        }
+
+            
+
         
         drop_gun_to_flor.writeUInt8(this.#number_bot, 4)
         const baseOffset = 8
@@ -1030,6 +1037,12 @@ const { parentPort, workerData } = require('worker_threads');
         drop_gun_to_flor.writeFloatLE(this.bot_cords.z, baseOffset + 4);
         drop_gun_to_flor.writeFloatLE(this.bot_cords.y, baseOffset + 8);
         this.arr_actions.push(drop_gun_to_flor)
+        let drop_gun_to_flor_2 = Buffer.from(`3f001510000510784f8a2546905715416652a6c5`, 'hex')
+        drop_gun_to_flor_2.writeUInt8(this.#number_bot, 4)
+        drop_gun_to_flor_2.writeFloatLE(this.bot_cords.x, baseOffset);
+        drop_gun_to_flor_2.writeFloatLE(this.bot_cords.z, baseOffset + 4);
+        drop_gun_to_flor_2.writeFloatLE(this.bot_cords.y, baseOffset + 8);
+        this.arr_actions.push(drop_gun_to_flor_2)
         return
     }
     get_action(msg) {
@@ -1038,12 +1051,20 @@ const { parentPort, workerData } = require('worker_threads');
         let result = []
 
         if (this.arr_actions.length > 0) {
-            console.log(`${this.#number_bot}_actions: `, this.arr_actions.length)
             result.push(this.arr_actions.shift())
         } 
-            result.push(ping)
+        //result.push(ping)
 
-        return result
+        return result.map((row, index)=>{
+            if(row[0] === 0x80){
+                row.writeUInt8((msg.readUInt8(4))  & 0xff, 5)
+                row.writeUInt8((msg.readUInt8(5)), 4)
+            }else if(row[0] === 0x3f){
+                row.writeUInt8((msg.readUInt8(4))  & 0xff, 3)
+                row.writeUInt8((msg.readUInt8(5)), 2)
+            }
+            return row
+        })
     }
     try_other_spawn() {
         const pj_setup = Buffer.from('3f005f0c010e000000000000000000000363011070b21900020b0610'.replace('123123332323133313213', this.buffer_session.toString('hex')), 'hex')
