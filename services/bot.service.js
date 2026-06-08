@@ -5,6 +5,7 @@ const THREE = require('three');
 const { Value } = require('three/examples/jsm/inspector/ui/Values.js');
 const { parentPort, workerData } = require('worker_threads');
  class BotService {
+    #arr_names = ['Gunner.es', 'Weewoo', 'SrXendo', 'Jaume', 'Keygen.7z', 'Koin', 'Milu', 'AngelitoF1', 'theblast3r', 'Dynasty', 'PetroleroVT', 'Flopa', 'Patoke']
     #server;
     #ip_server = '192.168.1.134'
     #port_server = 8888
@@ -49,9 +50,13 @@ const { parentPort, workerData } = require('worker_threads');
         this.#port_server = port
         this.buffer_session = (this.buffer_session + `${number_bot}`.padStart(2, '0'))
         this.user_bot = Buffer.from(('Bot' + `${number_bot}`.padStart(2, "0")), 'ascii')
+        if(typeof this.#arr_names[number_bot] !== 'undefined'){
+            this.user_bot = Buffer.from(this.#arr_names[number_bot], 'ascii')
+        }
         this.bots_can_talk = bots_can_talk
         this.difficult = difficult;
         this.#id_bot = number_bot
+        
     }
     #send_msg_worker(type, number_worker, data){
         try{
@@ -78,7 +83,7 @@ const { parentPort, workerData } = require('worker_threads');
             if(responses){
                 for(let msg_to_server of responses){
                     if(!msg_to_server.is_external){
-                        console.log(`bot send msg  ${this.#number_bot}: `, msg_to_server.toString('hex'))
+                        console.log(`bot send msg ${this.#number_bot}: `, msg_to_server.toString('hex'))
                         this.#server.send(msg_to_server, this.#port_server, this.#ip_server, (err)=>{
                             if(err){
                                 console.error(new Error(err))
@@ -96,7 +101,21 @@ const { parentPort, workerData } = require('worker_threads');
         const headers = msg.readUInt16BE(0)
         const timestamp = Date.now() & 0xFFFFFFFF;
         switch (headers) {
+            case 0x3f09:
+                this.#server.close(()=>{
+                    clearInterval(this.bot_action_interval)
+                })
+            break;
             case 0x3f03:
+                    const ok4 = []
+
+                    ok4.push(Buffer.from("3f020404" + this.buffer_session, 'hex'))
+
+                    ok4[0].writeUint8((msg.readUint8(2) + 1) & 0xFF, 3)
+
+                    ok4[0].writeUint8((msg.readUint8(3)), 2)
+                    return ok4
+                break;
             case 0x3f01:
             case 0x3701:
                 /*let action_response = Buffer.from("3f020c0c" + this.buffer_session, 'hex')
@@ -137,6 +156,7 @@ const { parentPort, workerData } = require('worker_threads');
                 ok2_aux.writeUint8(msg.readUint8(3), 4)*/
 
                 //this.arr_actions.push([ ...ok2])// this.process_msg(user_responses, msg, msg.readUInt8(2), msg.readUInt8(3))
+                
                 return [...user_responses, ...ok2]
                 break;
             case 0x8006:
@@ -150,17 +170,15 @@ const { parentPort, workerData } = require('worker_threads');
 
                 const first_stage2 = Buffer.from("7f000202c3000000", 'hex')
                 first_stage2.writeUInt8(msg.readUInt8(3), 2)
-                first_stage2.writeUInt8(0, 3)
-                if (msg.readUInt8(2) + 1 <= 255) {
-                    first_stage2.writeUInt8(msg.readUInt8(2) + 1, 3)
-                }
+                first_stage2.writeUInt8((msg.readUInt8(2) + 1) & 0xff, 3)
+
 
                 if (msg.readUInt8(4) !== 0xdf) {
                     //this.dpnid = msg.slice(164, 167)
 
                     const before_name = Buffer.from("3f0003020000", 'hex')
 
-                    before_name.writeUInt8(msg.readUInt8(3) + 1, 2)
+                    before_name.writeUInt8((msg.readUInt8(3) + 1)  & 0xff, 2)
                     before_name.writeUInt8(msg.readUInt8(2), 3)
 
                     const name = Buffer.from(this.user_bot.toString('hex').padEnd(this.max_name_byte * 2, "0"), 'hex')
@@ -171,7 +189,7 @@ const { parentPort, workerData } = require('worker_threads');
                     return [first_stage2, this.replace_name_map((Buffer.concat([before_name, name, after_name_before_map_name, map_name, after_map_name])), this.party.mapName, this.party.currentPlayers, this.party.maxPlayers)]
                 } else {
 
-                    return this.disconnect()
+                    return []//this.disconnect()
                 }
                 break;
             case 0x3f02:
@@ -182,10 +200,11 @@ const { parentPort, workerData } = require('worker_threads');
                 break;
             case 0x8802:
                 //console.log('msg: firstStage: ', "0x8802")
+                //console.log('start party!')
                 const session = Buffer.from('7f000100c100000002000000070000005800000014000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000430068006100760061006c006f00740065000000', 'hex')
                 const pre1 = Buffer.from("8002010006000100" + this.buffer_session + "e665f602", "hex")
                 
-                pre1.writeUInt32LE(Date.now() & 0xFFFFFFFF >>> 0, 12);
+                //pre1.writeUInt32LE(Date.now() & 0xFFFFFFFF >>> 0, 12);
                 const pre2 = Buffer.from("3f020000" + this.buffer_session + "", 'hex')
                 this.last_bnSeq = 0x01
                 this.last_bnRecv = 0x00
@@ -193,7 +212,7 @@ const { parentPort, workerData } = require('worker_threads');
                 break;
             case 0x0003:
                 this.party = this.extract_data(msg)
-                console.log(this.party)
+                //console.log(this.party)
                 //this.#number_bot = this.party.currentPlayers
                 let packet = Buffer.from("8801000006000100" + this.buffer_session + "c2091002", 'hex')
 
@@ -202,23 +221,12 @@ const { parentPort, workerData } = require('worker_threads');
                 return [packet]
                 break;
             case 0x3f08:
-                const response_end_party = Buffer.from("8801000006000100" + this.buffer_session + "c2091002", 'hex')
+                const response_end_party = Buffer.from("88010000060001005b378ac5a6af3100", 'hex')
                 response_end_party.writeUInt32LE(timestamp >>> 0, 12);
                 response_end_party.writeUint8((msg.readUInt8(2)+1) & 0xff , 6)
                 response_end_party.writeUint8((msg.readUInt8(3)), 5)
-                setTimeout(()=>{
-                    this.arr_actions.push(response_end_party)
-                }, 200)
-                const ok4 = Buffer.from('8006010690b00009d043b03', 'hex')
-
-                ok4.writeUint8((msg.readUint8(2)) & 0xFF, 5)
-
-                ok4.writeUint8(msg.readUint8(3), 4)
-                                  
-                
-
-                ok4.writeUInt32LE(timestamp >>> 0, 7);
-                return [ok4]
+                console.log('end party!')
+                return [response_end_party]
                 break;
             default:
                 console.log("err: msg not recognice: ", msg)
@@ -226,6 +234,7 @@ const { parentPort, workerData } = require('worker_threads');
                 break;
         }
     }
+    count_retry = 0
     users_actions(msg) {
 
         const bot = msg.readUInt8(4)
@@ -234,6 +243,48 @@ const { parentPort, workerData } = require('worker_threads');
 
         //console.log('action, bot: ', action, this.#number_bot)
         switch (action) {
+            case 0xf8:
+
+                break;
+            case 0xd5: 
+                
+                this.interval_retry = setInterval(()=>{
+                    if(this.count_retry > 4){
+
+
+                        clearInterval(this.interval_retry)
+                        clearInterval(this.bot_action_interval)
+                        const response_end_party = Buffer.from("88010000060001005b378ac5a6af3100", 'hex')
+                        const timestamp = Date.now() & 0xFFFFFFFF;
+                        response_end_party.writeUInt32LE(timestamp >>> 0, 12);
+                        response_end_party.writeUint8((msg.readUInt8(2)+this.count_retry) & 0xff , 5)
+                        response_end_party.writeUint8((msg.readUInt8(3)), 4)
+                        console.log('end party!2')
+                        this.#server.send(response_end_party, this.#port_server, this.#ip_server, (err)=>{
+                            if(err){
+                                console.error(new Error(err))
+                                throw new Error(err.stack)
+                            }
+                            
+                        })
+
+                    }else{
+                        const response_end_party = Buffer.from("3f008c1202f8", 'hex')
+                        response_end_party.writeUint8((msg.readUInt8(2)+this.count_retry) & 0xff , 3)
+                        response_end_party.writeUint8((msg.readUInt8(3)), 2)
+                        console.log('end party!')
+                        this.#server.send(response_end_party, this.#port_server, this.#ip_server, (err)=>{
+                            if(err){
+                                console.error(new Error(err))
+                                throw new Error(err.stack)
+                            }
+                            
+                        })
+                        this.count_retry = this.count_retry + 1
+                    }
+                },100)
+
+            break;
             case 0xd2:
 
   
@@ -258,11 +309,11 @@ const { parentPort, workerData } = require('worker_threads');
 
                 break;
             case 0xd8:
-                console.log('bot can shot: ')
+               // console.log('bot can shot: ')
                 this.can_shot = true
 
             //this.send_signal_die()
-
+        
             case 0xfb:
 
                 return []
@@ -287,15 +338,15 @@ const { parentPort, workerData } = require('worker_threads');
                 //this.user_camera(msg)
                 break;
             case 0xfc:
-                console.log(`${this.user_bot} ha sido impactado por: other user. 2222`)
-                console.log(`${this.user_bot} vida restante2222: `, msg.readUInt8(10), bot)
+                //console.log(`${this.user_bot} ha sido impactado por: other user. 2222`)
+                //console.log(`${this.user_bot} vida restante2222: `, msg.readUInt8(10), bot)
                 if (this.#number_bot === msg.readUint8(4)) {
 
                     const have_life = msg.readUInt8(10)
-                    console.log(`${this.user_bot} ha sido impactado por: other user. `)
-                    console.log(`${this.user_bot} vida restante: `, msg.readUInt8(10))
+                    //console.log(`${this.user_bot} ha sido impactado por: other user. `)
+                    //console.log(`${this.user_bot} vida restante: `, msg.readUInt8(10))
                     if (msg.readUInt8(10) === 0) {
-                        console.log(`ha muerto: ${this.user_bot}`)
+                        //console.log(`ha muerto: ${this.user_bot}`)
                         this.can_move = false
                         
                         if (this.bot_action_interval) {
@@ -309,7 +360,7 @@ const { parentPort, workerData } = require('worker_threads');
 
                     }
                     if (msg.readUInt8(10) === 255) {
-                        console.log(`ha muerto: ${this.user_bot}`)
+                        //console.log(`ha muerto: ${this.user_bot}`)
                         
                         if (this.bot_action_interval) {
                             clearInterval(this.bot_action_interval)
@@ -332,7 +383,7 @@ const { parentPort, workerData } = require('worker_threads');
                 
                 break;
             case 0xff:
-                console.log(`cambio de id?: ${this.#number_bot} : ${msg.readUInt8(4)}`)
+                //console.log(`cambio de id?: ${this.#number_bot} : ${msg.readUInt8(4)}`)
                 if(0xfb !==  msg.readUInt8(4)){
                     /*this.user_bot = Buffer.from(('Bot' + `${this.#number_bot }`.padStart(2, "0")), 'ascii')
                     this.#number_bot = msg.readUInt8(4)*/
@@ -348,9 +399,12 @@ const { parentPort, workerData } = require('worker_threads');
             case 0xed:
                 if (this.bot_master) {
 
-                    console.log('any player death')
+                    //console.log('any player death')
                 }
 
+                break;
+            case 0xfd:
+                
                 break;
             case 0x0e:
                 //throw new Error('spwan palyer!!!')
@@ -364,7 +418,7 @@ const { parentPort, workerData } = require('worker_threads');
 
                 if (bot === 0) {
 
-                    console.log('player spawn ', bot)
+                    //console.log('player spawn ', bot)
                     this.player_cords = this.extractRespawnXZR(msg, bot)
                     //this.start_move()
                 }
@@ -372,7 +426,7 @@ const { parentPort, workerData } = require('worker_threads');
                 if (this.#number_bot === bot) {
                     
                     this.can_shot = true
-                    console.log('bot spawn ', this.#number_bot)
+                    //console.log('bot spawn ', this.#number_bot)
                     this.in_game = true
 
                     const bot_cords = this.extractRespawnXZR(msg, bot)
@@ -466,20 +520,22 @@ const { parentPort, workerData } = require('worker_threads');
                 ping_ce.writeUInt8(msg.readUInt8(2), 5)
                 ping_ce.writeUInt8((msg.readUInt8(3)+1) & 0xff, 4)
                 
-                    if(!this.next_start){
-                        this.next_start = true
-                        this.emit_start.emit('user_start');
-                        this.#send_msg_worker('next', this.#number_bot, null)
-                    }
+ 
                 
                 responses.push(ping_ce)
                 this.arr_actions.push(this.try_other_spawn())
 
-            
+                if(!this.next_start){
+                    this.next_start = true
+                    this.emit_start.emit('user_start');
+                    this.#send_msg_worker('next', this.#number_bot, null)
+                }
 
                 break;
+            case 0x27:
+                break;
             default:
-
+                console.error(new Error('action no recognize: ').stack)
                 break;
         }
 
@@ -501,7 +557,7 @@ const { parentPort, workerData } = require('worker_threads');
         if (!target_position) return;
         
         if (!start_position) return;
-        console.log('prepare_waypoints', target_position, start_position)
+        //console.log('prepare_waypoints', target_position, start_position)
 
         if (!target_position) return;
 
@@ -511,10 +567,10 @@ const { parentPort, workerData } = require('worker_threads');
     }
     set_waypoints(waypoints){
         
-        console.log('set_waypoints: ', waypoints)
+        //console.log('set_waypoints: ', waypoints)
         if(waypoints && waypoints.path.length > 0){
             
-            console.log('waypoints: ',waypoints)
+            //console.log('waypoints: ',waypoints)
             this.waypoints = waypoints
             this.#bot_state = this.states.FOLLOW_TARGET
             this.bot_helper.send_event(JSON.stringify({
@@ -533,7 +589,7 @@ const { parentPort, workerData } = require('worker_threads');
     }
     set_patrol_points(patrol_points){
         this.patrol_points = patrol_points
-        console.log('set_patrol_points: ', patrol_points)
+        //console.log('set_patrol_points: ', patrol_points)
         
         this.prepare_waypoints(patrol_points[0], this.bot_cords)
         this.patrol_points.shift()
@@ -565,7 +621,7 @@ const { parentPort, workerData } = require('worker_threads');
     #_last_bot_state = null
     #last_bot_state
     set #bot_state(value){
-        console.log('change bot_state: ', value)
+        //console.log('change bot_state: ', value)
         if(this.states.PATROL_ZONE === this.#bot_state  || this.states.PREPARE_FIND_TARGET === this.#bot_state ){
             this.#_last_bot_state = this.#_bot_state
         }
@@ -717,7 +773,7 @@ const { parentPort, workerData } = require('worker_threads');
     }
     ia_follow_target(){
         const now = new Date().getTime()
-        console.log('ia_follow_target')
+        //console.log('ia_follow_target')
         if(now - this.last_time_execute > 200){
             this.send_sync()
             this.last_time_execute = now
@@ -725,12 +781,12 @@ const { parentPort, workerData } = require('worker_threads');
         
         const playerPos = this.player_cords;
         if (!playerPos) return;
-        console.log('ia_follow_target 2')
+        //console.log('ia_follow_target 2')
         //console.log('interval start!', 2)
         const pp = this.get_vector(playerPos.x, playerPos.y)
 
         if (!this.bot_cords) return;
-        console.log('ia_follow_target 3')
+        //console.log('ia_follow_target 3')
         const botPos = this.get_vector(this.bot_cords.x, this.bot_cords.y)
 
         const dx = pp.x - botPos.x;
@@ -746,20 +802,20 @@ const { parentPort, workerData } = require('worker_threads');
 
             }
         }*/
-        console.log('ia_follow_target 4')
+        //console.log('ia_follow_target 4')
 
-        console.log('ia_follow_target 5', this.waypoints)
+        //console.log('ia_follow_target 5', this.waypoints)
         if((this.waypoints && this.waypoints.path.length > 0) && distSq > 0.8 ||false){
-            console.log('ia_follow_target 6')
+            //console.log('ia_follow_target 6')
             const playerPos = this.player_cords;
             if (!playerPos) return;
-            console.log('ia_follow_target 7')
+            //console.log('ia_follow_target 7')
             const pp = this.get_vector(playerPos.x, playerPos.y)
 
 
 
             if (!this.bot_cords) return;
-            console.log('ia_follow_target 8')
+            //console.log('ia_follow_target 8')
             const botPos = this.get_vector(this.bot_cords.x, this.bot_cords.y)
 
             const waypointPos = this.waypoints.path[0];
@@ -777,7 +833,7 @@ const { parentPort, workerData } = require('worker_threads');
 
 
             }
-            console.log('ia_follow_target 9')
+            //console.log('ia_follow_target 9')
             const target = this.normalizeAngle(
                 this.angleToTargetFront(botPos.x, botPos.z, waypointPos.x, waypointPos.z)
                 + Math.PI / 2   // ← corrección de 90°
@@ -789,9 +845,9 @@ const { parentPort, workerData } = require('worker_threads');
             if (diff > Math.PI) diff -= 2 * Math.PI;
             if (diff < -Math.PI) diff += 2 * Math.PI;
             //console.log('diff: ', diff, ' --- botR: ', this.bot_cords.r, ' --- playerR: ', this.player_cords.r)
-            console.log('ia_follow_target 10')
+            //console.log('ia_follow_target 10')
             if(this.can_move){
-                console.log('ia_follow_target 11: ', diff)
+                //console.log('ia_follow_target 11: ', diff)
                 if (diff > 0.05) {
                     if(this.bot_forware_start){
                         this.forward_move_stop()
@@ -811,16 +867,16 @@ const { parentPort, workerData } = require('worker_threads');
                 }
             }
         }else if(distSq <= 0.8 || true){
-            console.log('ia_follow_target 6')
+            //console.log('ia_follow_target 6')
             const playerPos = this.player_cords;
             if (!playerPos) return;
-            console.log('ia_follow_target 7')
+            //console.log('ia_follow_target 7')
             const pp = this.get_vector(playerPos.x, playerPos.y)
 
 
 
             if (!this.bot_cords) return;
-            console.log('ia_follow_target 8')
+            //console.log('ia_follow_target 8')
             const botPos = this.get_vector(this.bot_cords.x, this.bot_cords.y)
 
             const waypointPos = pp;
@@ -834,7 +890,7 @@ const { parentPort, workerData } = require('worker_threads');
 
 
             }
-            console.log('ia_follow_target 9')
+            //console.log('ia_follow_target 9')
             const target = this.normalizeAngle(
                 this.angleToTargetFront(botPos.x, botPos.z, waypointPos.x, waypointPos.z)
                 + Math.PI / 2   // ← corrección de 90°
@@ -846,9 +902,9 @@ const { parentPort, workerData } = require('worker_threads');
             if (diff > Math.PI) diff -= 2 * Math.PI;
             if (diff < -Math.PI) diff += 2 * Math.PI;
             //console.log('diff: ', diff, ' --- botR: ', this.bot_cords.r, ' --- playerR: ', this.player_cords.r)
-            console.log('ia_follow_target 10')
+            //console.log('ia_follow_target 10')
             if(this.can_move){
-                console.log('ia_follow_target 11: ', diff)
+                //console.log('ia_follow_target 11: ', diff)
                 if (diff > 0.05) {
                     if(this.bot_forware_start){
                         this.forward_move_stop()
@@ -985,7 +1041,7 @@ const { parentPort, workerData } = require('worker_threads');
         return row;
     }
     send_signal_die() {
-        console.log('send signal die: ')
+        //console.log('send signal die: ')
         const header = Buffer.from('3F00831001FBFF', 'hex')
         const text = Buffer.from(`Hola soy el bot ${this.#number_bot}: he muerto`, 'ascii')
         const end_buf = Buffer.from('001F71DA0C01000000020000004022250CA436061000000000', 'hex')
@@ -1136,7 +1192,7 @@ const { parentPort, workerData } = require('worker_threads');
         return result
     }
     spawn(cords) {
-        console.log('bot spawn: ', this.#number_bot)
+        //console.log('bot spawn: ', this.#number_bot)
         //this.bot_cords = cords
         //const pj_response = Buffer.from('3f00800d000d1000010000e55e1d465c55b244ba37d045f6a30000'.replace('261370c5', this.buffer_session.toString('hex')), 'hex')
         //pj_response.writeUInt8(this.bot_number+1, 4)
@@ -1177,7 +1233,7 @@ const { parentPort, workerData } = require('worker_threads');
         for (let idx = 0; idx < arr.length; idx++) {
             const row = arr[idx]
             if (!row.is_external) {
-            
+                console.log(row)
                 row.writeUint8( (next_prev + idx) & 0xFF, 2)
 
                 row.writeUint8(count_prev , 3)
@@ -1270,13 +1326,13 @@ const { parentPort, workerData } = require('worker_threads');
     }
     async shot() {
 
-        console.log('shot bot')
+        //console.log('shot bot')
         const dificult = this.difficult //'hen' // 0.00 to 1.00 1.23 is god value
         const random = Math.random()
         const now = new Date().getTime()
 
         const random_shot =  dificult > random
-        console.log('shot test!', random_shot, random, this.can_shot)
+        //console.log('shot test!', random_shot, random, this.can_shot)
         if(this.can_shot){
 
             if(random_shot){
@@ -1369,6 +1425,7 @@ const { parentPort, workerData } = require('worker_threads');
         this.arr_actions.push(disconnect)
         this.arr_actions.push(after_disconnect)
 
+        this.arr_actions.push(Buffer.from(`80040100755a000045e88100`, 'hex'))
         
         return [
             disconnect,
@@ -1380,8 +1437,8 @@ const { parentPort, workerData } = require('worker_threads');
 
 
         const helloClient = Buffer.from("0002F18A011242191FB8BB154E4401763631007932","hex")
-        console.log('sended hello client: ', helloClient)
-        console.log('port server: ', ip, typeof port)
+        //console.log('sended hello client: ', helloClient)
+
         this.#server.send(helloClient, this.#port_server, this.#ip_server, (err)=>{
             if(err){
                 console.error(new Error(err))
@@ -1405,7 +1462,7 @@ parentPort.on("message", (msg_worker)=>{
                 botService.disconnect()
                 break;
             case 'set_waypoints': 
-                console.log("set_waypoints", data)
+                //console.log("set_waypoints", data)
                 botService.set_waypoints(data.waypoints)
                 break;
             case 'set_patrol_points':
