@@ -5,7 +5,7 @@ const THREE = require('three');
 const { Value } = require('three/examples/jsm/inspector/ui/Values.js');
 const { parentPort, workerData } = require('worker_threads');
  class BotService {
-    #arr_names = ['Gunner!!!', 'Weewoo', 'SrXendo', 'Bayman_LK', 'Keygen.7z', 'Koin', 'Milu', 'AngelitoF1', 'theblast3r', 'Dynasty', 'PetroleroVT', 'Flopa', 'Patoke', 'P.S', 'BetaRose', 'BuRnN', 'FrOsT', 'Hisoka']
+    #arr_names = ['','Gunner!!!', 'Weewoo', 'SrXendo', 'Bayman_LK', 'Keygen.7z', 'Koin', 'Milu', 'AngelitoF1', 'theblast3r', 'Dynasty', 'PetroleroVT', 'Flopa', 'Patoke', 'P.S', 'BetaRose', 'BuRnN', 'FrOsT', 'Hisoka']
     #server;
     #ip_server = '192.168.1.134'
     #port_server = 8888
@@ -46,7 +46,7 @@ const { parentPort, workerData } = require('worker_threads');
 
         this.#number_bot = number_bot
         this.#ip_server = ip
-        console.log('port server : ', port, ip)
+        console.log('port server : ', port, ip, ' ---> ', number_bot)
         this.#port_server = port
         this.buffer_session = (this.buffer_session + `${number_bot}`.padStart(2, '0'))
         this.user_bot = Buffer.from(('Bot' + `${number_bot}`.padStart(2, "0")), 'ascii')
@@ -750,14 +750,15 @@ const { parentPort, workerData } = require('worker_threads');
 
             } else {
 
-                if(!this.bot_forware_start){
-                    this.forward_move()
-                    setTimeout(()=>{
-                        //this.forward_move_stop()
-                        this.send_sync()
-                    }, 100)
+
+                this.forward_move()
+
             
-                }
+
+                setTimeout(()=>{
+                        //this.forward_move_stop()
+                    this.send_sync()
+                }, 65)
             }
         }
 
@@ -805,7 +806,7 @@ const { parentPort, workerData } = require('worker_threads');
         const dz = pp.z - botPos.z;
         const distSq = dx * dx + dz * dz;
         if(distSq < 0.02){
-            this.forward_move_stop()
+            //this.forward_move_stop()
             this.#bot_state = this.states.SHOT_TARGET
             return false
         }
@@ -837,7 +838,7 @@ const { parentPort, workerData } = require('worker_threads');
             const dz = waypointPos.z - botPos.z;
             const distSq = dx * dx + dz * dz;
             if(distSq < 0.02){
-                this.forward_move_stop()                 
+                //this.forward_move_stop()                 
                 this.waypoints.path.shift();
                 if(this.waypoints.path.length < 1){
                     return true
@@ -881,7 +882,7 @@ const { parentPort, workerData } = require('worker_threads');
                         setTimeout(()=>{
                             //this.forward_move_stop()
                             this.send_sync()
-                        }, 100)
+                        }, 65)
             
                     
 
@@ -906,7 +907,7 @@ const { parentPort, workerData } = require('worker_threads');
             const dz = waypointPos.z - botPos.z;
             const distSq = dx * dx + dz * dz;
             if(distSq < 0.02){
-                this.forward_move_stop()    
+                //this.forward_move_stop()    
                 return false;
 
 
@@ -947,7 +948,7 @@ const { parentPort, workerData } = require('worker_threads');
                         setTimeout(()=>{
                             //this.forward_move_stop()
                             this.send_sync()
-                        }, 100)
+                        }, 65)
             
                     
                 }
@@ -965,15 +966,15 @@ const { parentPort, workerData } = require('worker_threads');
     
     generarPaqueteBot(botData) {
         // Calcular movimiento hacia adelante
-            
-                const speed = 45;
-                //-3.9
-                //-1.6
-                const radian = (botData.r / 256) * Math.PI * 2;  // O SIN EL NEGATIVO, LO QUE FUNCIONE
+                    
+        const speedX = 55 - 3.9;
+        const speedZ = 55 - 1.6;
 
-                const newX = botData.x + Math.sin(radian) * speed;
-                const newZ = botData.z;
-                const newY = botData.y  + Math.cos(radian) * speed ;
+        const radian = (botData.r / 256) * Math.PI * 2;
+
+        const newX = botData.x + Math.sin(radian) * speedX;
+        const newZ = botData.z ;
+        const newY = botData.y + Math.cos(radian) * speedZ;
 
 
                 // 2. BUFFER DE 26 BYTES
@@ -997,8 +998,11 @@ const { parentPort, workerData } = require('worker_threads');
                 }));*/
                 buffStart.writeUInt8(this.#number_bot, 4)
 
+                
+                if(!this.bot_forware_start){
+                    this.arr_actions.push(buffStart)
+                }
                 this.bot_forware_start = true
-                //this.arr_actions.push(buffStart)
                 //this.arr_actions.push(buf)
 
             
