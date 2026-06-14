@@ -4,6 +4,149 @@ const EventEmitter = require('events');
 const THREE = require('three');
 const { Value } = require('three/examples/jsm/inspector/ui/Values.js');
 const { parentPort, workerData } = require('worker_threads');
+
+class TargetManager {
+    entities = new Map()
+    currentTargetId = null
+    lastSwitchAt = 0
+    switchCooldownMs = 1200
+    staleAfterMs = 2200
+
+    observe(entityId, cords, kind = 'bot') {
+        if (entityId === null || entityId === undefined || !cords) return null;
+
+        const now = Date.now();
+        const current = this.entities.get(entityId) || {
+            id: entityId,
+            kind,
+            firstSeenAt: now,
+            visibleSince: now,
+            lastSeenAt: now,
+            reachable: null,
+            blockedUntil: 0,
+            dead: false,
+            cords: null,
+        };
+
+        if (now - current.lastSeenAt > this.staleAfterMs) {
+            current.visibleSince = now;
+        }
+
+        current.kind = kind;
+        current.cords = { x: cords.x, y: cords.y, z: cords.z, r: cords.r, bot: entityId };
+        current.lastSeenAt = now;
+        current.dead = false;
+        current.firstSeenAt = current.firstSeenAt || now;
+
+        this.entities.set(entityId, current);
+        return current;
+    }
+
+    markDead(entityId) {
+        const entity = this.entities.get(entityId);
+        if (!entity) return;
+        entity.dead = true;
+        entity.blockedUntil = Date.now() + this.staleAfterMs;
+        if (this.currentTargetId === entityId) {
+            this.currentTargetId = null;
+        }
+    }
+
+    markPathResult(entityId, hasPath) {
+        const entity = this.entities.get(entityId);
+        if (!entity) return;
+        entity.reachable = !!hasPath;
+    }
+
+    cleanup(now = Date.now()) {
+        for (const [entityId, entity] of this.entities.entries()) {
+            if (entity.dead || now - entity.lastSeenAt > this.staleAfterMs) {
+                this.entities.delete(entityId);
+                if (this.currentTargetId === entityId) {
+                    this.currentTargetId = null;
+                }
+            }
+        }
+    }
+
+    getActiveTargets(now = Date.now()) {
+        this.cleanup(now);
+        const candidates = [];
+
+        for (const entity of this.entities.values()) {
+            if (!entity.cords) continue;
+            if (entity.kind === 'self') continue;
+
+            candidates.push(entity);
+        }
+
+        return candidates;
+    }
+
+    selectTarget(botCords, now = Date.now()) {
+        if (!botCords) return null;
+
+        const candidates = this.getActiveTargets(now);
+        if (candidates.length === 0) return null;
+
+        const botCandidates = candidates.filter(entity => entity.kind === 'bot');
+        const pool = botCandidates.length > 0 ? botCandidates : candidates.filter(entity => entity.kind === 'player');
+        const resolvedPool = pool.length > 0 ? pool : candidates;
+
+        const current = this.currentTargetId !== null ? this.entities.get(this.currentTargetId) : null;
+        if (current && current.cords && !current.dead && now - current.lastSeenAt <= this.staleAfterMs) {
+            if (now - this.lastSwitchAt < this.switchCooldownMs) {
+                return current;
+            }
+        }
+
+        let best = null;
+        let bestScore = -Infinity;
+
+        for (const entity of resolvedPool) {
+            const dx = entity.cords.x - botCords.x;
+            const dz = entity.cords.z - botCords.z;
+            const distance = Math.sqrt(dx * dx + dz * dz);
+            const distanceScore = Math.max(0, 250 - distance);
+            const visibilityScore = Math.max(0, Math.min(60, (now - entity.visibleSince) / 50));
+            const reachabilityScore = entity.reachable === false ? -120 : entity.reachable === true ? 30 : 0;
+            const stickyScore = this.currentTargetId === entity.id ? 40 : 0;
+            const ageScore = Math.max(0, Math.min(20, (now - entity.firstSeenAt) / 150));
+
+            const score = distanceScore + visibilityScore + reachabilityScore + stickyScore + ageScore;
+
+            if (score > bestScore) {
+                bestScore = score;
+                best = entity;
+            }
+        }
+
+        if (!best) return null;
+
+        if (current && current.cords && current.id !== best.id) {
+            const currentDx = current.cords.x - botCords.x;
+            const currentDz = current.cords.z - botCords.z;
+            const currentDistance = Math.sqrt(currentDx * currentDx + currentDz * currentDz);
+            const currentScore = Math.max(0, 250 - currentDistance)
+                + Math.max(0, Math.min(60, (now - current.visibleSince) / 50))
+                + (current.reachable === false ? -120 : current.reachable === true ? 30 : 0)
+                + 40
+                + Math.max(0, Math.min(20, (now - current.firstSeenAt) / 150));
+
+            if (bestScore - currentScore < 20 && now - this.lastSwitchAt < this.switchCooldownMs) {
+                return current;
+            }
+        }
+
+        if (this.currentTargetId !== best.id) {
+            this.currentTargetId = best.id;
+            this.lastSwitchAt = now;
+        }
+
+        return best;
+    }
+}
+
  class BotService {
     #arr_names = ['','Gunner!!!', 'Weewoo', 'SrXendo', 'Bayman_LK', 'Keygen.7z', 'Koin', 'Milu', 'AngelitoF1', 'theblast3r', 'Dynasty', 'PetroleroVT', 'Flopa', 'Patoke', 'P.S', 'BetaRose', 'BuRnN', 'FrOsT', 'Hisoka']
     #server;
@@ -56,6 +199,12 @@ const { parentPort, workerData } = require('worker_threads');
         this.bots_can_talk = bots_can_talk
         this.difficult = difficult;
         this.#id_bot = number_bot
+        this.target_manager = new TargetManager()
+        this.active_target = null
+        this.active_target_id = null
+        this.last_target_request_at = 0
+        this.requested_target_id = null
+        this.waypoints_target_id = null
         
     }
     #send_msg_worker(type, number_worker, data){
@@ -480,6 +629,7 @@ const { parentPort, workerData } = require('worker_threads');
                 if (bot == 0) {
                     //console.log('sync player bot number: ', msg)
                     this.player_cords = bot_cords
+                    this.target_manager.observe(bot, bot_cords, 'player')
                     
                     //this.follow_cam()
                     //this.send_waypoints()
@@ -497,8 +647,8 @@ const { parentPort, workerData } = require('worker_threads');
 
                     this.in_game = true
                     this.bot_cords = this.extractRespawnXZR(msg, bot)
+                    this.target_manager.observe(bot, this.bot_cords, 'self')
                     this.bot_helper.send_event(JSON.stringify({ type_action: 'sync', value_action: { bot: bot, x: bot_cords.x, y: bot_cords.y, z: bot_cords.z, r: bot_cords.r }, id_bot: bot }))
-
                     //this.follow_cam()
 
                     //this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: {bot: bot, x: bot_cords.x, y: bot_cords.y, z: bot_cords.z, r: bot_cords.r}, id_bot: bot}))
@@ -510,6 +660,10 @@ const { parentPort, workerData } = require('worker_threads');
 
                     //this.bot_helper.send_event(JSON.stringify({type_action: 'sync', value_action: this.extractRespawnXZR(msg, bot), id_bot: this.#number_bot}))
 
+                }
+
+                if (bot !== this.#number_bot && bot !== 0) {
+                    this.target_manager.observe(bot, bot_cords, 'bot')
                 }
 
 
@@ -547,11 +701,11 @@ const { parentPort, workerData } = require('worker_threads');
     lastGroup = null;
     lastPlayerPos = null
     send_waypoints() {
-        const playerPos = this.player_cords;
-        if (!playerPos) return;
+        const targetPos = this.get_selected_target_cords();
+        if (!targetPos) return;
         const botPos = this.bot_cords;
         if (!botPos) return;
-        this.#send_msg_worker("calc_waypoints", this.#number_bot, {player_cords:  this.player_cords, bot_cords: this.bot_cords})
+        this.#send_msg_worker("calc_waypoints", this.#number_bot, {player_cords: targetPos, bot_cords: this.bot_cords})
     }
     prepare_waypoints(target_position, start_position){
   
@@ -569,10 +723,19 @@ const { parentPort, workerData } = require('worker_threads');
     set_waypoints(waypoints){
         
         //console.log('set_waypoints: ', waypoints)
+        if (this.requested_target_id !== null && this.active_target_id !== this.requested_target_id) {
+            return;
+        }
+
         if(waypoints && waypoints.path.length > 0){
             
             //console.log('waypoints: ',waypoints)
             this.waypoints = waypoints
+            this.waypoints_target_id = this.requested_target_id !== null ? this.requested_target_id : this.active_target_id
+            if (this.active_target_id !== null) {
+                this.target_manager.markPathResult(this.active_target_id, true)
+            }
+            this.requested_target_id = null
             this.#bot_state = this.states.FOLLOW_TARGET
             this.bot_helper.send_event(JSON.stringify({
                 type_action: 'waypoints',
@@ -580,6 +743,11 @@ const { parentPort, workerData } = require('worker_threads');
                 id_bot: this.#number_bot
             }));
              
+        } else if (this.active_target_id !== null) {
+            this.target_manager.markPathResult(this.active_target_id, false)
+            this.active_target = null
+            this.active_target_id = null
+            this.requested_target_id = null
         }
 
     }
@@ -641,6 +809,7 @@ const { parentPort, workerData } = require('worker_threads');
         
         
         this.bot_action_interval = setInterval(() => {
+            this.refresh_target_selection()
              //this.camera_left()
 
             
@@ -689,7 +858,9 @@ const { parentPort, workerData } = require('worker_threads');
 
     }
     prepare_waypoints_to_target(){
-        if(this.prepare_waypoints(this.player_cords, this.bot_cords)){
+        const target = this.get_selected_target_cords()
+        this.requested_target_id = this.active_target_id
+        if(this.prepare_waypoints(target, this.bot_cords)){
             this.#bot_state = this.states.WAIT_WAYPOINTS
             
         }
@@ -764,7 +935,7 @@ const { parentPort, workerData } = require('worker_threads');
     }
     ia_shot_target(){
                
-        const playerPos = this.player_cords;
+        const playerPos = this.get_selected_target_cords();
         if (!playerPos) return;
         //console.log('interval start!', 2)
         const pp = this.get_vector(playerPos.x, playerPos.y)
@@ -790,7 +961,7 @@ const { parentPort, workerData } = require('worker_threads');
             this.last_time_execute = now
         }
         
-        const playerPos = this.player_cords;
+        const playerPos = this.get_selected_target_cords();
         if (!playerPos) return;
         //console.log('ia_follow_target 2')
         //console.log('interval start!', 2)
@@ -883,6 +1054,65 @@ const { parentPort, workerData } = require('worker_threads');
         }
 
         return false
+    }
+    refresh_target_selection() {
+        if (!this.bot_cords) return null;
+
+        const now = Date.now();
+        const selected = this.target_manager.selectTarget(this.bot_cords, now);
+
+        if (!selected) {
+            this.active_target = null;
+            this.active_target_id = null;
+            return null;
+        }
+
+        if (this.#_bot_state === this.states.SHOT_TARGET) {
+            this.active_target = selected;
+            return selected;
+        }
+
+        const dx = selected.cords.x - this.bot_cords.x;
+        const dz = selected.cords.z - this.bot_cords.z;
+        const distSq = dx * dx + dz * dz;
+
+        if (this.active_target_id !== selected.id) {
+            this.active_target = selected;
+            this.active_target_id = selected.id;
+            this.requested_target_id = null;
+            this.waypoints_target_id = null;
+            this.waypoints = { path: [] };
+            if (distSq < 0.02) {
+                this.#bot_state = this.states.SHOT_TARGET;
+            } else {
+                this.#bot_state = this.states.PREPARE_FIND_TARGET;
+            }
+            this.last_target_request_at = 0;
+            return selected;
+        }
+
+        this.active_target = selected;
+
+        if (distSq < 0.02) {
+            this.#bot_state = this.states.SHOT_TARGET;
+            return selected;
+        }
+
+        if ((!this.waypoints || !this.waypoints.path || this.waypoints.path.length < 1)
+            && this.#bot_state !== this.states.WAIT_WAYPOINTS
+            && now - this.last_target_request_at > 250) {
+            this.last_target_request_at = now;
+            this.#bot_state = this.states.PREPARE_FIND_TARGET;
+        }
+
+        return selected;
+    }
+    get_selected_target_cords() {
+        if (this.active_target && this.active_target.cords) {
+            return this.active_target.cords;
+        }
+
+        return this.player_cords;
     }
     normalizeAngle(a) {
         return ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
@@ -1316,6 +1546,7 @@ const { parentPort, workerData } = require('worker_threads');
 
                 const shot = Buffer.from('3f00d8af01fc120d1403001905','hex')
                 shot.writeUInt8(this.#number_bot, 4)
+                shot.writeUInt8(this.active_target_id ?? 0, 10)
                 this.arr_actions.push(shot)
             }else{
                 const fail_shot = Buffer.from('3f00790e00262602714ea644f91e2143860ed745','hex')
