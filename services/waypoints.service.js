@@ -8,8 +8,8 @@ class WaypointsService {
         const THREE = require('three');
         const { Pathfinding } = require('three-pathfinding');
 
-        this.body_data = body_data
-        this.ZONE = 'level'
+        this.body_data = body_data;
+        this.ZONE = 'level';
         this.pathfinder = new Pathfinding();
 
         const { positions, index } = body_data;
@@ -32,9 +32,14 @@ class WaypointsService {
                 )
             );
         }
-        //console.log('positions, index: ', positions, index)
+
+        // Offset Y de -5 unidades
+        geometry.translate(0, 0, 0);
+
+
+
         const zone = Pathfinding.createZone(geometry);
-        //console.log('geometry: ', geometry)
+
         this.pathfinder.setZoneData(this.ZONE, zone);
         //console.log("waypoints zones: ", this.pathfinder.zones, geometry)
 
@@ -78,7 +83,7 @@ class WaypointsService {
     get_patrol_points(bot_cords) {
         const botPos = this.get_vector(bot_cords.x, bot_cords.y);
 
-        const groupID = this.pathfinder.getGroup(
+        let groupID = this.pathfinder.getGroup(
             this.ZONE,
             botPos,
             true
@@ -86,71 +91,72 @@ class WaypointsService {
 
         if (groupID == null) return null;
 
-        const zone = this.pathfinder.zones[this.ZONE];
-        const group = zone.groups[groupID];
+        let zone = this.pathfinder.zones[this.ZONE];
+        let group = zone.groups[groupID];
 
         if (!group || group.length < 4) return null;
 
         const patrolPoints = [];
 
-        // Punto inicial
-        patrolPoints.push({
-            x: botPos.x,
-            y: botPos.y,
-            z: botPos.z
-        });
+
 
         let currentPos = botPos;
         const usedNodes = new Set();
 
-        for (let i = 0; i < 2; i++) {
+        for (let i = 0; i < 3; i++) {
             let selected = null;
 
-            for (let attempt = 0; attempt < 30; attempt++) {
+            const node = this.pathfinder.getRandomNode(this.ZONE, groupID, currentPos, 1.5)
+            selected = node
+            const center = node;
+            
+            const path = this.pathfinder.findPath(
+                currentPos,
+                selected,
+                this.ZONE,
+                groupID
+            );
 
-                const node =
-                    group[Math.floor(Math.random() * group.length)];
+            if (!path || path.length === 0)
+                continue;
 
-                if (usedNodes.has(node.id))
-                    continue;
+           
+            usedNodes.add(node.id);
+            path.map(i=>{
+                patrolPoints.push({
+                    x: i.x,
+                    y: i.y,
+                    z: i.z
+                })
 
-                const center = node.centroid;
+            });
+            groupID = this.pathfinder.getGroup(
+                this.ZONE,
+                selected,
+                true
+            );
 
-                const path = this.pathfinder.findPath(
-                    currentPos,
-                    center,
-                    this.ZONE,
-                    groupID
-                );
+            if (groupID == null) return null;
 
-                if (!path || path.length === 0)
-                    continue;
+            zone = this.pathfinder.zones[this.ZONE];
+            group = zone.groups[groupID];
 
-                selected = center;
-                usedNodes.add(node.id);
-                break;
-            }
-
+            if (!group || group.length < 4) return null;
             if (!selected)
                 return null;
-
-            patrolPoints.push({
-                x: selected.x,
-                y: selected.y,
-                z: selected.z
-            });
-
+            
             currentPos = selected;
         }
 
-        // Último punto = volver al inicio
-        patrolPoints.push({
-            x: botPos.x,
-            y: botPos.y,
-            z: botPos.z
-        });
+            patrolPoints.push({
+                x: botPos.x,
+                y: botPos.y,
+                z: botPos.z
+            })
 
-        return patrolPoints.map(patroPoint=>this.get_server_coords(patroPoint.x, patroPoint.z));
+
+
+        return patrolPoints
     }
 
     send_patrol_points(patrol_points, number_worker) {
@@ -188,7 +194,7 @@ parentPort.on("message", (msg_worker) => {
                 break;
             case 'calc_patrol_points':
                 const res_patrol_points = waypointsService.get_patrol_points(data.bot_cords)
-                waypointsService.send_patrol_points(res_patrol_points, data.number_worker)
+                waypointsService.send_waypoints({path: res_patrol_points}, data.number_worker)
                 break;
             default:
                 console.error(`msg_worker_waypoints_no_recognice ${type}`)

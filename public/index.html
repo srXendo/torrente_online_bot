@@ -147,7 +147,8 @@
                     metalness: 0
                 });
                 const level = new THREE.Mesh(levelMesh.geometry, levelMat);
-                level.scale.set(15, 0.5, 15);
+                level.scale.set(15, 5, 15);
+                level.geometry.translate(0, -4.3, 0);
                 window.level = level;
                 scene.add(level);
 
@@ -176,7 +177,8 @@
             gltfLoader.load('/navmesh3.glb', function (gltf) {
                 const _navmesh       = gltf.scene.getObjectByName('Navmesh_Mesh');
                 const scaledGeometry = _navmesh.geometry.clone();
-                scaledGeometry.scale(15, 0.5, 15);
+                scaledGeometry.scale(15, 5, 15);
+                scaledGeometry.translate(0, -4.3, 0);
                 const positions = Array.from(
                     scaledGeometry.attributes.position.array
                 );

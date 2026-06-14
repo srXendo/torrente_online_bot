@@ -150,6 +150,7 @@ const { parentPort, workerData } = require('worker_threads');
                 ok2[0].writeUint8((msg.readUint8(2) + 1) & 0xFF, 3)
 
                 ok2[0].writeUint8((msg.readUint8(3)), 2)
+
                 /*const ok2_aux = Buffer.from('80060101690b00009d043b03', 'hex')
                 ok2_aux.writeUint8((msg.readUint8(2) + 1) & 0xFF, 5)
 1: 3f020099cac34001 al mensaje: 8006030099ff0000f7ac6e0001000000
@@ -213,7 +214,7 @@ const { parentPort, workerData } = require('worker_threads');
             case 0x0003:
                 this.party = this.extract_data(msg)
                 //console.log(this.party)
-                //this.#number_bot = this.party.currentPlayers
+                this.#number_bot = this.party.currentPlayers
                 let packet = Buffer.from("8801000006000100" + this.buffer_session + "c2091002", 'hex')
 
 
@@ -295,7 +296,11 @@ const { parentPort, workerData } = require('worker_threads');
 
 
                         
-                        
+                    if(!this.next_start){
+                        this.next_start = true
+                        this.emit_start.emit('user_start');
+                        this.#send_msg_worker('next', this.#number_bot, null)
+                    }                        
 
                     //this.player_cords = this.predecirMovimientoForward(this.player_cords, 10)
 
@@ -525,11 +530,7 @@ const { parentPort, workerData } = require('worker_threads');
                 responses.push(ping_ce)
                 this.arr_actions.push(this.try_other_spawn())
 
-                if(!this.next_start){
-                    this.next_start = true
-                    this.emit_start.emit('user_start');
-                    this.#send_msg_worker('next', this.#number_bot, null)
-                }
+
 
                 break;
             case 0x27:
@@ -567,7 +568,7 @@ const { parentPort, workerData } = require('worker_threads');
     }
     set_waypoints(waypoints){
         
-        //console.log('set_waypoints: ', waypoints)
+        console.log('set_waypoints: ', waypoints)
         if(waypoints && waypoints.path.length > 0){
             
             //console.log('waypoints: ',waypoints)
@@ -589,7 +590,7 @@ const { parentPort, workerData } = require('worker_threads');
     }
     set_patrol_points(patrol_points){
         this.patrol_points = patrol_points
-        //console.log('set_patrol_points: ', patrol_points)
+        console.log('set_patrol_points: ', patrol_points)
         
         this.prepare_waypoints(patrol_points[0], this.bot_cords)
         this.patrol_points.shift()
@@ -632,8 +633,8 @@ const { parentPort, workerData } = require('worker_threads');
         return this.#_bot_state
     }
     ia_planing(){
-        this.#bot_state = this.states.PREPARE_FIND_TARGET
-        this.#last_bot_state = this.states.PREPARE_FIND_TARGET
+        this.#bot_state = this.states.PATROL_ZONE
+        this.#last_bot_state = this.states.PATROL_ZONE
     }
 
     ia_bot_start() {
@@ -651,7 +652,7 @@ const { parentPort, workerData } = require('worker_threads');
 
                     if(this.#last_bot_state === this.states.PATROL_ZONE){
                         
-                        if(this.patrol_points.length > 0){
+                        if(this.patrol_points && this.patrol_points.length > 0){
                             const last = this.patrol_points.shift()
                             this.prepare_waypoints(last, this.bot_cords)
                             this.#bot_state = this.states.WAIT_WAYPOINTS
@@ -740,13 +741,13 @@ const { parentPort, workerData } = require('worker_threads');
                     this.forward_move_stop()
                 }
                 
-                this.camera_left()
+                this.camera_left(diff)
 
             } else if (diff < -0.05) {
                 if(this.bot_forware_start){
                     this.forward_move_stop()
                 }
-                this.camera_right()
+                this.camera_right(diff)
 
             } else {
 
@@ -867,13 +868,13 @@ const { parentPort, workerData } = require('worker_threads');
                         this.forward_move_stop()
                     }
                     
-                    this.camera_left()
+                    this.camera_left(diff)
 
                 } else if (diff < -0.05) {
                     if(this.bot_forware_start){
                         this.forward_move_stop()
                     }
-                    this.camera_right()
+                    this.camera_right(diff)
 
                 } else {
 
@@ -932,13 +933,13 @@ const { parentPort, workerData } = require('worker_threads');
                         this.forward_move_stop()
                     }
                     
-                    this.camera_left()
+                    this.camera_left(diff)
 
                 } else if (diff < -0.05) {
                     if(this.bot_forware_start){
                         this.forward_move_stop()
                     }
-                    this.camera_right()
+                    this.camera_right(diff)
 
                 } else {
 
@@ -967,8 +968,8 @@ const { parentPort, workerData } = require('worker_threads');
     generarPaqueteBot(botData) {
         // Calcular movimiento hacia adelante
                     
-        const speedX = 55 - 3.9;
-        const speedZ = 55 - 1.6;
+        const speedX = 100 - 3.9;
+        const speedZ = 100 - 1.6;
 
         const radian = (botData.r / 256) * Math.PI * 2;
 
@@ -1008,13 +1009,18 @@ const { parentPort, workerData } = require('worker_threads');
             
         return [];
     }
-    generate_pack_camera_right(botData) {
-        let view = 0        // Calcular movimiento hacia adelante
+    generate_pack_camera_right(botData, diff) {
+        let view = 0;
 
-        if (this.bot_cords.r + 4 > 255) {
-            this.bot_cords.r = (this.bot_cords.r + 4) - 255
+        const turn = Math.max(
+            1,
+            Math.round((Math.abs(diff) / (2 * Math.PI)) * 256)
+        );
+
+        if (this.bot_cords.r + turn > 255) {
+            this.bot_cords.r = this.bot_cords.r + turn - 255;
         } else {
-            this.bot_cords.r = this.bot_cords.r + 4
+            this.bot_cords.r = this.bot_cords.r + turn;
         }
 
 
@@ -1043,13 +1049,18 @@ const { parentPort, workerData } = require('worker_threads');
 
         return row;
     }
-    generate_pack_camera_left(botData) {
-        let view = 0        // Calcular movimiento hacia adelante
+    generate_pack_camera_left(botData, diff) {
+        let view = 0;
 
-        if (this.bot_cords.r - 4 < 0) {
-            this.bot_cords.r = (this.bot_cords.r - 4) + 255
+        const turn = Math.max(
+            1,
+            Math.round((Math.abs(diff) / (2 * Math.PI)) * 256)
+        );
+
+        if (this.bot_cords.r - turn < 0) {
+            this.bot_cords.r = this.bot_cords.r - turn + 256;
         } else {
-            this.bot_cords.r = this.bot_cords.r - 4
+            this.bot_cords.r = this.bot_cords.r - turn;
         }
 
 
@@ -1427,15 +1438,15 @@ const { parentPort, workerData } = require('worker_threads');
         this.bot_forware_start = false
         return
     }
-    camera_right() {
+    camera_right(diff) {
 
-        const sync_pack = this.generate_pack_camera_right(this.bot_cords)
+        const sync_pack = this.generate_pack_camera_right(this.bot_cords, diff)
         sync_pack.writeUInt8(this.#number_bot, 4)
         this.arr_actions.push(sync_pack)
         return
     }
-    camera_left() {
-        const sync_pack = this.generate_pack_camera_left(this.bot_cords)
+    camera_left(diff) {
+        const sync_pack = this.generate_pack_camera_left(this.bot_cords, diff)
         sync_pack.writeUInt8(this.#number_bot, 4)
         this.arr_actions.push(sync_pack)
         return
