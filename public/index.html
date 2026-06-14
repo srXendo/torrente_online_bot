@@ -410,11 +410,14 @@
                     const px =  ((data.value_action.x / (1000 * 9.98))    * 15) + offsetX;
                     const pz = -(((data.value_action.y / (1000 * 8.47508)) * 15) + offsetZ);
 
-                    const bot = botPrototype.clone();
+                    const bot = !players[idBot] ? botPrototype.clone() : players[idBot];
                     bot.traverse(c => { if (c.isMesh) c.userData.type = 'bot'; });
                     bot.position.set(px, 0.5, pz);
-                    scene.add(bot);
-                    players[idBot] = bot;
+                    if(!players[idBot]){
+  
+                        scene.add(bot);
+                        players[idBot] = bot;
+                    }
                     helper.setPlayerPosition(players[idBot].position);
                 }else if(data.type_action === 'waypoints'){
                     console.log('¡waypoints recive!: ', data)

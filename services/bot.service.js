@@ -568,7 +568,7 @@ const { parentPort, workerData } = require('worker_threads');
     }
     set_waypoints(waypoints){
         
-        console.log('set_waypoints: ', waypoints)
+        //console.log('set_waypoints: ', waypoints)
         if(waypoints && waypoints.path.length > 0){
             
             //console.log('waypoints: ',waypoints)
@@ -590,7 +590,7 @@ const { parentPort, workerData } = require('worker_threads');
     }
     set_patrol_points(patrol_points){
         this.patrol_points = patrol_points
-        console.log('set_patrol_points: ', patrol_points)
+        //console.log('set_patrol_points: ', patrol_points)
         
         this.prepare_waypoints(patrol_points[0], this.bot_cords)
         this.patrol_points.shift()
@@ -647,20 +647,12 @@ const { parentPort, workerData } = require('worker_threads');
             let response = undefined
             switch(this.#bot_state){
                 case this.states.FOLLOW_TARGET:
+                    this.#_last_bot_state = this.states.FOLLOW_TARGET
                     response = this.ia_follow_target()
+                    
                     if(!response) return;
 
-                    if(this.#last_bot_state === this.states.PATROL_ZONE){
-                        
-                        if(this.patrol_points && this.patrol_points.length > 0){
-                            const last = this.patrol_points.shift()
-                            this.prepare_waypoints(last, this.bot_cords)
-                            this.#bot_state = this.states.WAIT_WAYPOINTS
-                        }else{
-                            this.#bot_state = this.states.PATROL_ZONE
-                            this.#last_bot_state = this.states.PATROL_ZONE
-                        }
-                    }
+                    
                     return true
                     break;
                 case this.states.SHOT_TARGET:
@@ -678,9 +670,13 @@ const { parentPort, workerData } = require('worker_threads');
         }, 100 )
     }
     ia_patrol_zone(){
-        if(!this.patrol_points || this.patrol_points.length < 1){
+        if(!this.waypoints.path || this.waypoints.path.length < 1){
             this.calc_patrol_points()
             this.#bot_state = this.states.WAIT_WAYPOINTS
+            this.#last_bot_state = this.states.PATROL_ZONE
+                
+
+            
         }
         if(this.patrol_points && this.patrol_points.length > 0){
             //this.#bot_state = this.states.FOLLOW_TARGET
@@ -695,6 +691,7 @@ const { parentPort, workerData } = require('worker_threads');
     prepare_waypoints_to_target(){
         if(this.prepare_waypoints(this.player_cords, this.bot_cords)){
             this.#bot_state = this.states.WAIT_WAYPOINTS
+            
         }
         
     }
@@ -807,154 +804,84 @@ const { parentPort, workerData } = require('worker_threads');
         const dz = pp.z - botPos.z;
         const distSq = dx * dx + dz * dz;
         if(distSq < 0.02){
-            //this.forward_move_stop()
+            this.forward_move_stop()
             this.#bot_state = this.states.SHOT_TARGET
             return false
         }
-        /*if(distSq < 125){
-            if((this.waypoints && this.waypoints.path.length < 2)){
+        if(distSq < 125 && this.#_last_bot_state === this.states.FOLLOW_TARGET){
+            if((this.waypoints && this.waypoints.path.length < 1)){
+                this.forward_move_stop()
                 this.prepare_waypoints_to_target()
+                return false
 
             }
-        }*/
+        }
+        if(this.waypoints && this.waypoints.path.length < 1){
+            this.forward_move_stop()
+            this.#_bot_state = this.states.PATROL_ZONE
+            return false
+        }
         //console.log('ia_follow_target 4')
 
         //console.log('ia_follow_target 5', this.waypoints)
-        if((this.waypoints && this.waypoints.path.length > 0) && distSq > 0.8 ||false){
-            //console.log('ia_follow_target 6')
-            const playerPos = this.player_cords;
-            if (!playerPos) return;
-            //console.log('ia_follow_target 7')
-            const pp = this.get_vector(playerPos.x, playerPos.y)
+
+        const waypointPos = this.waypoints.path[0];
+
+        const dxw = waypointPos.x - botPos.x;
+        const dzw = waypointPos.z - botPos.z;
+        const distSqw = dxw * dxw + dzw * dzw;
+        if(distSqw < 0.02){
+            this.forward_move_stop()                 
+            this.waypoints.path.shift();
+            if(this.waypoints.path.length < 1){
+                return true
+            }
+            return false;
 
 
+        }
+        //console.log('ia_follow_target 9')
+        const target = this.normalizeAngle(
+            this.angleToTargetFront(botPos.x, botPos.z, waypointPos.x, waypointPos.z)
+            + Math.PI / 2   // ← corrección de 90°
+        );
+        const r = -(this.bot_cords.r / 256) * Math.PI * 2
+        const current = this.normalizeAngle(-r);
 
-            if (!this.bot_cords) return;
-            //console.log('ia_follow_target 8')
-            const botPos = this.get_vector(this.bot_cords.x, this.bot_cords.y)
-
-            const waypointPos = this.waypoints.path[0];
-
-            const dx = waypointPos.x - botPos.x;
-            const dz = waypointPos.z - botPos.z;
-            const distSq = dx * dx + dz * dz;
-            if(distSq < 0.02){
-                //this.forward_move_stop()                 
-                this.waypoints.path.shift();
-                if(this.waypoints.path.length < 1){
-                    return true
+        let diff = current - target;
+        if (diff > Math.PI) diff -= 2 * Math.PI;
+        if (diff < -Math.PI) diff += 2 * Math.PI;
+        //console.log('diff: ', diff, ' --- botR: ', this.bot_cords.r, ' --- playerR: ', this.player_cords.r)
+        //console.log('ia_follow_target 10')
+        if(this.can_move){
+            //console.log('ia_follow_target 11: ', diff)
+            if (diff > 0.05) {
+                if(this.bot_forware_start){
+                    this.forward_move_stop()
                 }
-                return false;
+                
+                this.camera_left(diff)
 
-
-            }
-            //console.log('ia_follow_target 9')
-            const target = this.normalizeAngle(
-                this.angleToTargetFront(botPos.x, botPos.z, waypointPos.x, waypointPos.z)
-                + Math.PI / 2   // ← corrección de 90°
-            );
-            const r = -(this.bot_cords.r / 256) * Math.PI * 2
-            const current = this.normalizeAngle(-r);
-
-            let diff = current - target;
-            if (diff > Math.PI) diff -= 2 * Math.PI;
-            if (diff < -Math.PI) diff += 2 * Math.PI;
-            //console.log('diff: ', diff, ' --- botR: ', this.bot_cords.r, ' --- playerR: ', this.player_cords.r)
-            //console.log('ia_follow_target 10')
-            if(this.can_move){
-                //console.log('ia_follow_target 11: ', diff)
-                if (diff > 0.05) {
-                    if(this.bot_forware_start){
-                        this.forward_move_stop()
-                    }
-                    
-                    this.camera_left(diff)
-
-                } else if (diff < -0.05) {
-                    if(this.bot_forware_start){
-                        this.forward_move_stop()
-                    }
-                    this.camera_right(diff)
-
-                } else {
-
-                    
-                        this.forward_move()
-                        setTimeout(()=>{
-                            //this.forward_move_stop()
-                            this.send_sync()
-                        }, 65)
-            
-                    
-
+            } else if (diff < -0.05) {
+                if(this.bot_forware_start){
+                    this.forward_move_stop()
                 }
-            }
-        }else if(distSq <= 0.8 || true){
-            //console.log('ia_follow_target 6')
-            const playerPos = this.player_cords;
-            if (!playerPos) return;
-            //console.log('ia_follow_target 7')
-            const pp = this.get_vector(playerPos.x, playerPos.y)
+                this.camera_right(diff)
 
+            } else {
 
-
-            if (!this.bot_cords) return;
-            //console.log('ia_follow_target 8')
-            const botPos = this.get_vector(this.bot_cords.x, this.bot_cords.y)
-
-            const waypointPos = pp;
-
-            const dx = waypointPos.x - botPos.x;
-            const dz = waypointPos.z - botPos.z;
-            const distSq = dx * dx + dz * dz;
-            if(distSq < 0.02){
-                //this.forward_move_stop()    
-                return false;
-
+                
+                    this.forward_move()
+                    setTimeout(()=>{
+                        //this.forward_move_stop()
+                        this.send_sync()
+                    }, 65)
+        
+                
 
             }
-            //console.log('ia_follow_target 9')
-            const target = this.normalizeAngle(
-                this.angleToTargetFront(botPos.x, botPos.z, waypointPos.x, waypointPos.z)
-                + Math.PI / 2   // ← corrección de 90°
-            );
-            const r = -(this.bot_cords.r / 256) * Math.PI * 2
-            const current = this.normalizeAngle(-r);
+        }
 
-            let diff = current - target;
-            if (diff > Math.PI) diff -= 2 * Math.PI;
-            if (diff < -Math.PI) diff += 2 * Math.PI;
-            //console.log('diff: ', diff, ' --- botR: ', this.bot_cords.r, ' --- playerR: ', this.player_cords.r)
-            //console.log('ia_follow_target 10')
-            if(this.can_move){
-                //console.log('ia_follow_target 11: ', diff)
-                if (diff > 0.05) {
-                    if(this.bot_forware_start){
-                        this.forward_move_stop()
-                    }
-                    
-                    this.camera_left(diff)
-
-                } else if (diff < -0.05) {
-                    if(this.bot_forware_start){
-                        this.forward_move_stop()
-                    }
-                    this.camera_right(diff)
-
-                } else {
-
-                    
-                        this.forward_move()
-                        
-                        setTimeout(()=>{
-                            //this.forward_move_stop()
-                            this.send_sync()
-                        }, 65)
-            
-                    
-                }
-            }
-        };
         return false
     }
     normalizeAngle(a) {
@@ -968,8 +895,8 @@ const { parentPort, workerData } = require('worker_threads');
     generarPaqueteBot(botData) {
         // Calcular movimiento hacia adelante
                     
-        const speedX = 100 - 3.9;
-        const speedZ = 100 - 1.6;
+        const speedX = 150 - 3.9;
+        const speedZ = 150 - 1.6;
 
         const radian = (botData.r / 256) * Math.PI * 2;
 
@@ -1123,36 +1050,43 @@ const { parentPort, workerData } = require('worker_threads');
         //3f001510000510784f8a2546905715416652a6c5
         const dificult = this.difficult //'hen' // 0.00 to 1.00 1.23 is god value
         const random = Math.random()
+        const random2 = Math.random()
 
         const random_drop =  dificult < random
-        let drop_gun_to_flor = Buffer.from(`3f00f23fce050532dbac9745000000006ef7f9c4`, 'hex')
+        if(random_drop){
+            const baseOffset = 8
+            if(random > random2){
+                let drop_gun_to_flor_2 = Buffer.from(`3f001510000510784f8a2546905715416652a6c5`, 'hex')
+                drop_gun_to_flor_2.writeUInt8(this.#number_bot, 4)
+                drop_gun_to_flor_2.writeFloatLE(this.bot_cords.x, baseOffset);
+                drop_gun_to_flor_2.writeFloatLE(this.bot_cords.z, baseOffset + 4);
+                drop_gun_to_flor_2.writeFloatLE(this.bot_cords.y, baseOffset + 8);
+                this.arr_actions.push(drop_gun_to_flor_2)
+            }
+            let drop_gun_to_flor = Buffer.from(`3f00f23fce050532dbac9745000000006ef7f9c4`, 'hex')
 
+            drop_gun_to_flor.writeUInt8(this.#number_bot, 4)
             
+            drop_gun_to_flor.writeFloatLE(this.bot_cords.x, baseOffset);
+            drop_gun_to_flor.writeFloatLE(this.bot_cords.z, baseOffset + 4);
+            drop_gun_to_flor.writeFloatLE(this.bot_cords.y, baseOffset + 8);
+            this.arr_actions.push(drop_gun_to_flor)
+        }
 
-        
-        drop_gun_to_flor.writeUInt8(this.#number_bot, 4)
-        const baseOffset = 8
-        drop_gun_to_flor.writeFloatLE(this.bot_cords.x, baseOffset);
-        drop_gun_to_flor.writeFloatLE(this.bot_cords.z, baseOffset + 4);
-        drop_gun_to_flor.writeFloatLE(this.bot_cords.y, baseOffset + 8);
-        this.arr_actions.push(drop_gun_to_flor)
-        let drop_gun_to_flor_2 = Buffer.from(`3f001510000510784f8a2546905715416652a6c5`, 'hex')
-        drop_gun_to_flor_2.writeUInt8(this.#number_bot, 4)
-        drop_gun_to_flor_2.writeFloatLE(this.bot_cords.x, baseOffset);
-        drop_gun_to_flor_2.writeFloatLE(this.bot_cords.z, baseOffset + 4);
-        drop_gun_to_flor_2.writeFloatLE(this.bot_cords.y, baseOffset + 8);
-        this.arr_actions.push(drop_gun_to_flor_2)
+
         return
     }
     get_action(msg) {
 
-        const ping = Buffer.from("3f020c0c" + this.buffer_session, 'hex')
+        const ping = Buffer.from("3f020000" + this.buffer_session, 'hex')
         let result = []
 
         if (this.arr_actions.length > 0) {
             result.push(this.arr_actions.shift())
-        } 
-        //result.push(ping)
+        } else {
+            result.push(ping)
+        }
+        //
 
         return result.map((row, index)=>{
             if(row[0] === 0x80){
@@ -1169,7 +1103,7 @@ const { parentPort, workerData } = require('worker_threads');
         const pj_setup = Buffer.from('3f005f0c010e000000000000000000000363011070b21900020b0610'.replace('123123332323133313213', this.buffer_session.toString('hex')), 'hex')
         //console.log('send spawn: ', this.#number_bot)
         pj_setup.writeUInt8(this.#number_bot, 4) //byte ultimo numero de jugadores en partida 0x00
-        pj_setup.writeUInt8(0x00+this.#number_bot + 2, 25) //modelo byte 0x00 torrente 0x0b yonki
+        pj_setup.writeUInt8(0x00+this.#number_bot + 1, 25) //modelo byte 0x00 torrente 0x0b yonki
         //pj_setup.writeUInt8(0x02, 24) //equipo byte 0x02 random 0x01 amarillo 0x00 rojo
 
         //pj_setup.writeUInt8(0x02, pj_setup.length- 10) //numero de jugador 0x01 jugador 1 0x02 jugador 2
