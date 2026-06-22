@@ -171,7 +171,7 @@ class TargetManager {
     pathfinder = null
     waypoints = {path: []}
     last_bnSeq = null
-    can_move = false
+    can_move = true
     bot_helper = {send_event: (obj_json)=>{
         this.#send_msg_worker("msg_to_frontend", this.#number_bot, obj_json)
     }}
@@ -363,7 +363,7 @@ class TargetManager {
             case 0x0003:
                 this.party = this.extract_data(msg)
                 //console.log(this.party)
-                this.#number_bot = this.party.currentPlayers
+                //this.#number_bot = this.party.currentPlayers
                 let packet = Buffer.from("8801000006000100" + this.buffer_session + "c2091002", 'hex')
 
 
@@ -441,15 +441,12 @@ class TargetManager {
                 
                
                 if (!(~msg.toString('ascii').indexOf(this.user_bot.toString('ascii')))) {
-
-
-
-                        
+ 
                     if(!this.next_start){
                         this.next_start = true
                         this.emit_start.emit('user_start');
                         this.#send_msg_worker('next', this.#number_bot, null)
-                    }                        
+                    }                     
 
                     //this.player_cords = this.predecirMovimientoForward(this.player_cords, 10)
 
@@ -495,7 +492,16 @@ class TargetManager {
                 //console.log(`${this.user_bot} ha sido impactado por: other user. 2222`)
                 //console.log(`${this.user_bot} vida restante2222: `, msg.readUInt8(10), bot)
                 if (this.#number_bot === msg.readUint8(4)) {
+                    console.log(`${this.#number_bot}: baja la vida: por id ${msg.readUInt8(9)}  ${msg.toString('hex')}`)
+                        const header = Buffer.from('3F00831001FBFF', 'hex')
+                        const text = Buffer.from(`${this.user_bot} me baja la vida: por id ${msg.readUInt8(9)}  vida: ${msg.readUInt8(10)}`, 'ascii')
+                        const end_buf = Buffer.from('001F71DA0C01000000020000004022250CA436061000000000', 'hex')
+                        const chat = Buffer.concat([header, text, end_buf])
 
+                        chat.writeUInt8(this.#number_bot, 4)
+                        if(this.bots_can_talk){
+                            this.arr_actions.push(chat)
+                        }
                     const have_life = msg.readUInt8(10)
                     //console.log(`${this.user_bot} ha sido impactado por: other user. `)
                     //console.log(`${this.user_bot} vida restante: `, msg.readUInt8(10))
@@ -541,6 +547,7 @@ class TargetManager {
                 if(0xfb !==  msg.readUInt8(4)){
                     /*this.user_bot = Buffer.from(('Bot' + `${this.#number_bot }`.padStart(2, "0")), 'ascii')
                     this.#number_bot = msg.readUInt8(4)*/
+                    //this.#number_bot = msg.readUInt8(4)
 
                 }
                     //
@@ -563,7 +570,7 @@ class TargetManager {
             case 0x0e:
                 //throw new Error('spwan palyer!!!')
 
-
+     
 
                 const arr_respawns = this.extractAllPlayers(msg)
                 //console.log('spawns: ', arr_respawns.length, arr_respawns.map(i=>i.bot))
@@ -578,7 +585,7 @@ class TargetManager {
                 }
                 
                 if (this.#number_bot === bot) {
-                    
+   
                     this.can_shot = true
                     //console.log('bot spawn ', this.#number_bot)
                     this.in_game = true
@@ -629,7 +636,6 @@ class TargetManager {
                 if (bot == 0) {
                     //console.log('sync player bot number: ', msg)
                     this.player_cords = bot_cords
-                    this.target_manager.observe(bot, bot_cords, 'player')
                     
                     //this.follow_cam()
                     //this.send_waypoints()
@@ -662,7 +668,7 @@ class TargetManager {
 
                 }
 
-                if (bot !== this.#number_bot && bot !== 0) {
+                if (bot !== this.#number_bot) {
                     this.target_manager.observe(bot, bot_cords, 'bot')
                 }
 
@@ -801,8 +807,8 @@ class TargetManager {
         return this.#_bot_state
     }
     ia_planing(){
-        this.#bot_state = this.states.PATROL_ZONE
-        this.#last_bot_state = this.states.PATROL_ZONE
+        this.#bot_state = this.states.FOLLOW_TARGET
+        this.#last_bot_state = this.states.FOLLOW_TARGET
     }
 
     ia_bot_start() {
@@ -927,7 +933,7 @@ class TargetManager {
                 setTimeout(()=>{
                         //this.forward_move_stop()
                     this.send_sync()
-                }, 65)
+                }, 20)
             }
         }
 
@@ -947,19 +953,17 @@ class TargetManager {
         const dx = pp.x - botPos.x;
         const dz = pp.z - botPos.z;
         const distSq = dx * dx + dz * dz;
-        if(distSq < 0.02){
+        if(distSq < 0.05){
             
             return this.shot()
+        }else{
+            this.#_bot_state = this.states.FOLLOW_TARGET
         }
         return
     }
+    tick_forwared_execution = 0
     ia_follow_target(){
-        const now = new Date().getTime()
-        //console.log('ia_follow_target')
-        if(now - this.last_time_execute > 200){
-            //this.send_sync()
-            this.last_time_execute = now
-        }
+
         
         const playerPos = this.get_selected_target_cords();
         if (!playerPos) return;
@@ -974,7 +978,7 @@ class TargetManager {
         const dx = pp.x - botPos.x;
         const dz = pp.z - botPos.z;
         const distSq = dx * dx + dz * dz;
-        if(distSq < 0.02){
+        if(distSq < 0.05){
             this.forward_move_stop()
             this.#bot_state = this.states.SHOT_TARGET
             return false
@@ -1001,7 +1005,7 @@ class TargetManager {
         const dxw = waypointPos.x - botPos.x;
         const dzw = waypointPos.z - botPos.z;
         const distSqw = dxw * dxw + dzw * dzw;
-        if(distSqw < 0.02){
+        if(distSqw < 0.03){
             this.forward_move_stop()                 
             this.waypoints.path.shift();
             if(this.waypoints.path.length < 1){
@@ -1043,16 +1047,22 @@ class TargetManager {
 
                 
                     this.forward_move()
-                    setTimeout(()=>{
-                        //this.forward_move_stop()
-                        this.send_sync()
-                    }, 65)
-        
+                    const now = new Date().getTime()
+                    //console.log('ia_follow_target')
+                    if(now - this.tick_forwared_execution > 200){
+                        this.forward_move_stop()
+                        this.tick_forwared_execution = now
+                    }
                 
 
             }
         }
-
+        const now = new Date().getTime()
+        //console.log('ia_follow_target')
+        if(now - this.last_time_execute > 200){
+            this.send_sync()
+            this.last_time_execute = now
+        }
         return false
     }
     refresh_target_selection() {
@@ -1124,47 +1134,48 @@ class TargetManager {
     
     generarPaqueteBot(botData) {
         // Calcular movimiento hacia adelante
+        if(this.can_move){         
+            const speedX = 27 - 3.9;
+            const speedZ = 27 - 1.6;
+
+            const radian = (botData.r / 256) * Math.PI * 2;
+
+            const newX = botData.x + Math.sin(radian) * speedX;
+            const newZ = botData.z ;
+            const newY = botData.y + Math.cos(radian) * speedZ;
+
+
+                    // 2. BUFFER DE 26 BYTES
+                    const buffStart = Buffer.from('3f00410f000c03', 'hex')
+
+                    this.bot_cords.x = newX;
+                    this.bot_cords.y = newY;
+                    this.bot_cords.z = newZ;
+
+                    // 3. ENVIAR JSON CON LAS COORDENADAS NUEVAS
+                    /*this.bot_helper.send_event(JSON.stringify({
+                        type_action: 'sync',
+                        value_action: {
+                            bot: this.#number_bot,
+                            x: newX,  // ✅ X NUEVA
+                            y: newY,  // ✅ Y NUEVA
+                            z: newZ,  // ✅ Z NUEVA
+                            r: this.bot_cords.r   // ✅ R NUEVA
+                        },
+                        id_bot: this.#number_bot
+                    }));*/
+                    buffStart.writeUInt8(this.#number_bot, 4)
+
                     
-        const speedX = 150 - 3.9;
-        const speedZ = 150 - 1.6;
-
-        const radian = (botData.r / 256) * Math.PI * 2;
-
-        const newX = botData.x + Math.sin(radian) * speedX;
-        const newZ = botData.z ;
-        const newY = botData.y + Math.cos(radian) * speedZ;
-
-
-                // 2. BUFFER DE 26 BYTES
-                const buffStart = Buffer.from('3f00410f000c03', 'hex')
-
-                this.bot_cords.x = newX;
-                this.bot_cords.y = newY;
-                this.bot_cords.z = newZ;
-
-                // 3. ENVIAR JSON CON LAS COORDENADAS NUEVAS
-                /*this.bot_helper.send_event(JSON.stringify({
-                    type_action: 'sync',
-                    value_action: {
-                        bot: this.#number_bot,
-                        x: newX,  // ✅ X NUEVA
-                        y: newY,  // ✅ Y NUEVA
-                        z: newZ,  // ✅ Z NUEVA
-                        r: this.bot_cords.r   // ✅ R NUEVA
-                    },
-                    id_bot: this.#number_bot
-                }));*/
-                buffStart.writeUInt8(this.#number_bot, 4)
+                    if(!this.bot_forware_start){
+                        this.arr_actions.push(buffStart)
+                    }
+                    this.bot_forware_start = true
+                    //this.arr_actions.push(buf)
 
                 
-                if(!this.bot_forware_start){
-                    this.arr_actions.push(buffStart)
-                }
-                this.bot_forware_start = true
-                //this.arr_actions.push(buf)
-
-            
-        return [];
+            return [];
+        }
     }
     generate_pack_camera_right(botData, diff) {
         let view = 0;
@@ -1243,7 +1254,7 @@ class TargetManager {
     send_signal_die() {
         //console.log('send signal die: ')
         const header = Buffer.from('3F00831001FBFF', 'hex')
-        const text = Buffer.from(`Hola soy el bot ${this.#number_bot}: he muerto`, 'ascii')
+        const text = Buffer.from(`Hola soy el numero ${this.#number_bot}: he muerto`, 'ascii')
         const end_buf = Buffer.from('001F71DA0C01000000020000004022250CA436061000000000', 'hex')
         const chat = Buffer.concat([header, text, end_buf])
 
@@ -1285,14 +1296,14 @@ class TargetManager {
         const random_drop =  dificult < random
         if(random_drop){
             const baseOffset = 8
-            if(random > random2){
+            
                 let drop_gun_to_flor_2 = Buffer.from(`3f001510000510784f8a2546905715416652a6c5`, 'hex')
                 drop_gun_to_flor_2.writeUInt8(this.#number_bot, 4)
                 drop_gun_to_flor_2.writeFloatLE(this.bot_cords.x, baseOffset);
                 drop_gun_to_flor_2.writeFloatLE(this.bot_cords.z, baseOffset + 4);
                 drop_gun_to_flor_2.writeFloatLE(this.bot_cords.y, baseOffset + 8);
                 this.arr_actions.push(drop_gun_to_flor_2)
-            }
+            
             let drop_gun_to_flor = Buffer.from(`3f00f23fce050532dbac9745000000006ef7f9c4`, 'hex')
 
             drop_gun_to_flor.writeUInt8(this.#number_bot, 4)
