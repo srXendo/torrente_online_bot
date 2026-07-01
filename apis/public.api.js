@@ -139,7 +139,7 @@ class publicApi {
       ":status": 200,
     }
 
-    const pathmap = path.join(__dirname, './../public/navmesh.glb');
+    const pathmap = path.join(__dirname, './../public/map.glb');
     const map = fs.readFileSync(pathmap);
     stream.respond(response)
     stream.write(map)
@@ -222,10 +222,12 @@ class publicApi {
         break;
       case 'calc_waypoints':
         
-        setTimeout(()=>{
-          const res = this.#waypoints_worker.postMessage(JSON.stringify({ type: 'calc_waypoints', data: { player_cords: data.player_cords, bot_cords: data.bot_cords, number_worker: number_worker_dad } }))
-          console.log('res calc_waypoints in api: ', res)
-        },10)
+  
+          if(this.#waypoints_worker){
+            const res = this.#waypoints_worker.postMessage(JSON.stringify({ type: 'calc_waypoints', data: { player_cords: data.player_cords, bot_cords: data.bot_cords, number_worker: number_worker_dad } }))
+            console.log('res calc_waypoints in api: ', res)
+          }
+  
 
         //this.#waypoints_worker.postMessage(JSON.stringify({ type: 'calc', data: { player_cords: data.player_cords, bot_cords: data.bot_cords, number_worker: number_worker_dad } }))
         //this.#waypoints_worker.postMessage(JSON.stringify({ type: 'calc_patrol_points', data: { player_cords: data.player_cords, bot_cords: data.bot_cords, number_worker: number_worker_dad } }))
@@ -340,6 +342,23 @@ class publicApi {
         stream.end()
         return
       }
+      console.log('body: ', body)
+      if('forward_move' === body.state_bot){
+
+       this.#send_msg_to_worker(body.id_bot - 1, 'action_bot', {type: 'forward_move'})
+          
+      }
+
+      if(body.state_bot === "camera_right"){
+
+        this.#send_msg_to_worker(body.id_bot - 1, 'action_bot', {type: 'camera_right', value: body.data})
+      }
+      if(body.state_bot === "camera_left"){
+
+        this.#send_msg_to_worker(body.id_bot - 1, 'action_bot', {type: 'camera_left', value: body.data})
+      }
+      
+        
 
 
 

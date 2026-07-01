@@ -87,14 +87,14 @@
 
     init();
     animate();
-    const SCALE = 20;
+    const SCALE = 0.01;
     async function init() {
 
       const gltfLoader = new GLTFLoader();
 
       gltfLoader.load('/navmesh3.glb', function (gltf) {
-
-        const levelMesh = gltf.scene.getObjectByName('Navmesh_Mesh');
+        console.log(gltf)
+        const levelMesh = gltf.scene.getObjectByName('map');
 
         const levelMat = new THREE.MeshStandardMaterial({
           color: Color.GROUND,
@@ -103,17 +103,17 @@
           metalness: 0
         });
         level = new THREE.Mesh(levelMesh.geometry, levelMat);
-        level.scale.set(SCALE, 0.5, SCALE);
+        level.scale.set(SCALE, 0.01, SCALE);
         window.level = level;
         scene.add(level);
       }, null);
 
       gltfLoader.load('/navmesh3.glb', function (gltf) {
 
-        const _navmesh = gltf.scene.getObjectByName('Navmesh_Mesh');
+        const _navmesh = gltf.scene.getObjectByName('map');
 
         const scaledGeometry = _navmesh.geometry.clone();
-        scaledGeometry.scale(SCALE, 0.5, SCALE);
+        scaledGeometry.scale(SCALE, 0.01, SCALE);
 
         console.time('createZone()');
         const zone = Pathfinding.createZone(scaledGeometry);

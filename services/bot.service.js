@@ -171,7 +171,7 @@ class TargetManager {
     pathfinder = null
     waypoints = {path: []}
     last_bnSeq = null
-    can_move = true
+    can_move = false
     bot_helper = {send_event: (obj_json)=>{
         this.#send_msg_worker("msg_to_frontend", this.#number_bot, obj_json)
     }}
@@ -572,10 +572,11 @@ class TargetManager {
 
      
 
-                const arr_respawns = this.extractAllPlayers(msg)
+
+                //const arr_respawns = this.extractAllPlayers(msg)
                 //console.log('spawns: ', arr_respawns.length, arr_respawns.map(i=>i.bot))
-                const that_bot = arr_respawns.filter(row => row.bot === this.#number_bot)[0]
-                const player_respawn = arr_respawns.filter(row => row.bot === 0)[0]
+                //const that_bot = arr_respawns.filter(row => row.bot === this.#number_bot)[0]
+                //const player_respawn = arr_respawns.filter(row => row.bot === 0)[0]
 
                 if (bot === 0) {
 
@@ -585,7 +586,7 @@ class TargetManager {
                 }
                 
                 if (this.#number_bot === bot) {
-   
+                    
                     this.can_shot = true
                     //console.log('bot spawn ', this.#number_bot)
                     this.in_game = true
@@ -602,7 +603,7 @@ class TargetManager {
                         
                         this.can_move = true
                         this.ia_planing()
-                        this.ia_bot_start()
+                        //this.ia_bot_start()
                         
                     
                         this.start = true
@@ -621,6 +622,7 @@ class TargetManager {
                     //this.cb_spawn(all_players)
                     //responses.push({is_external: true, arr_respawns: arr_respawns})
                     //ok2.writeUint8(msg.readUint8(2), 3)
+                
                 }
 
                 break;
@@ -671,7 +673,7 @@ class TargetManager {
                 if (bot !== this.#number_bot) {
                     this.target_manager.observe(bot, bot_cords, 'bot')
                 }
-
+                
 
                 break;
             case 0xce:
@@ -812,37 +814,38 @@ class TargetManager {
     }
 
     ia_bot_start() {
+        if(!this.bot_action_interval){
         
-        
-        this.bot_action_interval = setInterval(() => {
-            this.refresh_target_selection()
-             //this.camera_left()
+            this.bot_action_interval = setInterval(() => {
+                this.refresh_target_selection()
+                //this.camera_left()
 
-            
-            let response = undefined
-            switch(this.#bot_state){
-                case this.states.FOLLOW_TARGET:
-                    this.#_last_bot_state = this.states.FOLLOW_TARGET
-                    response = this.ia_follow_target()
-                    
-                    if(!response) return;
+                
+                let response = undefined
+                switch(this.#bot_state){
+                    case this.states.FOLLOW_TARGET:
+                        this.#_last_bot_state = this.states.FOLLOW_TARGET
+                        response = this.ia_follow_target()
+                        
+                        if(!response) return;
 
-                    
-                    return true
+                        
+                        return true
+                        break;
+                    case this.states.SHOT_TARGET:
+                        this.ia_shot_target();
+                        break;
+                    case this.states.PATROL_ZONE:
+                        this.ia_patrol_zone();
+                        break;
+                    case this.states.WAIT_WAYPOINTS:
+                        break;
+                    case this.states.PREPARE_FIND_TARGET:
+                        this.prepare_waypoints_to_target()    
                     break;
-                case this.states.SHOT_TARGET:
-                    this.ia_shot_target();
-                    break;
-                case this.states.PATROL_ZONE:
-                    this.ia_patrol_zone();
-                    break;
-                case this.states.WAIT_WAYPOINTS:
-                    break;
-                case this.states.PREPARE_FIND_TARGET:
-                    this.prepare_waypoints_to_target()    
-                break;
-            }
-        }, 100 )
+                }
+            }, 100 )
+        }
     }
     ia_patrol_zone(){
         if(!this.waypoints.path || this.waypoints.path.length < 1){
@@ -931,9 +934,9 @@ class TargetManager {
             
 
                 setTimeout(()=>{
-                        //this.forward_move_stop()
+                    //this.forward_move_stop()
                     this.send_sync()
-                }, 20)
+                }, 200)
             }
         }
 
@@ -1030,14 +1033,14 @@ class TargetManager {
         //console.log('ia_follow_target 10')
         if(this.can_move){
             //console.log('ia_follow_target 11: ', diff)
-            if (diff > 0.05) {
+            if (diff > 0.03) {
                 if(this.bot_forware_start){
                     this.forward_move_stop()
                 }
                 
                 this.camera_left(diff)
 
-            } else if (diff < -0.05) {
+            } else if (diff < -0.03) {
                 if(this.bot_forware_start){
                     this.forward_move_stop()
                 }
@@ -1056,13 +1059,15 @@ class TargetManager {
                 
 
             }
+            const now = new Date().getTime()
+            //console.log('ia_follow_target')
+            if(now - this.tick_forwared_execution > 1000){
+
+                this.tick_forwared_execution = now
+                this.send_sync()
+            }
         }
-        const now = new Date().getTime()
-        //console.log('ia_follow_target')
-        if(now - this.last_time_execute > 200){
-            this.send_sync()
-            this.last_time_execute = now
-        }
+
         return false
     }
     refresh_target_selection() {
@@ -1135,8 +1140,8 @@ class TargetManager {
     generarPaqueteBot(botData) {
         // Calcular movimiento hacia adelante
         if(this.can_move){         
-            const speedX = 27 - 3.9;
-            const speedZ = 27 - 1.6;
+            const speedX = 35 ;
+            const speedZ = 35 ;
 
             const radian = (botData.r / 256) * Math.PI * 2;
 
@@ -1153,7 +1158,7 @@ class TargetManager {
                     this.bot_cords.z = newZ;
 
                     // 3. ENVIAR JSON CON LAS COORDENADAS NUEVAS
-                    /*this.bot_helper.send_event(JSON.stringify({
+                    this.bot_helper.send_event(JSON.stringify({
                         type_action: 'sync',
                         value_action: {
                             bot: this.#number_bot,
@@ -1162,8 +1167,8 @@ class TargetManager {
                             z: newZ,  // ✅ Z NUEVA
                             r: this.bot_cords.r   // ✅ R NUEVA
                         },
-                        id_bot: this.#number_bot
-                    }));*/
+                        id_bot: this.#id_bot
+                    }));
                     buffStart.writeUInt8(this.#number_bot, 4)
 
                     
@@ -1205,9 +1210,9 @@ class TargetManager {
                 z: botData.z,  // ✅ Z NUEVA
                 r: this.bot_cords.r   // ✅ R NUEVA
             },
-            id_bot: this.#number_bot
+            id_bot: this.#id_bot
         }));
-        const row = Buffer.from('3f00720a000abf4cd6ab00f8', 'hex')
+        const row = Buffer.from('3f00720a000a004c161b00f8', 'hex')
         row.writeUInt8(this.#number_bot, 4)
         //row.writeUint16LE( Math.floor(Math.random() * 180) , 8)
         row.writeUint8(this.bot_cords.r, 7)
@@ -1236,7 +1241,7 @@ class TargetManager {
         this.bot_helper.send_event(JSON.stringify({
             type_action: 'sync',
             value_action: {
-                bot: this.#number_bot,
+                bot: this.#id_bot,
                 x: botData.x,  // ✅ X NUEVA
                 y: botData.y,  // ✅ Y NUEVA
                 z: botData.z,  // ✅ Z NUEVA
@@ -1244,7 +1249,7 @@ class TargetManager {
             },
             id_bot: this.#number_bot
         }));
-        const row = Buffer.from('3f00720a000abf4cd6ab00f8', 'hex')
+        const row = Buffer.from('3f00720a000a004cd6ab00f8', 'hex')
         row.writeUInt8(this.#number_bot, 4)
         //row.writeUint16LE( Math.floor(Math.random() * 180) , 8)
         row.writeUint8(this.bot_cords.r, 7)
@@ -1267,29 +1272,31 @@ class TargetManager {
         if (this.bot_cords) {
             this.send_signal_drop_gun()
         }
-        const pj_setup = Buffer.from('3f005f0c010e000000000000000000000363011070b21900020b0610'.replace('123123332323133313213', this.buffer_session.toString('hex')), 'hex')
-        //console.log('send spawn: ', this.#number_bot)
-        pj_setup.writeUInt8(this.#number_bot, 4) //byte ultimo numero de jugadores en partida 0x00
-        pj_setup.writeUInt8(0x00+this.#number_bot + 2, 25) //modelo byte 0x00 torrente 0x0b yonki
-        //pj_setup.writeUInt8(0x02, 24) //equipo byte 0x02 random 0x01 amarillo 0x00 rojo
-        this.bot_cords = this.extractRespawnXZR(pj_setup)
-        if(this.bot_cords){
-            pj_setup.writeFloatLE(this.bot_cords.x, 8);
-            pj_setup.writeFloatLE(this.bot_cords.z, 8 + 4);
-            pj_setup.writeFloatLE(this.bot_cords.y, 8 + 8);
-            pj_setup.writeUInt8(this.bot_cords.r, 8 + 13);
+        setTimeout(()=>{
+            const pj_setup = Buffer.from('3f005f0c010e000000000000000000000363011070b21900020b0610'.replace('123123332323133313213', this.buffer_session.toString('hex')), 'hex')
+            //console.log('send spawn: ', this.#number_bot)
+            pj_setup.writeUInt8(this.#number_bot, 4) //byte ultimo numero de jugadores en partida 0x00
+            pj_setup.writeUInt8(0x00+this.#number_bot + 2, 25) //modelo byte 0x00 torrente 0x0b yonki
+            //pj_setup.writeUInt8(0x02, 24) //equipo byte 0x02 random 0x01 amarillo 0x00 rojo
+            //this.bot_cords = this.extractRespawnXZR(pj_setup)
+            if(this.bot_cords){
+                pj_setup.writeFloatLE(this.bot_cords.x, 8);
+                pj_setup.writeFloatLE(this.bot_cords.z, 8 + 4);
+                pj_setup.writeFloatLE(this.bot_cords.y, 8 + 8);
+                pj_setup.writeUInt8(this.bot_cords.r, 8 + 13);
 
-        }
+            }
+            this.arr_actions.push(pj_setup)
+        }, 4000)
 
 
 
-
-        this.arr_actions.push(pj_setup)
+        
 
     }
     send_signal_drop_gun() {
         //3f001510000510784f8a2546905715416652a6c5
-        const dificult = this.difficult //'hen' // 0.00 to 1.00 1.23 is god value
+        const dificult = this.difficult - 0.2//'hen' // 0.00 to 1.00 1.23 is god value
         const random = Math.random()
         const random2 = Math.random()
 
@@ -1391,11 +1398,9 @@ class TargetManager {
     }
     extractAllPlayers(buffer) {
         const arr = this.splitBuffer(buffer, Buffer.from([0x0e, 0x00, 0x00]))
-        const first_ele = arr.shift();
+        const first_ele = arr[0];
         //console.log('number players respawn', arr.length)
-        if (arr.length === 1) {
-            return [this.extractRespawnXZR(arr[0], first_ele.readUInt8(first_ele.length - 1), 0)]
-        }
+
         const result = []
         let id_bot = null
         for (let idx_entity in arr) {
@@ -1404,6 +1409,7 @@ class TargetManager {
                 id_bot = first_ele.readUInt8(first_ele.length - 1)
             }
             let row = arr[idx_entity]
+            console.log(row)
             result.push({ bot: id_bot, cords: this.extractRespawnXZR(row, id_bot, 0) })
             id_bot = row.readUInt8(row.length - 1)
         }
@@ -1560,11 +1566,13 @@ class TargetManager {
                 shot.writeUInt8(this.active_target_id ?? 0, 10)
                 this.arr_actions.push(shot)
             }else{
-                const fail_shot = Buffer.from('3f00790e00262602714ea644f91e2143860ed745','hex')
+                if(this.player_cords.x && this.player_cords.y){
+                    const fail_shot = Buffer.from('3f00790e00262602714ea644f91e2143860ed745','hex')
 
-                fail_shot.writeFloatLE(this.player_cords.x, 8);
-                fail_shot.writeFloatLE(this.player_cords.y, 8 + 8);
-                this.arr_actions.push(fail_shot)
+                    fail_shot.writeFloatLE(this.player_cords.x, 8);
+                    fail_shot.writeFloatLE(this.player_cords.y, 8 + 8);
+                    this.arr_actions.push(fail_shot)
+                }
             }
             this.can_shot = false
             this.last_time_shot = now
@@ -1599,7 +1607,7 @@ class TargetManager {
         const buf_sforware = Buffer.from('3f009610000c15','hex')
         buf_sforware.writeUInt8(this.#number_bot, 4)
         this.arr_actions.push(buf_sforware)*/
-
+        console.log("this.forward_move: ")
         this.generarPaqueteBot(this.bot_cords)
 
         //this.arr_actions.push(sync_pack[1])
@@ -1607,7 +1615,7 @@ class TargetManager {
         return
     }
     async forward_move_stop(){
-        const buffStop = Buffer.from('3f00410f000c15', 'hex')
+        const buffStop = Buffer.from('3f00410f000c03', 'hex')
         buffStop.writeUInt8(this.#number_bot, 4)
 
         this.arr_actions.push(buffStop)
@@ -1615,17 +1623,23 @@ class TargetManager {
         return
     }
     camera_right(diff) {
+        if(this.bot_cords){
+            console.log("camera_right_execute: ", diff)
+            const sync_pack = this.generate_pack_camera_right(this.bot_cords, diff)
+            sync_pack.writeUInt8(this.#number_bot, 4)
+            this.arr_actions.push(sync_pack)
+            return
+        }
 
-        const sync_pack = this.generate_pack_camera_right(this.bot_cords, diff)
-        sync_pack.writeUInt8(this.#number_bot, 4)
-        this.arr_actions.push(sync_pack)
-        return
     }
     camera_left(diff) {
-        const sync_pack = this.generate_pack_camera_left(this.bot_cords, diff)
-        sync_pack.writeUInt8(this.#number_bot, 4)
-        this.arr_actions.push(sync_pack)
-        return
+        if(this.bot_cords){
+            console.log("camera_left_execute: ", diff)
+            const sync_pack = this.generate_pack_camera_left(this.bot_cords, diff)
+            sync_pack.writeUInt8(this.#number_bot, 4)
+            this.arr_actions.push(sync_pack)
+            return
+        }
     }
     disconnect() {
         /*
@@ -1687,7 +1701,25 @@ parentPort.on("message", (msg_worker)=>{
             case 'set_patrol_points':
                 
                 botService.set_patrol_points(data.patrol_points)
-            break; 
+            break;
+            case 'action_bot': 
+                console.log('action bot: ', data)
+                switch(data.type){
+                    case "forward_move":
+                        botService.forward_move()
+                    
+                    break;
+                    case "camera_right":
+                        //botService.forward_move_stop()
+                        botService.camera_right(data.value)
+                    break;
+                    case "camera_left":
+                        //botService.forward_move_stop()
+                        botService.camera_left(data.value)
+                    break;
+                }
+                botService.send_sync()
+            break;
             default:
                 
                 break;
