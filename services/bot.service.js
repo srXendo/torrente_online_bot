@@ -944,7 +944,7 @@ class TargetManager {
     }
     ia_shot_target(){
                
-        const playerPos = this.get_selected_target_cords();
+        /*const playerPos = this.get_selected_target_cords();
         if (!playerPos) return;
         //console.log('interval start!', 2)
         const pp = this.get_vector(playerPos.x, playerPos.y)
@@ -962,7 +962,7 @@ class TargetManager {
         }else{
             this.#_bot_state = this.states.FOLLOW_TARGET
         }
-        return
+        return*/
     }
     tick_forwared_execution = 0
     ia_follow_target(){
@@ -1140,8 +1140,8 @@ class TargetManager {
     generarPaqueteBot(botData) {
         // Calcular movimiento hacia adelante
         if(this.can_move){         
-            const speedX = 35 ;
-            const speedZ = 35 ;
+            const speedX = 15 ;
+            const speedZ = 15 ;
 
             const radian = (botData.r / 256) * Math.PI * 2;
 
@@ -1548,7 +1548,7 @@ class TargetManager {
 
         return copy
     }
-    async shot() {
+    async shot(id_to_shot, coords_shot) {
 
         //console.log('shot bot')
         const dificult = this.difficult //'hen' // 0.00 to 1.00 1.23 is god value
@@ -1563,14 +1563,15 @@ class TargetManager {
 
                 const shot = Buffer.from('3f00d8af01fc120d1403001905','hex')
                 shot.writeUInt8(this.#number_bot, 4)
-                shot.writeUInt8(this.active_target_id ?? 0, 10)
+                console.log('id_to_shot: ', typeof id_to_shot)
+                shot.writeUInt8(id_to_shot, 10)
                 this.arr_actions.push(shot)
             }else{
-                if(this.player_cords.x && this.player_cords.y){
+                if(coords_shot && coords_shot.x && coords_shot.y){
                     const fail_shot = Buffer.from('3f00790e00262602714ea644f91e2143860ed745','hex')
 
-                    fail_shot.writeFloatLE(this.player_cords.x, 8);
-                    fail_shot.writeFloatLE(this.player_cords.y, 8 + 8);
+                    fail_shot.writeFloatLE(coords_shot.x, 8);
+                    fail_shot.writeFloatLE(coords_shot.y, 8 + 8);
                     this.arr_actions.push(fail_shot)
                 }
             }
@@ -1717,6 +1718,9 @@ parentPort.on("message", (msg_worker)=>{
                         //botService.forward_move_stop()
                         botService.camera_left(data.value)
                     break;
+                    case "shot":
+                        console.log("shot: ", data)
+                        botService.shot(data.value.id_to_shot, data.value.coords_shot)
                 }
                 botService.send_sync()
             break;

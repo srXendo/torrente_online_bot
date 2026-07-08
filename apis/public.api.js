@@ -358,6 +358,10 @@ class publicApi {
         this.#send_msg_to_worker(body.id_bot - 1, 'action_bot', {type: 'camera_left', value: body.data})
       }
       
+      if(body.state_bot === "shot"){
+
+        this.#send_msg_to_worker(body.id_bot - 1, 'action_bot', {type: 'shot', value: {id_to_shot: body.id_to_shot, coords_shot: body.coords_shot}})
+      }      
         
 
 

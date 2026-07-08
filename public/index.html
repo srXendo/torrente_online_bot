@@ -31,7 +31,7 @@ let players = {};
 let state_bots = {
 }
 let status_player_bot = {}
-const move_actions = {navmesh_load: {action_type: "navmesh_load"}, camera_right: {action_type: "camera_right"}, camera_left: {action_type: "camera_left"}, forward: {action_type: "forward_move"}}
+const move_actions = {navmesh_load: {action_type: "navmesh_load"}, shot: {action_type: "shot"}, camera_right: {action_type: "camera_right"}, camera_left: {action_type: "camera_left"}, forward: {action_type: "forward_move"}}
 const BOT_STATES = {
     NO_ATTACK: 'no_attack',
     PATROL: 'patrol',
@@ -236,7 +236,7 @@ function reflectAngle(currentAngle, wallNormal) {
 
     return Math.atan2(reflectedX, reflectedZ);
 }
-const SOUND_SENSOR_RADIUS = 400
+const SOUND_SENSOR_RADIUS = 2000
 function updateAllSensors() {
     const player = players[0];
     for (const id_aux in players) {
@@ -271,6 +271,8 @@ function updateAllSensors() {
             let wallDetected = false;
             let playerDetected = false
             let playerDetected_in_front = false
+            let botDetected = false
+
             //renderMap2D()
             if (hits.length > 0) {
                 const t = hits[0].object.userData?.type;
@@ -284,49 +286,66 @@ function updateAllSensors() {
                     
                     process_state(id, BOT_STATES.NO_ATTACK);
                 }
-                if (t === 'bot'){
-                    
-                    color = COLOR_BOT.clone();
-                }
+
                 if(t === 'player'){
                     color = COLOR_PLAYER.clone();
-                    wallDetected = hits[0];
+  
+                }
+            }
+            for (let id_scan_bot in players){
+                const botPos = bot.position;
+                const playerPos = players[parseInt(id_scan_bot)].position;
+                const dx = playerPos.x - botPos.x;
+                const dz = playerPos.z - botPos.z;
 
-                    // Marcar celda de la pared
-                    const hitPoint = hits[0].point;
-                    //markCell(hitPoint.x, hitPoint.z, true);
+                const distSq = dx * dx + dz * dz;
+                const radiusSq = SOUND_SENSOR_RADIUS * SOUND_SENSOR_RADIUS;
+                if(id_scan_bot != id_aux ){
                     
-                    process_state(id, BOT_STATES.NO_ATTACK);
-                    send_action(id, BOT_STATES.ATTACK)
-                    playerDetected_in_front = true
-                    send_action(id, move_actions.forward.action_type);
+                }
+                if(distSq < 50 && id_scan_bot != id_aux){
+                    console.log({
+                        id_to_shot: parseInt(id_scan_bot),
+                        coords_shot: players[parseInt(id_scan_bot)].position
+                    })
+                    send_action(id, move_actions.shot.action_type, {
+                        id_to_shot: parseInt(id_scan_bot),
+                        coords_shot: players[parseInt(id_scan_bot)].position
+                    });
+                    botDetected = players[parseInt(id_scan_bot)].position
+                }else if (distSq <= radiusSq && id_scan_bot != id_aux  ) {
+                    botDetected = players[parseInt(id_scan_bot)].position
+                }else{
+                    playerDetected = false
                 }
             }
-            const botPos = bot.position;
-            const playerPos = player.position;
-            const dx = playerPos.x - botPos.x;
-            const dz = playerPos.z - botPos.z;
-
-            const distSq = dx * dx + dz * dz;
-            const radiusSq = SOUND_SENSOR_RADIUS * SOUND_SENSOR_RADIUS;
-            if (distSq <= radiusSq) {
-                playerDetected = true
-                state_bots[id] = {
-                    x: playerPos.x,
-                    y: playerPos.y,
-                    z: playerPos.z
-                }
-            }else{
-                playerDetected = false
-            }
+            
             // ===== PATRULLA MINIMA =====
             /*if (!wallDetected && !state_bots[id]) {
                 send_action(id, move_actions.forward.action_type);
             }*/
 
-            if (wallDetected) {
+            if(botDetected) {
+                const new_angle_bot = angleToTarget(bot.position.x, bot.position.z, botDetected.x, botDetected.z);
+                const target = normalizeAngle(new_angle_bot + Math.PI);
+                const current = normalizeAngle(-bot.rotation.y);
+
+                let diff = current - target;
+
+                if (diff > Math.PI) diff -= 2 * Math.PI;
+                if (diff < -Math.PI) diff += 2 * Math.PI;
+                console.log('execute action: ')
+                if (diff > 0.15) {
+                    send_action(id, move_actions.camera_left.action_type, 0.2);
+                } else if (diff < -0.15) {
+                    send_action(id, move_actions.camera_right.action_type, 0.2);
+                } else  {
+                    send_action(id, move_actions.forward.action_type);
+                }
+
+            } else if (wallDetected) {
                 // wallNormalAngle debe venir de tu detección de colisión (raycast, etc.)
-                console.log(wallDetected)
+  
                 const wallNormalAngle = Math.atan2(wallDetected.normal.x, wallDetected.normal.z); // ajusta ejes según tu convención
 
                 const currentHeading = normalizeAngle(-bot.rotation.y);
@@ -345,17 +364,8 @@ function updateAllSensors() {
                     send_action(id, move_actions.camera_right.action_type, Math.abs(turnAmount));
                 }
 
-            }
-            if(!wallDetected){
+            } else if(!wallDetected){
                
-                const new_angle_bot = angleToTarget(botPos.x, botPos.z, playerPos.x, playerPos.z);
-                const target = normalizeAngle(new_angle_bot + Math.PI);
-                const current = normalizeAngle(-bot.rotation.y);
-
-                let diff = current - target;
-
-                if (diff > Math.PI) diff -= 2 * Math.PI;
-                if (diff < -Math.PI) diff += 2 * Math.PI;
 
                 // Fix oscilación en el punto opuesto (±PI)
                 
