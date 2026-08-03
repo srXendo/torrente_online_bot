@@ -139,7 +139,7 @@ class publicApi {
       ":status": 200,
     }
 
-    const pathmap = path.join(__dirname, './../public/navmesh.glb');
+    const pathmap = path.join(__dirname, './../public/navmesh.obj');
     const map = fs.readFileSync(pathmap);
     stream.respond(response)
     stream.write(map)

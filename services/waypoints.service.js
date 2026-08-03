@@ -34,14 +34,13 @@ class WaypointsService {
         }
 
         // Offset Y de -5 unidades
-        geometry.translate(0, 0, 0);
 
 
 
         const zone = Pathfinding.createZone(geometry);
 
         this.pathfinder.setZoneData(this.ZONE, zone);
-        //console.log("waypoints zones: ", this.pathfinder.zones, geometry)
+        console.log("waypoints zones: ", this.pathfinder.zones, geometry)
 
     }
     #send_msg_worker(type, number_worker, data) {
@@ -163,16 +162,16 @@ class WaypointsService {
         this.#send_msg_worker('patrol_points', number_worker, { patrol_points })
     }
     get_vector(x, z) {
-        const bx = ((x / (1000 * 9.98)) * 15) + -3.90;
-        const bz = -(((z / (1000 * 8.47508)) * 15) + -1.60);
-        const pp = new THREE.Vector3(bx, 0.5, bz);
+        const bx =  x * 0.001
+        const bz = -z * 0.001;
+        const pp = new THREE.Vector3(bx, 9, bz);
         return pp
     }
     get_server_coords(x, z) {
         return {
-            x: ((x + 3.90) / 15) * (1000 * 9.98),
-            y: 0.5,
-            z: ((1.60 - z) / 15) * (1000 * 8.47508)
+            x: x / 0.001,
+            y: 9,
+            z: z / 0.001
         };
     }
 }

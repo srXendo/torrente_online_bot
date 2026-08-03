@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="styles.css">
   <style>
     body {
-      margin: 0
+      margin: 0;
     }
   </style>
 </head>
@@ -28,7 +28,7 @@
   <script type="module">
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
     import { Pathfinding, PathfindingHelper } from 'threePathfinding';
 
@@ -70,10 +70,14 @@
     scene.add(helper);
     environment.dispose();
 
-    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
-    camera.position.x = -10;
-    camera.position.y = 14;
-    camera.position.z = 10;
+    const camera = new THREE.PerspectiveCamera(
+      45,
+      window.innerWidth / window.innerHeight,
+      1,
+      2000
+    );
+
+    camera.position.set(-10, 14, 10);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.damping = 0.2;
@@ -85,16 +89,35 @@
     directionalLight.position.set(0, 0.5, 0.5);
     scene.add(directionalLight);
 
+    const SCALE = 1;
+
     init();
     animate();
-    const SCALE = 20;
+
     async function init() {
 
-      const gltfLoader = new GLTFLoader();
+      const objLoader = new OBJLoader();
 
-      gltfLoader.load('/navmesh3.glb', function (gltf) {
+      objLoader.load('/navmesh.obj', function (object) {
 
-        const levelMesh = gltf.scene.getObjectByName('Navmesh_Mesh');
+        let sourceMesh = null;
+
+        object.traverse((child) => {
+          console.log(
+            child.name,
+            child.type,
+            child.geometry ? child.geometry.attributes.position.count : ''
+        );
+
+          if (!sourceMesh && child.geometry) {
+            sourceMesh = child;
+          }
+        });
+
+        if (!sourceMesh) {
+          console.error('No se encontró ninguna malla en navmesh.obj');
+          return;
+        }
 
         const levelMat = new THREE.MeshStandardMaterial({
           color: Color.GROUND,
@@ -102,18 +125,15 @@
           roughness: 1,
           metalness: 0
         });
-        level = new THREE.Mesh(levelMesh.geometry, levelMat);
-        level.scale.set(SCALE, 0.5, SCALE);
+
+        level = new THREE.Mesh(sourceMesh.geometry.clone(), levelMat);
+        level.scale.set(SCALE, 200, SCALE);
+
         window.level = level;
         scene.add(level);
-      }, null);
 
-      gltfLoader.load('/navmesh3.glb', function (gltf) {
-
-        const _navmesh = gltf.scene.getObjectByName('Navmesh_Mesh');
-
-        const scaledGeometry = _navmesh.geometry.clone();
-        scaledGeometry.scale(SCALE, 0.5, SCALE);
+        const scaledGeometry = sourceMesh.geometry.clone();
+        scaledGeometry.scale(SCALE, 200, SCALE);
 
         console.time('createZone()');
         const zone = Pathfinding.createZone(scaledGeometry);
@@ -121,15 +141,19 @@
 
         pathfinder.setZoneData(ZONE, zone);
 
-        navmesh = new THREE.Mesh(scaledGeometry, new THREE.MeshBasicMaterial({
-          color: Color.NAVMESH,
-          opacity: 0.75,
-          transparent: true
-        }));
+        navmesh = new THREE.Mesh(
+          scaledGeometry,
+          new THREE.MeshBasicMaterial({
+            color: Color.NAVMESH,
+            opacity: 0.75,
+            transparent: true
+          })
+        );
 
         scene.add(navmesh);
 
       });
+
       helper
         .setPlayerPosition(new THREE.Vector3(-3.5, 0.5, 5.5))
         .setTargetPosition(new THREE.Vector3(-3.5, 0.5, 5.5));
@@ -137,22 +161,24 @@
       document.addEventListener('pointerdown', onDocumentPointerDown, false);
       document.addEventListener('pointerup', onDocumentPointerUp, false);
       window.addEventListener('resize', onWindowResize, false);
-
     }
 
     function onDocumentPointerDown(event) {
 
       mouseDown.x = (event.clientX / window.innerWidth) * 2 - 1;
-      mouseDown.y = - (event.clientY / window.innerHeight) * 2 + 1;
+      mouseDown.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
     }
 
     function onDocumentPointerUp(event) {
 
       mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-      mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-      if (Math.abs(mouseDown.x - mouse.x) > 0 || Math.abs(mouseDown.y - mouse.y) > 0) return;
+      if (
+        Math.abs(mouseDown.x - mouse.x) > 0 ||
+        Math.abs(mouseDown.y - mouse.y) > 0
+      ) return;
 
       camera.updateMatrixWorld();
 
@@ -171,43 +197,85 @@
       if (event.metaKey || event.ctrlKey || event.button === 2) {
 
         path = null;
-        groupID = pathfinder.getGroup(ZONE, targetPosition, true);
-        const closestNode = pathfinder.getClosestNode(playerPosition, ZONE, groupID, true);
 
-        helper.setPlayerPosition(playerPosition.copy(targetPosition))
-        if (closestNode) helper.setNodePosition(closestNode.centroid);
+        groupID = pathfinder.getGroup(
+          ZONE,
+          targetPosition,
+          true
+        );
+
+        const closestNode = pathfinder.getClosestNode(
+          playerPosition,
+          ZONE,
+          groupID,
+          true
+        );
+
+        helper.setPlayerPosition(playerPosition.copy(targetPosition));
+
+        if (closestNode)
+          helper.setNodePosition(closestNode.centroid);
 
         return;
-
       }
 
-      const targetGroupID = pathfinder.getGroup(ZONE, targetPosition, true);
-      const closestTargetNode = pathfinder.getClosestNode(targetPosition, ZONE, targetGroupID, true);
+      const targetGroupID = pathfinder.getGroup(
+        ZONE,
+        targetPosition,
+        true
+      );
+
+      const closestTargetNode = pathfinder.getClosestNode(
+        targetPosition,
+        ZONE,
+        targetGroupID,
+        true
+      );
 
       helper.setTargetPosition(targetPosition);
-      if (closestTargetNode) helper.setNodePosition(closestTargetNode.centroid);
 
-      path = pathfinder.findPath(playerPosition, targetPosition, ZONE, groupID);
+      if (closestTargetNode)
+        helper.setNodePosition(closestTargetNode.centroid);
+
+      path = pathfinder.findPath(
+        playerPosition,
+        targetPosition,
+        ZONE,
+        groupID
+      );
 
       if (path && path.length) {
 
         helper.setPath(path);
 
-        console.log(path.map(p => ({
-          x: p.x,
-          y: p.y,
-          z: p.z
-        })))
+        console.log(
+          path.map(p => ({
+            x: p.x,
+            y: p.y,
+            z: p.z
+          }))
+        );
+
       } else {
 
-        const closestPlayerNode = pathfinder.getClosestNode(playerPosition, ZONE, groupID);
+        const closestPlayerNode = pathfinder.getClosestNode(
+          playerPosition,
+          ZONE,
+          groupID
+        );
+
         const clamped = new THREE.Vector3();
 
         pathfinder.clampStep(
-          playerPosition, targetPosition.clone(), closestPlayerNode, ZONE, groupID, clamped);
+          playerPosition,
+          targetPosition.clone(),
+          closestPlayerNode,
+          ZONE,
+          groupID,
+          clamped
+        );
 
         helper.setStepPosition(clamped);
-
       }
     }
 
@@ -223,24 +291,39 @@
     function animate() {
 
       requestAnimationFrame(animate);
+
       tick(clock.getDelta());
+
       renderer.render(scene, camera);
 
     }
 
     function tick(dt) {
-      if (!level || !(path || []).length) return
+
+      if (!level || !(path || []).length) return;
 
       let targetPosition = path[0];
-      const velocity = targetPosition.clone().sub(playerPosition);
+
+      const velocity = targetPosition
+        .clone()
+        .sub(playerPosition);
 
       if (velocity.lengthSq() > 0.05 * 0.05) {
+
         velocity.normalize();
-        playerPosition.add(velocity.multiplyScalar(dt * SPEED));
+
+        playerPosition.add(
+          velocity.multiplyScalar(dt * SPEED)
+        );
+
         helper.setPlayerPosition(playerPosition);
+
       } else {
+
         path.shift();
+
       }
+
     }
 
   </script>

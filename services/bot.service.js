@@ -148,7 +148,7 @@ class TargetManager {
 }
 
  class BotService {
-    #arr_names = ['','Gunner!!!', 'Weewoo', 'SrXendo', 'Bayman_LK', 'Keygen.7z', 'Koin', 'Milu', 'AngelitoF1', 'theblast3r', 'Dynasty', 'PetroleroVT', 'Flopa', 'Patoke', 'P.S', 'BetaRose', 'BuRnN', 'FrOsT', 'Hisoka']
+    #arr_names = ['','Gunner!!!', 'Weewoo', 'XendoBot', 'Bayman_LK', 'Keygen.7z', 'Koin', 'Milu', 'AngelitoF1', 'theblast3r', 'Dynasty', 'PetroleroVT', 'Flopa', 'Patoke', 'P.S', 'BetaRose', 'BuRnN', 'FrOsT', 'Hisoka']
     #server;
     #ip_server = '192.168.1.134'
     #port_server = 8888
@@ -441,13 +441,13 @@ class TargetManager {
                 
                
                 if (!(~msg.toString('ascii').indexOf(this.user_bot.toString('ascii')))) {
- 
+                    
                     if(!this.next_start){
                         this.next_start = true
                         this.emit_start.emit('user_start');
                         this.#send_msg_worker('next', this.#number_bot, null)
                     }                     
-
+                    
                     //this.player_cords = this.predecirMovimientoForward(this.player_cords, 10)
 
                 }
@@ -534,12 +534,14 @@ class TargetManager {
 
                 break;
             case 0xfe:
-                const pj_response = Buffer.from('3f020504e03f74a0'.replace('e03f74a0', this.buffer_session.toString('hex')), 'hex')
+                /*const pj_response = Buffer.from('3f020504e03f74a0'.replace('e03f74a0', this.buffer_session.toString('hex')), 'hex')
                 pj_response.writeUInt8(this.#number_bot, 4)
 
-
-                this.arr_actions.push(pj_response)
-
+                
+                this.arr_actions.push(pj_response)*/
+                if(msg.readUInt8(0) === 0x37){
+                    
+                }
                 
                 break;
             case 0xff:
@@ -548,7 +550,7 @@ class TargetManager {
                     /*this.user_bot = Buffer.from(('Bot' + `${this.#number_bot }`.padStart(2, "0")), 'ascii')
                     this.#number_bot = msg.readUInt8(4)*/
                     //this.#number_bot = msg.readUInt8(4)
-
+                    this.#number_bot = msg.readUInt8(4)
                 }
                     //
 
@@ -639,6 +641,7 @@ class TargetManager {
                     
                     //this.follow_cam()
                     //this.send_waypoints()
+                    
 
                 }
 
@@ -676,7 +679,7 @@ class TargetManager {
                 break;
             case 0xce:
                 //
-
+                
                 const ping_ce = Buffer.from('80060100ac240000ee8b4503', 'hex')
   
                 const timestamp = Date.now() & 0xFFFFFFFF;
@@ -695,6 +698,7 @@ class TargetManager {
                 break;
             case 0x27:
                 break;
+
             default:
                 console.error(new Error('action no recognize: ').stack)
                 break;
@@ -769,19 +773,19 @@ class TargetManager {
         this.prepare_waypoints(patrol_points[0], this.bot_cords)
         this.patrol_points.shift()
         
-        /*if(patrol_points){
+        if(patrol_points){
             console.log('patrol_points: ',patrol_points)
             this.bot_helper.send_event(JSON.stringify({
                 type_action: 'patrol_points',
                 value_action: { path: patrol_points.path, group: patrol_points.group },
                 id_bot: this.#number_bot
             }));
-        }*/
+        }
     }
     get_vector(x, z) {
-        const bx = ((x / (1000 * 9.98)) * 15) + -3.90;
-        const bz = -(((z / (1000 * 8.47508)) * 15) + -1.60);
-        const pp = new THREE.Vector3(bx, 0.5, bz);
+        const bx = x * 0.001;
+        const bz = -z * 0.001;
+        const pp = new THREE.Vector3(bx, 9, bz);
         return pp
     }
     last_time_execute = 0
@@ -983,7 +987,7 @@ class TargetManager {
             this.#bot_state = this.states.SHOT_TARGET
             return false
         }
-        if(distSq < 125 && this.#_last_bot_state === this.states.FOLLOW_TARGET){
+        if(distSq < 10 && this.#_last_bot_state === this.states.FOLLOW_TARGET){
             if((this.waypoints && this.waypoints.path.length < 1)){
                 this.forward_move_stop()
                 this.prepare_waypoints_to_target()
@@ -1135,8 +1139,8 @@ class TargetManager {
     generarPaqueteBot(botData) {
         // Calcular movimiento hacia adelante
         if(this.can_move){         
-            const speedX = 27 - 3.9;
-            const speedZ = 27 - 1.6;
+            const speedX = 37 ;
+            const speedZ = 37 ;
 
             const radian = (botData.r / 256) * Math.PI * 2;
 
@@ -1561,9 +1565,9 @@ class TargetManager {
                 this.arr_actions.push(shot)
             }else{
                 const fail_shot = Buffer.from('3f00790e00262602714ea644f91e2143860ed745','hex')
-
-                fail_shot.writeFloatLE(this.player_cords.x, 8);
-                fail_shot.writeFloatLE(this.player_cords.y, 8 + 8);
+                const target_shot = this.get_selected_target_cords()
+                fail_shot.writeFloatLE(target_shot.x, 8);
+                fail_shot.writeFloatLE(target_shot.y, 8 + 8);
                 this.arr_actions.push(fail_shot)
             }
             this.can_shot = false

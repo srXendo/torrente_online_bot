@@ -38,8 +38,8 @@
             NAVMESH: 0xFFFFFF,
         };
 
-        let offsetX = -3.9;
-        let offsetZ = -1.6;
+        let offsetX = 1;
+        let offsetZ = 1;
 
         document.getElementById('offsetX').setAttribute('value', -3.9);
         document.getElementById('lx').textContent = offsetX.toFixed(2);
@@ -138,8 +138,19 @@
             const gltfLoader = new GLTFLoader();
             const objLoader  = new OBJLoader();
 
-            gltfLoader.load('/navmesh3.glb', function (gltf) {
-                const levelMesh = gltf.scene.getObjectByName('Navmesh_Mesh');
+            objLoader.load('/navmesh3.glb', function (gltf) {
+                let levelMesh;
+                gltf.traverse((child) => {
+                console.log(
+                    child.name,
+                    child.type,
+                    child.geometry ? child.geometry.attributes.position.count : ''
+                );
+
+                if (!levelMesh && child.geometry) {
+                    levelMesh = child;
+                }
+                });
                 const levelMat  = new THREE.MeshStandardMaterial({
                     color:     Color.GROUND,
                     flatShading: true,
@@ -147,15 +158,14 @@
                     metalness: 0
                 });
                 const level = new THREE.Mesh(levelMesh.geometry, levelMat);
-                level.scale.set(15, 5, 15);
-                level.geometry.translate(0, -4.3, 0);
+                level.scale.set(1, 200, 1);
                 window.level = level;
                 scene.add(level);
 
                 objLoader.load('model.bot.obj', (bp) => {
                     try {
                         botPrototype = bp;
-                        botPrototype.scale.setScalar(0.5);
+                        botPrototype.scale.setScalar(1);
                         botPrototype.traverse(c => {
                             if (c.isMesh) {
                                 c.material      = wireMaterialBot;
@@ -164,7 +174,7 @@
                         });
 
                         const bot0 = botPrototype.clone();
-                        bot0.position.set(0, 0.43, 0);
+                        bot0.position.set(0, 9, 0);
                         bot0.traverse(c => {
                             if (c.isMesh) c.userData.type = 'player';
                         });
@@ -174,11 +184,22 @@
                 });
             }, null);
 
-            gltfLoader.load('/navmesh3.glb', function (gltf) {
-                const _navmesh       = gltf.scene.getObjectByName('Navmesh_Mesh');
+            objLoader.load('/navmesh3.glb', function (gltf) {
+                let _navmesh;
+                gltf.traverse((child) => {
+                console.log(
+                    child.name,
+                    child.type,
+                    child.geometry ? child.geometry.attributes.position.count : ''
+                );
+
+                if (!_navmesh && child.geometry) {
+                    _navmesh = child;
+                }
+                });
                 const scaledGeometry = _navmesh.geometry.clone();
-                scaledGeometry.scale(15, 5, 15);
-                scaledGeometry.translate(0, -4.3, 0);
+                scaledGeometry.scale(1, 200, 1);
+
                 const positions = Array.from(
                     scaledGeometry.attributes.position.array
                 );
@@ -383,10 +404,11 @@
                     const idBot = Number(data.value_action?.bot);
                     if (!players[idBot]) return;
 
-                    const px =  ((data.value_action.x / (1000 * 9.98))    * 15) + offsetX;
-                    const pz = -(((data.value_action.y / (1000 * 8.47508)) * 15) + offsetZ);
-
-                    players[idBot].position.set(px, 0.43, pz);
+                    players[idBot].position.set(
+                        data.value_action.x * 0.001,
+                        9,
+                        -data.value_action.y * 0.001
+                    );
 
                     if (typeof data.value_action.r === 'number') {
                         players[idBot].rotation.y = -(data.value_action.r / 256) * Math.PI * 2;
@@ -407,23 +429,30 @@
                     const idBot = Number(data.id_bot ?? data.value_action?.bot);
                     if (idBot <= 0) return;
 
-                    const px =  ((data.value_action.x / (1000 * 9.98))    * 15) + offsetX;
-                    const pz = -(((data.value_action.y / (1000 * 8.47508)) * 15) + offsetZ);
 
                     const bot = !players[idBot] ? botPrototype.clone() : players[idBot];
                     bot.traverse(c => { if (c.isMesh) c.userData.type = 'bot'; });
-                    bot.position.set(px, 0.5, pz);
+                    
+
                     if(!players[idBot]){
   
                         scene.add(bot);
                         players[idBot] = bot;
                     }
+                    players[idBot].position.set(
+                        data.value_action.x * 0.001,
+                        9,
+                        -data.value_action.y * 0.001
+                    );
                     helper.setPlayerPosition(players[idBot].position);
                 }else if(data.type_action === 'waypoints'){
                     console.log('¡waypoints recive!: ', data)
                     _regenPath(data.id_bot, data.value_action.path, data.value_action.group);
                 }else if(data.type_action === 'die'){
                     console.log('bot is death: ', data.id_bot)
+                }
+                else if(data.type_action === 'patrol_points'){
+                    console.log('patrol_points', data)
                 }
             } catch (err) {
                 console.error('SSE parse error', err);
