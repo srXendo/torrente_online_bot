@@ -1,57 +1,5 @@
 
 async function btnocultar() {
-	var x = document.getElementById("ocultar");
-	if (x.style.display === "none") {
-		x.style.display = "block";
-		
-		const ipv4 = document.getElementById("ipv4").value;
-		const puerto = document.getElementById("puerto").value;
-		const numbots = document.getElementById("numbots").value;
-		const bots_can_talk = document.getElementById("botsTalk").checked
-		console.log(document.getElementById('difficult'))
-		window.difficult = document.getElementById('dificult').value
-		if (isNaN(parseInt(numbots))&& numbots > 32) {
-			alert('bot num max permitido: 32')
-			return;
-		}
-		if (!ipv4) {
-			return;
-		}
-		if(isNaN(parseInt(puerto))){
-			alert('Escribe un puerto valido')
-			return;
-		}
 
-		console.log("La dirección IP es: ", ipv4);
-		console.log("El puerto es: ", puerto);
-		console.log("El numero de bots es: ", numbots);
-		console.log("¿Los bots pueden hablar?: ", bots_can_talk)
-		console.log("Dificultad de los bots: ", window.difficult)
-		document.getElementById('boton').value = "Desconectar"
-		const response_connection = await fetch('/api/recive_start',{
-			method: 'POST',
-			headers: {
-				"Content-Type": "application/json"
-			},
-			body: JSON.stringify({
-				
-				"ip_server": ipv4,
-				"port_server": parseInt(puerto),
-				"num_bots": parseInt(numbots),
-				"bots_can_talk": bots_can_talk,
-				"difficult": window.difficult
-			}),
-
-		})
-		
-		console.log(response_connection)
-	} else {
-		x.style.display ="none";
-		const response_connection = await fetch('/api/disconnect',{
-        	method: 'GET',       
-
-    	})
-		document.getElementById('boton').value = "Conectar"
-	}
 
 }

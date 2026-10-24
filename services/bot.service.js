@@ -437,8 +437,8 @@ class TargetManager {
                // console.log('bot can shot: ')
                 this.can_shot = true
                 this.can_move = true
-                this.ia_planing()
-                this.ia_bot_start()
+                //this.ia_planing()
+                //this.ia_bot_start()
                 
             
                 this.start = true
@@ -673,7 +673,9 @@ class TargetManager {
                 break;
             case 0x27:
                 break;
-
+            case 0xfa:
+                this.try_other_spawn();
+                break;
             default:
                 console.error(new Error('action no recognize: ').stack)
                 break;
@@ -758,8 +760,8 @@ class TargetManager {
         }
     }
     get_vector(x, z) {
-        const bx = x * 0.001;
-        const bz = -z * 0.001;
+        const bx = x * 1;
+        const bz = -z * 1;
         const pp = new THREE.Vector3(bx, 9, bz);
         return pp
     }
@@ -1532,7 +1534,7 @@ class TargetManager {
 
         return copy
     }
-    async shot() {
+    async shot(id) {
 
         //console.log('shot bot')
         const dificult = this.difficult //'hen' // 0.00 to 1.00 1.23 is god value
@@ -1547,13 +1549,12 @@ class TargetManager {
 
                 const shot = Buffer.from('3f00d8af01fc120d1403001905','hex')
                 shot.writeUInt8(this.#number_bot, 4)
-                shot.writeUInt8(this.active_target_id ?? 0, 10)
+                shot.writeUInt8(id, 10)
                 this.add_action(shot)
             }else{
                 const fail_shot = Buffer.from('3f00790e00262602714ea644f91e2143860ed745','hex')
                 const target_shot = this.get_selected_target_cords()
-                fail_shot.writeFloatLE(target_shot.x, 8);
-                fail_shot.writeFloatLE(target_shot.y, 8 + 8);
+
                 this.add_action(fail_shot)
             }
             this.can_shot = false
@@ -1606,13 +1607,13 @@ class TargetManager {
     }
     camera_right(diff) {
 
-        const sync_pack = this.generate_pack_camera_right(this.bot_cords, diff)
+        const sync_pack = this.generate_pack_camera_right(this.bot_cords, 0.05)
         sync_pack.writeUInt8(this.#number_bot, 4)
         this.add_action(sync_pack, true)
         return
     }
     camera_left(diff) {
-        const sync_pack = this.generate_pack_camera_left(this.bot_cords, diff)
+        const sync_pack = this.generate_pack_camera_left(this.bot_cords, 0.05)
         sync_pack.writeUInt8(this.#number_bot, 4)
         this.add_action(sync_pack, true)
         return
@@ -1690,11 +1691,40 @@ parentPort.on("message", (msg_worker)=>{
             case 'set_patrol_points':
                 
                 botService.set_patrol_points(data.patrol_points)
-            break; 
+            break;
+            case 'action_bot': 
+                console.log('action bot: ', data)
+                switch(data.type){
+                    case "forward_move":
+                        botService.forward_move()
+                    
+                    break;
+                    case "camera_right":
+                        //botService.forward_move_stop()
+                        botService.camera_right(data.value)
+                    break;
+                    case "camera_left":
+                        //botService.forward_move_stop()
+                        botService.camera_left(data.value)
+                    break;
+                    case "shot":
+                        //botService.forward_move_stop()
+                        botService.shot(parseInt(data.value))
+                    break;
+                }
+                const now = new Date().getTime()
+                //console.log('ia_follow_target')
+                if(now - botService.last_time_execute > 200){
+                    botService.send_sync()
+                    botService.last_time_execute = now
+                }
+                
+            break;
             default:
                 
                 break;
         }
+        
     }catch(err){
         console.error(new Error(err.stack))
         throw new Error(err.stack)

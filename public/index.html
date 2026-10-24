@@ -1,520 +1,598 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Torrente online bots</title>
-    <link rel="stylesheet" href="styles.css">
-    <style>
-        body {
-            margin: 0
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Añadir bots a la partida</title>
+<style>
+:root{--bg:#10151a;--fg:#e8edf0;--ac:#ffb000;--bad:#ff4d4d;--panel:rgba(16,21,26,.88);color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#10151a;--fg:#e8edf0}}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:"Trebuchet MS","Segoe UI",sans-serif;overflow:hidden}
+canvas{display:block;width:100%;height:100%}
+#hud{position:fixed;inset:0;pointer-events:none}
+#cross{position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px}
+#cross:before,#cross:after{content:"";position:absolute;background:var(--ac)}
+#cross:before{left:8px;top:0;width:2px;height:18px}#cross:after{top:8px;left:0;height:2px;width:18px}
+#compass{position:absolute;left:50%;top:14px;width:240px;height:18px;margin-left:-120px;background:#0007;border:1px solid #fff4}
+#compass:before{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:#fff6}
+#cmark{position:absolute;top:-1px;bottom:-1px;width:6px;margin-left:-3px;background:#00e5ff}
+#ctxt{position:absolute;left:50%;top:38px;transform:translateX(-50%);font-size:12px;white-space:nowrap;text-shadow:0 1px 3px #000}
+#stats{position:absolute;left:16px;bottom:16px;font-size:22px;font-weight:700;text-shadow:0 1px 4px #000}
+#bar{width:220px;height:12px;background:#0008;border:1px solid #fff4;margin-top:6px}
+#bar i{display:block;height:100%;width:100%;background:var(--bad)}
+#right{position:absolute;right:16px;bottom:16px;text-align:right;font-size:22px;font-weight:700;text-shadow:0 1px 4px #000}
+#menu{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#000a}
+#box{background:var(--panel);border:1px solid #fff2;padding:24px 28px;max-width:420px;width:calc(100% - 40px);max-height:90vh;overflow:auto}
+.tituloformulario{font-weight:700;margin-top:10px}
+.datosformulario label{display:block;font-size:13px;margin:6px 0}
+.datosformulario input[type=text],.datosformulario input[type=number]{width:100%;box-sizing:border-box;padding:5px}
+.datosformulario input[type=range]{width:100%}
+#boton{background:#3a4650;color:#fff;border:0;padding:10px;width:100%;margin-top:10px;font-weight:700;cursor:pointer}
+h1{margin:0 0 8px;font-size:30px;letter-spacing:.5px}
+p,label{font-size:14px;line-height:1.5;margin:6px 0}
+input[type=file]{width:100%;margin:6px 0;font-size:13px}
+#msg{color:var(--ac);min-height:20px}
+</style>
 </head>
-
 <body>
+<canvas id="c"></canvas>
+<div id="ocultar" style="display:none;">
+  <div id="map2d" style="position:fixed; top:10px; right:10px; z-index:9999;"></div>
+</div>
+<div id="hud">
+  <div id="cross"></div>
+  <div id="compass"><i id="cmark"></i></div><div id="ctxt"></div>
+  <div id="netst" style="position:absolute;top:12px;right:16px;font-size:13px;text-shadow:0 1px 3px #000"></div>
+  <div id="stats">Vida <span id="hp">100</span><div id="bar"><i id="hpb"></i></div></div>
+  <div id="right">Vista del bot <span id="kills">-</span><div style="font-size:12px;font-weight:400">← → / Tab: cambiar de bot · Ratón: mirar · C: recentrar vista · Esc: menú</div></div>
+</div>
+<div id="menu"><div id="box">
+  <h1>Añadir bots</h1>
+  <p>Carga el <b>map.obj</b> de la partida (o usa la arena de prueba). Al pulsar Conectar se prepara el número de bots indicado; cada bot aparece en el mapa solo cuando el servidor envía su <b>spawn</b>. La cámara muestra la vista de un bot en partida.</p>
+  <input type="file" id="file" accept=".obj">
+  <label>Eje vertical del mapa <select id="orient"><option value="y">Y arriba (normal)</option><option value="z">Z arriba (Blender)</option><option value="x">X arriba</option><option value="-y">Y invertido (boca abajo)</option></select></label>
+  <label>Escala del mapa <input type="number" id="scale" value="0.01" min="0.0001" step="0.001" style="width:90px"> (la misma de las posiciones: x*0.01)</label>
+  <div class="formulario">
+    <div class="tituloformulario"><span>Añadir bots en la partida</span></div>
+    <div class="datosformulario">
+      <label>Dirección IP:<br><input type="text" id="ipv4" value="192.168.1.128"></label>
+      <label>Puerto:<br><input type="number" id="puerto" value="8888"></label>
+      <label>Número de bots:<br><input type="number" id="numbots" max="32" value="2"></label>
+      <label>Bots hablan cuando mueren:<br><input type="checkbox" id="botsTalk" checked></label>
+      <label>Dificultad: <span id="difficult_span">0.00</span><br><input type="range" step="0.01" min="0" max="1" value="0.00" id="dificult" oninput="console.log('changes! range'); window.difficult = parseFloat(this.value); document.getElementById('difficult_span').textContent = window.difficult.toFixed(2);"></label>
+    </div>
+  </div>
+  <div style="display:none">
+    <label>Offset X: <span id="lx">0.00</span>
+      <input id="offsetX" type="range" min="-20" max="20" step="0.1" value="-3.9" oninput="offsetX = parseFloat(this.value); document.getElementById('lx').textContent = offsetX.toFixed(2);">
+    </label>
+  </div>
+  <div style="display:none">
+    <label>Offset Z: <span id="lz">0.00</span>
+      <input id="offsetZ" type="range" min="-20" max="20" step="0.1" value="-1.6" oninput="offsetZ = parseFloat(this.value); document.getElementById('lz').textContent = offsetZ.toFixed(2);">
+    </label>
+  </div>
+  <input id="boton" type="button" value="Conectar" onclick="btnocultar()">
+  <div id="msg"></div>
+  <p>Si el bot de la cámara muere, la vista pasa al siguiente bot vivo.</p>
+</div></div>
 
-    <script type="importmap">
-{
-  "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/",
-    "threePathfinding": "https://cdn.jsdelivr.net/npm/three-pathfinding@1.3.0/+esm"
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const canvas=$('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x8fb4d0);
+scene.fog=new THREE.Fog(0x8fb4d0,40,160);
+const camera=new THREE.PerspectiveCamera(75,1,0.05,500);
+camera.rotation.order='YXZ';
+scene.add(new THREE.HemisphereLight(0xffffff,0x445566,0.9));
+const sun=new THREE.DirectionalLight(0xffffff,0.8);sun.position.set(30,60,20);scene.add(sun);
+function resize(){renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix()}
+addEventListener('resize',resize);resize();
+
+/* ---------- Mapa ---------- */
+let mapGroup=null,mapMeshes=[],bounds=null,objText=null,mapKey='';
+
+/* ---------- Combate cuerpo a cuerpo (metros) ---------- */
+// range: distancia máxima para golpear · stop: el bot deja de avanzar · dy: diferencia de altura máxima
+const MELEE={range:1.8,stop:1.3,dy:1.6};
+
+/* ---------- Red: envío/recepción de datos por bot ---------- */
+const NET={
+  on:true,requested:false,base:'',src:null,
+  SEND_MS:250, // cadencia de envío del juego (mp_player.dll: GetTime()-lastSend > 250.0)
+  nBots:0, // ids 1..nBots son los bots de esta herramienta; el resto (jugadores reales) solo se observan
+  // Giro: el cliente alternativo manda camera_left/right con data 0.05 por evento (decenas por segundo).
+  // Aquí hay 1 envío cada 250 ms: se manda el ángulo pendiente acotado entre min y max (se asume data = radianes)
+  TURN:{min:0.05,max:0.4},
+  S:0.01,AUTO:true,YAW:Math.PI, // YAW: desfase del modelo respecto al r del servidor (Math.PI = 180°; prueba 0, Math.PI/2 o -Math.PI/2 si no encaja)
+  // unidades del servidor -> metros del juego (x*S, z=-y*S)
+  // shot: acción de ataque que se envía al golpear cuerpo a cuerpo (cámbiala si el servidor usa otra)
+  A:{left:'camera_left',right:'camera_right',fwd:'forward_move',stop:'stop_forward_move',shot:'shot'},
+  setup(){
+    const want=NET.requested;
+    if(!want){NET.stop();return}
+    if(NET.on&&NET.src)return;
+    NET.stop();NET.on=true;NET.connect();
+  },
+  stop(){NET.on=false;if(NET.src){NET.src.close();NET.src=null}$('netst').textContent=''},
+  connect(){
+    const st=$('netst');st.textContent='Servidor: conectando…';
+    NET.src=new EventSource('/api/connect');
+    NET.src.onopen=()=>st.textContent='Servidor: conectado';
+    NET.src.onerror=()=>st.textContent='Servidor: sin conexión';
+    NET.src.onmessage=e=>{try{NET.recv(JSON.parse(e.data))}catch(err){console.error('SSE parse error',err)}};
+  },
+  bot(id){return bots.find(b=>b.id===id)},
+  // El servidor solo manda x,y (2D): el cliente alternativo usa y≈0.01; aquí se busca el suelo desde 1.2 m
+  ground(b,x,z){const g=groundAt(x,1.2,z);b.pos.y=g===null?0.01:g+0.05},
+  recv(d){
+    const v=d.value_action;
+    if(d.type_action==='main_pj'&&v){
+      console.log('focus player: ',d);followId=Number(d.id_bot);
+    }else if(d.type_action==='sync'&&v){
+      const id=Number(v.bot);if(isNaN(id)||!bounds)return;
+      let b=NET.bot(id),nuevo=false;
+      if(!b){b=makeBot(id);nuevo=true;NET.ground(b,v.x*NET.S,-v.y*NET.S)}
+      else if(b.dead>0)return;
+      // destino real del servidor; la posición mostrada se suaviza hacia él (llega 1 vez cada ~250 ms)
+      b.tx=v.x*NET.S;b.tz=-v.y*NET.S;
+      if(typeof v.r==='number')b.tr=-(v.r/256)*Math.PI*2+NET.YAW;
+      if(nuevo){b.pos.x=b.tx;b.pos.z=b.tz;if(b.tr!==undefined)b.grp.rotation.y=b.tr}
+    }else if(d.type_action==='spawn'&&v){
+      const id=Number(d.id_bot??v.bot);if(isNaN(id)||!bounds)return;
+      const b=NET.bot(id)||makeBot(id);if(!b.grp.parent)scene.add(b.grp);
+      b.dead=0;b.hp=100;b.vy=0;b.grp.visible=true;
+      b.pos.x=b.tx=v.x*NET.S;b.pos.z=b.tz=-v.y*NET.S;NET.ground(b,b.pos.x,b.pos.z);
+    }else if(d.type_action==='die'){
+      const b=NET.bot(Number(d.id_bot));if(b){killBot(b);b.moving=false} // la muerte la decide el servidor; vuelve con su spawn
+    }
+  },
+  async send(b,action,data){
+    if(!NET.on)return;
+    try{await fetch('/api/action_bot',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({id_bot:b.id,state_bot:action,...(data?{data}:{})})})}catch(e){}
+  },
+  after(b,dt){
+    if(!NET.on||!NET.AUTO||!b.ai||b.dead>0||!b.target||b.want===undefined)return;
+    const now=performance.now();
+    // desfase aleatorio inicial para que los bots no emitan todos en el mismo frame
+    if(b.netLast===undefined)b.netLast=now-Math.random()*NET.SEND_MS;
+    if(now-b.netLast<=NET.SEND_MS)return;
+    b.netLast=now;
+    const cur=b.tr!==undefined?b.tr:b.grp.rotation.y; // rumbo real del servidor, sin suavizar
+    let d=b.want-cur;d=Math.atan2(Math.sin(d),Math.cos(d));
+    if(Math.abs(d)>0.12)NET.send(b,d>0?NET.A.left:NET.A.right,+Math.min(NET.TURN.max,Math.max(NET.TURN.min,Math.abs(d))).toFixed(3));
+    // avanza hasta quedar pegado al objetivo (cuerpo a cuerpo); al parar manda stop_forward_move una vez
+    const go=b.dist>MELEE.stop&&Math.abs(d)<0.6;
+    if(go)NET.send(b,NET.A.fwd);else if(b.moving)NET.send(b,NET.A.stop);
+    b.moving=go;
+  }
+};
+
+function parseOBJ(text){
+  const v=[],pos=[];
+  for(const raw of text.split('\n')){
+    const l=raw.trim();
+    if(l.startsWith('v ')){const p=l.split(/\s+/);v.push([+p[1],+p[2],+p[3]])}
+    else if(l.startsWith('f ')){
+      const idx=l.split(/\s+/).slice(1).map(s=>{let i=parseInt(s.split('/')[0]);return i<0?v.length+i:i-1});
+      for(let i=1;i<idx.length-1;i++)for(const k of [idx[0],idx[i],idx[i+1]]){const q=v[k];if(q)pos.push(q[0],q[1],q[2])}
+    }
+  }
+  if(!pos.length)throw new Error('El OBJ no tiene caras');
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  return g;
+}
+function defaultMap(){
+  const grp=new THREE.Group();
+  const m=new THREE.MeshLambertMaterial({color:0x7d8a72});
+  const wall=new THREE.MeshLambertMaterial({color:0xb08a62});
+  const floor=new THREE.Mesh(new THREE.BoxGeometry(80,1,80),m);floor.position.y=-0.5;grp.add(floor);
+  const add=(x,y,z,w,h,d)=>{const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),wall);b.position.set(x,y+h/2,z);grp.add(b)};
+  add(0,0,-40,80,6,1);add(0,0,40,80,6,1);add(-40,0,0,1,6,80);add(40,0,0,1,6,80);
+  for(let i=0;i<14;i++)add((Math.random()-.5)*64,0,(Math.random()-.5)*64,2+Math.random()*7,2+Math.random()*3,2+Math.random()*7);
+  add(0,0,0,10,1,10);add(0,1,0,6,1,6);
+  return grp;
+}
+function objMaterial(){
+  return new THREE.ShaderMaterial({
+    side:THREE.DoubleSide,extensions:{derivatives:true},
+    vertexShader:`varying vec3 vW;void main(){vec4 w=modelMatrix*vec4(position,1.0);vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}`,
+    fragmentShader:`varying vec3 vW;
+    void main(){
+      vec3 n=normalize(cross(dFdx(vW),dFdy(vW)));
+      float up=abs(n.y);
+      vec3 base=up>0.7?vec3(0.42,0.52,0.40):(up<0.3?vec3(0.72,0.62,0.50):vec3(0.55,0.55,0.60));
+      float l=0.40+0.60*abs(dot(n,normalize(vec3(0.4,0.8,0.3))));
+      vec2 p=up>0.7?vW.xz:(abs(n.x)>abs(n.z)?vW.zy:vW.xy);
+      vec2 g=abs(fract(p-0.5)-0.5)/fwidth(p);
+      float line=1.0-min(min(g.x,g.y),1.0);
+      vec3 c=base*l*(1.0-0.22*line);
+      float d=length(vW-cameraPosition);
+      c=mix(c,vec3(0.56,0.71,0.82),smoothstep(60.0,200.0,d));
+      gl_FragColor=vec4(c,1.0);
+    }`
+  });
+}
+function buildMap(){
+  if(mapGroup)scene.remove(mapGroup);
+  if(objText){
+    const g=parseOBJ(objText);
+    const mesh=new THREE.Mesh(g,objMaterial());
+    mapGroup=new THREE.Group();mapGroup.add(mesh);
+    const o=$('orient').value;
+    if(o==='z')mapGroup.rotation.x=-Math.PI/2;
+    else if(o==='x')mapGroup.rotation.z=Math.PI/2;
+    else if(o==='-y')mapGroup.rotation.x=Math.PI;
+    mapGroup.updateMatrixWorld(true);
+    let b=new THREE.Box3().setFromObject(mapGroup);
+    const sz=b.getSize(new THREE.Vector3());
+    let k=+$('scale').value||1;
+    if(k!==1){mapGroup.scale.setScalar(k);mapGroup.updateMatrixWorld(true);b=new THREE.Box3().setFromObject(mapGroup)}
+    NET.S=k;
+    $('msg').textContent='Mapa: '+Math.round(sz.x*k)+' × '+Math.round(sz.z*k)+' m (el jugador mide 1.7 m)';
+  }else mapGroup=defaultMap();
+  scene.add(mapGroup);mapGroup.updateMatrixWorld(true);
+  bounds=new THREE.Box3().setFromObject(mapGroup);
+  mapMeshes=[];mapGroup.traverse(o=>{if(o.isMesh)mapMeshes.push(o)});
+  buildGrid();
+}
+let G=null;
+function buildGrid(){
+  let nv=0;
+  mapMeshes.forEach(m=>{nv+=m.geometry.index?m.geometry.index.count:m.geometry.attributes.position.count});
+  const T=new Float32Array(nv*3),v=new THREE.Vector3();let o=0;
+  mapMeshes.forEach(m=>{
+    const pos=m.geometry.attributes.position,idx=m.geometry.index,n=idx?idx.count:pos.count;
+    for(let i=0;i<n;i++){v.fromBufferAttribute(pos,idx?idx.getX(i):i).applyMatrix4(m.matrixWorld);T[o++]=v.x;T[o++]=v.y;T[o++]=v.z}
+  });
+  const nt=nv/3,minX=bounds.min.x,minZ=bounds.min.z;
+  const C=Math.max(1,Math.max(bounds.max.x-minX,bounds.max.z-minZ)/120);
+  const nx=Math.ceil((bounds.max.x-minX)/C)+1,nz=Math.ceil((bounds.max.z-minZ)/C)+1;
+  const cells=new Array(nx*nz);
+  for(let t=0;t<nt;t++){
+    const b=t*9;
+    const x0=Math.min(T[b],T[b+3],T[b+6]),x1=Math.max(T[b],T[b+3],T[b+6]);
+    const z0=Math.min(T[b+2],T[b+5],T[b+8]),z1=Math.max(T[b+2],T[b+5],T[b+8]);
+    const i0=Math.max(0,Math.floor((x0-minX)/C)),i1=Math.min(nx-1,Math.floor((x1-minX)/C));
+    const j0=Math.max(0,Math.floor((z0-minZ)/C)),j1=Math.min(nz-1,Math.floor((z1-minZ)/C));
+    for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){const k=j*nx+i;(cells[k]||(cells[k]=[])).push(t)}
+  }
+  G={T,cells,nx,nz,C,minX,minZ,stamp:new Int32Array(nt),rid:0};
+}
+// Devuelve la distancia del impacto (dirección normalizada) o -1
+function castRay(ox,oy,oz,dx,dy,dz,maxT){
+  const T=G.T,C=G.C,rid=++G.rid;
+  let cx=Math.floor((ox-G.minX)/C),cz=Math.floor((oz-G.minZ)/C);
+  const sx=dx>0?1:-1,sz=dz>0?1:-1;
+  const tDx=dx!==0?Math.abs(C/dx):Infinity,tDz=dz!==0?Math.abs(C/dz):Infinity;
+  let tMx=dx!==0?((dx>0?cx+1:cx)*C+G.minX-ox)/dx:Infinity;
+  let tMz=dz!==0?((dz>0?cz+1:cz)*C+G.minZ-oz)/dz:Infinity;
+  let hit=Infinity;
+  for(let guard=0;guard<600;guard++){
+    if(cx>=0&&cx<G.nx&&cz>=0&&cz<G.nz){
+      const cell=G.cells[cz*G.nx+cx];
+      if(cell)for(let n=0;n<cell.length;n++){
+        const t=cell[n];if(G.stamp[t]===rid)continue;G.stamp[t]=rid;
+        const b=t*9;
+        const e1x=T[b+3]-T[b],e1y=T[b+4]-T[b+1],e1z=T[b+5]-T[b+2];
+        const e2x=T[b+6]-T[b],e2y=T[b+7]-T[b+1],e2z=T[b+8]-T[b+2];
+        const px=dy*e2z-dz*e2y,py=dz*e2x-dx*e2z,pz=dx*e2y-dy*e2x;
+        const det=e1x*px+e1y*py+e1z*pz;
+        if(det>-1e-9&&det<1e-9)continue;
+        const inv=1/det,sx0=ox-T[b],sy0=oy-T[b+1],sz0=oz-T[b+2];
+        const u=(sx0*px+sy0*py+sz0*pz)*inv;if(u<0||u>1)continue;
+        const qx=sy0*e1z-sz0*e1y,qy=sz0*e1x-sx0*e1z,qz=sx0*e1y-sy0*e1x;
+        const w=(dx*qx+dy*qy+dz*qz)*inv;if(w<0||u+w>1)continue;
+        const tt=(e2x*qx+e2y*qy+e2z*qz)*inv;
+        if(tt>1e-4&&tt<hit)hit=tt;
+      }
+    }
+    const tn=Math.min(tMx,tMz);
+    if(hit<=tn||tn>maxT)break;
+    if(tMx<tMz){cx+=sx;tMx+=tDx}else{cz+=sz;tMz+=tDz}
+    if(cx<-1||cx>G.nx||cz<-1||cz>G.nz)break;
+  }
+  return hit<=maxT?hit:-1;
+}
+function groundAt(x,y,z){const t=castRay(x,y,z,0,-1,0,200);return t<0?null:y-t}
+function wallHit(p,dir,len){
+  return castRay(p.x,p.y+0.5,p.z,dir.x,dir.y,dir.z,len)>=0||castRay(p.x,p.y+1.3,p.z,dir.x,dir.y,dir.z,len)>=0;
+}
+function hasLOS(from,to){
+  const dx=to.x-from.x,dy=to.y-from.y,dz=to.z-from.z,len=Math.hypot(dx,dy,dz)||1;
+  return castRay(from.x,from.y,from.z,dx/len,dy/len,dz/len,len)<0;
+}
+function moveEntity(e,dx,dz){
+  if(NET.on&&e.isBot)return;
+  const R=0.45;
+  if(Math.abs(dx)>1e-5&&!wallHit(e.pos,new THREE.Vector3(Math.sign(dx),0,0),Math.abs(dx)+R))e.pos.x+=dx;
+  if(Math.abs(dz)>1e-5&&!wallHit(e.pos,new THREE.Vector3(0,0,Math.sign(dz)),Math.abs(dz)+R))e.pos.z+=dz;
+}
+function applyGravity(e,dt){
+  e.vy-=22*dt;e.pos.y+=e.vy*dt;
+  const g=groundAt(e.pos.x,e.pos.y+0.7,e.pos.z);
+  if(g!==null&&e.pos.y<=g){e.pos.y=g;e.vy=0;e.grounded=true}else e.grounded=false;
+  if(e.pos.y<bounds.min.y-30){respawnEntity(e)}
+}
+function randomSpot(minDist,from){
+  for(let i=0;i<200;i++){
+    const x=bounds.min.x+Math.random()*(bounds.max.x-bounds.min.x);
+    const z=bounds.min.z+Math.random()*(bounds.max.z-bounds.min.z);
+    const g=groundAt(x,bounds.max.y+5,z);
+    if(g===null)continue;
+    if(from&&Math.hypot(x-from.x,z-from.z)<minDist)continue;
+    if(wallHit({x,y:g,z},new THREE.Vector3(1,0,0),0.6)||wallHit({x,y:g,z},new THREE.Vector3(-1,0,0),0.6))continue;
+    return new THREE.Vector3(x,g+0.05,z);
+  }
+  return new THREE.Vector3(0,bounds.max.y+2,0);
+}
+function respawnEntity(e){e.pos.copy(randomSpot(0));e.vy=0}
+
+/* ---------- Audio ---------- */
+let ac;
+function beep(f,d,t='square',v=0.05){
+  try{ac=ac||new AudioContext();const o=ac.createOscillator(),g=ac.createGain();
+  o.type=t;o.frequency.value=f;o.frequency.exponentialRampToValueAtTime(f/3,ac.currentTime+d);
+  g.gain.value=v;g.gain.exponentialRampToValueAtTime(0.0001,ac.currentTime+d);
+  o.connect(g).connect(ac.destination);o.start();o.stop(ac.currentTime+d)}catch(e){}
+}
+
+/* ---------- Efectos ---------- */
+const tracers=[];
+const sparkGeo=new THREE.SphereGeometry(0.08,6,6);
+function spark(p,color){
+  const m=new THREE.Mesh(sparkGeo,new THREE.MeshBasicMaterial({color}));
+  m.position.copy(p);scene.add(m);tracers.push({l:m,t:0.15});
+}
+
+/* ---------- Bots ---------- */
+const bots=[];
+const botMat=new THREE.MeshLambertMaterial({color:0xc0392b});
+const headMat=new THREE.MeshLambertMaterial({color:0xf1c27d});
+// Línea de dirección: sale de la cintura (1.0 m) hacia delante (+Z local = hacia donde mira el bot y la cámara con yaw 0)
+const AIM_Y=1.0,AIM_LEN=4;
+function makeBot(id){
+  const grp=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.BoxGeometry(0.7,1.1,0.4),botMat);body.position.y=0.95;
+  const head=new THREE.Mesh(new THREE.BoxGeometry(0.35,0.35,0.35),headMat);head.position.y=1.7;
+  const legs=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.4,0.35),botMat);legs.position.y=0.2;
+  const lineMat=new THREE.MeshBasicMaterial({color:0xffaa00,fog:false});
+  const line=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.05,AIM_LEN),lineMat);line.position.set(0,AIM_Y,0.3+AIM_LEN/2);
+  const tip=new THREE.Mesh(new THREE.ConeGeometry(0.12,0.3,8),lineMat);tip.rotation.x=Math.PI/2;tip.position.set(0,AIM_Y,0.3+AIM_LEN+0.15);
+  grp.add(body,head,legs,line,tip);scene.add(grp);
+  const b={id,isBot:true,grp,pos:grp.position,vy:0,grounded:false,hp:100,cool:Math.random()*1.5,dead:0,lineMat,ai:id<=NET.nBots};
+  respawnBot(b);bots.push(b);return b;
+}
+function respawnBot(b){
+  b.pos.copy(randomSpot(0));b.hp=100;b.dead=0;b.vy=0;b.grp.visible=true;
+}
+function killBot(b){b.dead=3;b.grp.visible=false}
+function updateBot(b,dt){
+  if(b.dead>0)return;
+  const eye=new THREE.Vector3(b.pos.x,b.pos.y+1.6,b.pos.z);
+  const tv=new THREE.Vector3();
+  b.scanT=(b.scanT||0)-dt;
+  if(b.scanT<=0||!b.target||b.target.dead>0){
+    b.scanT=0.5+Math.random()*0.5;
+    const cands=bots.filter(o=>o!==b&&o.dead<=0);
+    let best=null,bd=1e9;
+    for(const o of cands){
+      const d=Math.hypot(o.pos.x-b.pos.x,o.pos.z-b.pos.z);
+      if(d<bd&&d<60&&hasLOS(eye,tv.set(o.pos.x,o.pos.y+1.4,o.pos.z))){best=o;bd=d}
+    }
+    if(!best){bd=1e9;for(const o of cands){const d=Math.hypot(o.pos.x-b.pos.x,o.pos.z-b.pos.z);if(d<bd){bd=d;best=o}}}
+    b.target=best;
+  }
+  const tg=b.target;
+  if(!tg){applyGravity(b,dt);return}
+  const to=new THREE.Vector3(tg.pos.x-b.pos.x,0,tg.pos.z-b.pos.z);
+  const dist=to.length();to.normalize();
+  b.want=Math.atan2(to.x,to.z);
+  if(!NET.on)b.grp.rotation.y=b.want;
+  const tEye=new THREE.Vector3(tg.pos.x,tg.pos.y+1.4,tg.pos.z);
+  const los=dist<60&&hasLOS(eye,tEye);
+  b.los=los;b.dist=dist;b.pitch=Math.atan2(tEye.y-eye.y,dist);
+  // movimiento local (solo sin red): avanza hasta quedar pegado al objetivo
+  const sp=3.2*dt;
+  let dx=0,dz=0;
+  if(dist>MELEE.stop){dx=to.x*sp;dz=to.z*sp}
+  moveEntity(b,dx,dz);
+  if(b.grounded&&wallHit(b.pos,new THREE.Vector3(to.x,0,to.z),0.9)&&Math.random()<.05)b.vy=7;
+  applyGravity(b,dt);
+  // ataque cuerpo a cuerpo: a rango, de frente y con línea de visión
+  b.cool-=dt;
+  let d=b.want-b.grp.rotation.y;d=Math.atan2(Math.sin(d),Math.cos(d));
+  if(b.cool<=0&&los&&dist<=MELEE.range&&Math.abs(tg.pos.y-b.pos.y)<=MELEE.dy&&Math.abs(d)<0.6){
+    b.cool=(0.8+Math.random()*0.5)*(1.3-0.6*(window.difficult||0));
+    spark(tEye,0xff0000);
+    if(!NET.on){tg.hp-=14+Math.random()*10;if(tg.hp<=0)killBot(tg)} // con servidor, vida y muerte las decide él
+    if(NET.on&&NET.AUTO&&b.ai)NET.send(b,NET.A.shot,tg.id);
+    beep(140,0.1,'sawtooth',0.03);
   }
 }
+
+/* ---------- Bucle ---------- */
+let last=performance.now(),running=false;
+function loop(now){
+  requestAnimationFrame(loop);
+  const dt=Math.min(0.05,(now-last)/1000);last=now;
+  if(running){
+    bots.forEach(b=>{ // suaviza hacia la última posición/rumbo recibidos del servidor
+      if(b.tx===undefined||b.dead>0)return;
+      const k=1-Math.exp(-dt*12);b.pos.x+=(b.tx-b.pos.x)*k;b.pos.z+=(b.tz-b.pos.z)*k;
+      if(b.tr!==undefined){let e=b.tr-b.grp.rotation.y;e=Math.atan2(Math.sin(e),Math.cos(e));b.grp.rotation.y+=e*k}
+    });
+    bots.forEach(b=>{updateBot(b,dt);NET.after(b,dt)});
+  }
+  const fb=followBot();
+  bots.forEach(b=>b.lineMat.color.setHex(b===fb?0x00e5ff:0xffaa00)); // cian: bot que sigues · naranja: el resto
+  if(fb){
+    camera.position.set(fb.pos.x,fb.pos.y+1.65,fb.pos.z);
+    camera.rotation.set(look.pitch,fb.grp.rotation.y+Math.PI+look.yaw,0);
+  }else if(bounds){
+    const cx=(bounds.min.x+bounds.max.x)/2,cz=(bounds.min.z+bounds.max.z)/2;
+    const ext=Math.max(bounds.max.x-bounds.min.x,bounds.max.z-bounds.min.z);
+    camera.position.set(cx,bounds.max.y+ext*0.5,cz+ext*0.5);
+    camera.rotation.set(-0.8,0,0);
+  }
+  for(let i=tracers.length-1;i>=0;i--){const t=tracers[i];t.t-=dt;if(t.t<=0){scene.remove(t.l);tracers.splice(i,1)}}
+  {const hp=fb?fb.hp:0;$('hp').textContent=Math.max(0,Math.ceil(hp));$('hpb').style.width=Math.max(0,hp)+'%';$('kills').textContent=fb?fb.id+' ('+bots.filter(b=>b.dead<=0).length+' en partida)':'-'}
+  // brújula: la marca indica dónde mira el bot respecto al centro de tu pantalla
+  {const o=Math.atan2(Math.sin(look.yaw),Math.cos(look.yaw));
+   $('cmark').style.left=(50+o/Math.PI*50)+'%';
+   $('ctxt').textContent=fb?(Math.abs(o)<0.05?'Mirando al frente del bot':'El bot mira '+Math.round(Math.abs(o)*57.3)+'° a tu '+(o>0?'derecha':'izquierda')):''}
+  renderer.render(scene,camera);
+}
+
+/* ---------- Menú ---------- */
+$('file').addEventListener('change',async e=>{
+  const f=e.target.files[0];if(!f)return;
+  objText=await f.text();$('msg').textContent='Cargado: '+f.name;
+});
+function iniciar(){
+  const key=(objText?objText.length:'def')+$('orient').value+'|'+$('scale').value;
+  if(running&&mapGroup&&key===mapKey){cerrarMenu();return}
+  if(!mapGroup||key!==mapKey){
+    try{buildMap();mapKey=key}
+    catch(err){$('msg').textContent='Error: '+err.message;return}
+    bots.forEach(b=>scene.remove(b.grp));bots.length=0;
+  }
+  startGame();
+}
+/* ---------- Formulario ---------- */
+window.difficult=0;window.botsTalk=true;window.offsetX=-3.9;window.offsetZ=-1.6;
+$('botsTalk').addEventListener('change',e=>{window.botsTalk=e.target.checked});
+
+// Reserva un hueco por cada bot que se va a conectar: existe en el array pero NO está en la partida hasta su spawn
+function prepararBots(){
+  const n=Math.max(0,Math.min(32,parseInt($('numbots').value)||0));NET.nBots=n;
+  for(let i=1;i<=n;i++){const b=makeBot(i);b.dead=1e9;b.grp.visible=false;scene.remove(b.grp)}
+}
+let followId=null;
+function followBot(){
+  let f=bots.find(b=>b.id===followId&&b.dead<=0);
+  if(!f)f=bots.find(b=>b.dead<=0);
+  return f;
+}
+function startGame(){
+  if(!mapGroup)buildMap();
+  bots.forEach(b=>scene.remove(b.grp));bots.length=0;
+  followId=null;
+  prepararBots();
+  NET.requested=true;NET.setup();
+  $('menu').style.display='none';running=true;
+  try{canvas.requestPointerLock()}catch(e){}
+}
+async function btnocultar(){
+    	iniciar()
+	var x = document.getElementById("ocultar");
+	if (x.style.display === "none") {
+		x.style.display = "block";
+		
+		const ipv4 = document.getElementById("ipv4").value;
+		const puerto = document.getElementById("puerto").value;
+		const numbots = document.getElementById("numbots").value;
+		const bots_can_talk = document.getElementById("botsTalk").checked
+		console.log(document.getElementById('difficult'))
+		window.difficult = document.getElementById('dificult').value
+		if (isNaN(parseInt(numbots))&& numbots > 32) {
+			alert('bot num max permitido: 32')
+			return;
+		}
+		if (!ipv4) {
+			return;
+		}
+		if(isNaN(parseInt(puerto))){
+			alert('Escribe un puerto valido')
+			return;
+		}
+
+		console.log("La dirección IP es: ", ipv4);
+		console.log("El puerto es: ", puerto);
+		console.log("El numero de bots es: ", numbots);
+		console.log("¿Los bots pueden hablar?: ", bots_can_talk)
+		console.log("Dificultad de los bots: ", window.difficult)
+		document.getElementById('boton').value = "Desconectar"
+		const response_connection = await fetch('/api/recive_start',{
+			method: 'POST',
+			headers: {
+				"Content-Type": "application/json"
+			},
+			body: JSON.stringify({
+				
+				"ip_server": ipv4,
+				"port_server": parseInt(puerto),
+				"num_bots": parseInt(numbots),
+				"bots_can_talk": bots_can_talk,
+				"difficult": window.difficult
+			}),
+
+		})
+		
+		console.log(response_connection)
+	} else {
+		x.style.display ="none";
+		const response_connection = await fetch('/api/disconnect',{
+        	method: 'GET',       
+
+    	})
+		document.getElementById('boton').value = "Conectar"
+	}
+}
+
+/* ---------- Cámara libre, cambio de bot y menú con Esc ---------- */
+const look={yaw:0,pitch:0};
+let dragging=false,lastUnlock=0;
+function menuOpen(){return $('menu').style.display!=='none'}
+function abrirMenu(){
+  $('menu').style.display='flex';$('boton').value='Continuar';
+  if(document.pointerLockElement)document.exitPointerLock();
+}
+function cerrarMenu(){
+  $('menu').style.display='none';
+  try{canvas.requestPointerLock()}catch(e){}
+}
+function cycleBot(dir){
+  const vis=bots.filter(b=>b.dead<=0).sort((a,b)=>a.id-b.id);
+  if(!vis.length)return;
+  let i=vis.findIndex(b=>b.id===followId);
+  i=i<0?0:(i+dir+vis.length)%vis.length;
+  followId=vis[i].id;look.yaw=0;look.pitch=0;
+}
+document.addEventListener('pointerlockchange',()=>{
+  if(!document.pointerLockElement){lastUnlock=performance.now();if(running&&!menuOpen())abrirMenu()}
+});
+addEventListener('keydown',e=>{
+  if(e.code==='Escape'){
+    if(!running||performance.now()-lastUnlock<150)return;
+    menuOpen()?cerrarMenu():abrirMenu();
+    return;
+  }
+  if(!running||menuOpen())return;
+  if(e.code==='ArrowRight'||(e.code==='Tab'&&!e.shiftKey)){e.preventDefault();cycleBot(1)}
+  else if(e.code==='ArrowLeft'||(e.code==='Tab'&&e.shiftKey)){e.preventDefault();cycleBot(-1)}
+  else if(e.code==='KeyC'){look.yaw=0;look.pitch=0} // recentra la cámara en la dirección del bot
+});
+canvas.addEventListener('mousedown',()=>{dragging=true});
+addEventListener('mouseup',()=>{dragging=false});
+addEventListener('mousemove',e=>{
+  if(menuOpen())return;
+  if(document.pointerLockElement||dragging){
+    look.yaw-=e.movementX*0.0022;
+    look.pitch=Math.max(-1.4,Math.min(1.4,look.pitch-e.movementY*0.0022));
+  }
+});
+canvas.addEventListener('click',()=>{
+  if(running&&!menuOpen()&&!document.pointerLockElement){try{canvas.requestPointerLock()}catch(e){}}
+});
+
+requestAnimationFrame(loop);
 </script>
-
-    <script type="module">
-        import * as THREE from 'three';
-        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-        import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-        import { Pathfinding, PathfindingHelper } from 'threePathfinding';
-        import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
-        
-        const Color = {
-            GROUND:  0x606060,
-            NAVMESH: 0xFFFFFF,
-        };
-
-        let offsetX = 1;
-        let offsetZ = 1;
-
-        document.getElementById('offsetX').setAttribute('value', -3.9);
-        document.getElementById('lx').textContent = offsetX.toFixed(2);
-        document.getElementById('offsetZ').setAttribute('value', -1.6);
-        document.getElementById('lz').textContent = offsetZ.toFixed(2);
-
-        const ZONE  = 'level';
-
-        // --- Umbrales de optimización ---
-        // Solo regenerar path si el jugador se movió más de esta distancia al cuadrado
-        const PATH_REGEN_DIST_SQ  = 0.25; // ~0.5 unidades
-        // Radio al cuadrado para considerar waypoint alcanzado
-        const WAYPOINT_RADIUS_SQ  = 0.09; // ~0.3 unidades
-
-        let navmesh;
-        let groupID, path;
-        let yellowMarker;
-        let botPrototype;
-
-        const players       = {};
-        const botsWaypoints = {};
-        const move_actions  = {
-            camera_right: { action_type: 'camera_right' },
-            camera_left:  { action_type: 'camera_left'  },
-            forward:      { action_type: 'forward_move' },
-            navmesh_load: { action_type: 'navmesh_load'}
-        };
-
-        const playerPosition      = new THREE.Vector3(-3.5, 0.5, 5.5);
-        // Última posición usada para generar paths (evita regeneraciones innecesarias)
-        const lastPathGenPosition = new THREE.Vector3(Infinity, Infinity, Infinity);
-
-        const targetPosition  = new THREE.Vector3();
-        const wireMaterialBot = new THREE.MeshBasicMaterial({ color: 0x00c8ff, wireframe: true });
-        const pathfinder      = new Pathfinding();
-        const helper          = new PathfindingHelper();
-
-        const SENSOR_DT = 0.1; // 100 ms = 10 Hz
-        let acc = 0;
-        // Round-robin: regeneramos el path de un bot distinto por tick
-        let botRoundRobinIdx = 0;
-
-        const clock     = new THREE.Clock();
-        const mouse     = new THREE.Vector2();
-        const mouseDown = new THREE.Vector2();
-        const raycaster = new THREE.Raycaster();
-
-        // ------------------------------------------------------------------
-        // Renderer / Scene
-        // ------------------------------------------------------------------
-        const renderer = new THREE.WebGLRenderer();
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setClearColor(0xFFFFFF);
-        renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        document.body.appendChild(renderer.domElement);
-
-        const environment    = new RoomEnvironment(renderer);
-        const pmremGenerator = new THREE.PMREMGenerator(renderer);
-
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0xbbbbbb);
-        scene.environment = pmremGenerator.fromScene(environment).texture;
-        scene.add(helper);
-
-        const yellowGeometry = new THREE.SphereGeometry(0.28, 16, 16);
-        const yellowMaterial = new THREE.MeshStandardMaterial({
-            color: 0xFFFF00,
-            emissive: 0x666600,
-            emissiveIntensity: 0.45,
-            flatShading: true
-        });
-        yellowMarker         = new THREE.Mesh(yellowGeometry, yellowMaterial);
-        yellowMarker.visible = false;
-        scene.add(yellowMarker);
-        environment.dispose();
-
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
-        camera.position.set(-10, 14, 10);
-
-        const controls  = new OrbitControls(camera, renderer.domElement);
-        controls.damping = 0.2;
-
-        scene.add(new THREE.AmbientLight(0x101030));
-        const directionalLight = new THREE.DirectionalLight(0xFFEEDD);
-        directionalLight.position.set(0, 0.5, 0.5);
-        scene.add(directionalLight);
-
-        init();
-        animate();
-
-        // ------------------------------------------------------------------
-        // Init
-        // ------------------------------------------------------------------
-        async function init() {
-            const gltfLoader = new GLTFLoader();
-            const objLoader  = new OBJLoader();
-
-            objLoader.load('/navmesh3.glb', function (gltf) {
-                let levelMesh;
-                gltf.traverse((child) => {
-                console.log(
-                    child.name,
-                    child.type,
-                    child.geometry ? child.geometry.attributes.position.count : ''
-                );
-
-                if (!levelMesh && child.geometry) {
-                    levelMesh = child;
-                }
-                });
-                const levelMat  = new THREE.MeshStandardMaterial({
-                    color:     Color.GROUND,
-                    flatShading: true,
-                    roughness: 1,
-                    metalness: 0
-                });
-                const level = new THREE.Mesh(levelMesh.geometry, levelMat);
-                level.scale.set(1, 200, 1);
-                window.level = level;
-                scene.add(level);
-
-                objLoader.load('model.bot.obj', (bp) => {
-                    try {
-                        botPrototype = bp;
-                        botPrototype.scale.setScalar(1);
-                        botPrototype.traverse(c => {
-                            if (c.isMesh) {
-                                c.material      = wireMaterialBot;
-                                c.userData.type = 'bot';
-                            }
-                        });
-
-                        const bot0 = botPrototype.clone();
-                        bot0.position.set(0, 9, 0);
-                        bot0.traverse(c => {
-                            if (c.isMesh) c.userData.type = 'player';
-                        });
-                        players[0] = bot0;
-                        scene.add(bot0);
-                    } catch (e) { console.warn('model.bot.obj no cargado', e); }
-                });
-            }, null);
-
-            objLoader.load('/navmesh3.glb', function (gltf) {
-                let _navmesh;
-                gltf.traverse((child) => {
-                console.log(
-                    child.name,
-                    child.type,
-                    child.geometry ? child.geometry.attributes.position.count : ''
-                );
-
-                if (!_navmesh && child.geometry) {
-                    _navmesh = child;
-                }
-                });
-                const scaledGeometry = _navmesh.geometry.clone();
-                scaledGeometry.scale(1, 200, 1);
-
-                const positions = Array.from(
-                    scaledGeometry.attributes.position.array
-                );
-
-                const index = scaledGeometry.index
-                    ? Array.from(scaledGeometry.index.array)
-                    : null;
-
-                send_action(0, move_actions.navmesh_load.action_type, {
-                    positions,
-                    index
-                })
-                const zone = Pathfinding.createZone(scaledGeometry);
-                pathfinder.setZoneData(ZONE, zone);
-
-                navmesh = new THREE.Mesh(scaledGeometry, new THREE.MeshBasicMaterial({
-                    color:       Color.NAVMESH,
-                    opacity:     0.75,
-                    transparent: true
-                }));
-                scene.add(navmesh);
-            });
-
-            helper
-                .setPlayerPosition(new THREE.Vector3(-3.5, 0.5, 5.5))
-                .setTargetPosition(new THREE.Vector3(-3.5, 0.5, 5.5));
-
-            document.addEventListener('pointerdown', onDocumentPointerDown, false);
-            document.addEventListener('pointerup',   onDocumentPointerUp,   false);
-            window.addEventListener('resize',        onWindowResize,        false);
-        }
-
-        // ------------------------------------------------------------------
-        // Pointer / resize
-        // ------------------------------------------------------------------
-        function onDocumentPointerDown(event) {
-            mouseDown.x =  (event.clientX / window.innerWidth)  * 2 - 1;
-            mouseDown.y = -(event.clientY / window.innerHeight)  * 2 + 1;
-        }
-
-        function onDocumentPointerUp(event) {
-            mouse.x =  (event.clientX / window.innerWidth)  * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight)  * 2 + 1;
-
-            if (Math.abs(mouseDown.x - mouse.x) > 0 || Math.abs(mouseDown.y - mouse.y) > 0) return;
-
-            camera.updateMatrixWorld();
-            raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObject(navmesh);
-            if (!intersects.length) return;
-
-            targetPosition.copy(intersects[0].point);
-            helper.reset().setPlayerPosition(playerPosition);
-            
-            if (event.metaKey || event.ctrlKey || event.button === 2) {
-                path    = null;
-                groupID = pathfinder.getGroup(ZONE, targetPosition, true);
-                const closestNode = pathfinder.getClosestNode(playerPosition, ZONE, groupID, true);
-                helper.setPlayerPosition(playerPosition.copy(targetPosition));
-                if (closestNode) helper.setNodePosition(closestNode.centroid);
-                return;
-            }
-
-            const targetGroupID     = pathfinder.getGroup(ZONE, targetPosition, true);
-            const closestTargetNode = pathfinder.getClosestNode(targetPosition, ZONE, targetGroupID, true);
-            helper.setTargetPosition(targetPosition);
-            if (closestTargetNode) helper.setNodePosition(closestTargetNode.centroid);
-
-            path = pathfinder.findPath(playerPosition, targetPosition, ZONE, groupID);
-
-            if (path && path.length) {
-                helper.setPath(path);
-            } else {
-                const closestPlayerNode = pathfinder.getClosestNode(playerPosition, ZONE, groupID);
-                const clamped           = new THREE.Vector3();
-                pathfinder.clampStep(playerPosition, targetPosition.clone(), closestPlayerNode, ZONE, groupID, clamped);
-                helper.setStepPosition(clamped);
-            }
-        }
-
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        // ------------------------------------------------------------------
-        // Render loop
-        // ------------------------------------------------------------------
-        function animate() {
-            requestAnimationFrame(animate);
-            acc += clock.getDelta();
-            if (acc >= SENSOR_DT) {
-                updateAllSensors();
-                acc = 0;
-            }
-            renderer.render(scene, camera);
-        }
-
-        // ------------------------------------------------------------------
-        // Sensor update — optimizado
-        // ------------------------------------------------------------------
-        function updateAllSensors() {
-            const botIds = Object.keys(players).map(Number).filter(id => id > 0);
-            if (botIds.length === 0) return;
-
-            const playerMoved = playerPosition.distanceToSquared(lastPathGenPosition) > PATH_REGEN_DIST_SQ;
-
-            if (playerMoved) {
-                // Jugador se movió: regenerar paths de TODOS los bots y actualizar referencia
-                //for (const id of botIds) //_regenPath(id);
-                lastPathGenPosition.copy(playerPosition);
-            } else {
-                // Jugador quieto: round-robin, solo refrescar el bot sin path que le toque
-                botRoundRobinIdx = botRoundRobinIdx % botIds.length;
-                const idToRegen  = botIds[botRoundRobinIdx++];
-                if (!botsWaypoints[idToRegen] || botsWaypoints[idToRegen].path.length === 0) {
-                    //_regenPath(idToRegen);
-                }
-            }
-
-            // Mover todos los bots (barato: solo aritmética + fetch)
-            for (const id of botIds) {
-                _stepBot(id);
-            }
-        }
-
-        // Regenera el path de un bot concreto hacia el jugador 0
-        function _regenPath(id, path, group) {
-            if (!players[0] || !players[id]) return;
-
-            const playerPos   = players[0].position;
-            const botPos      = players[id].position;
-            const playerGroup = pathfinder.getGroup(ZONE, playerPos, true);
-            if (playerGroup === null || playerGroup === undefined) return;
-
-            
-            if (path && path.length > 0) {
-                botsWaypoints[id] = { path: path, group: group };
-                helper.setPath(path);
-            }
-        }
-
-        // Avanza un bot un paso hacia su siguiente waypoint
-        function _stepBot(id) {
-            if (!botsWaypoints[id] || botsWaypoints[id].path.length === 0) return;
-
-            const bot         = players[id];
-            if (!bot) return;
-
-            const botPos      = bot.position;
-            const waypointPos = botsWaypoints[id].path[0];
-
-            const dx     = waypointPos.x - botPos.x;
-            const dz     = waypointPos.z - botPos.z;
-            const distSq = dx * dx + dz * dz;
-
-            // ¿Llegamos al waypoint?
-            if (distSq <= WAYPOINT_RADIUS_SQ) {
-                botsWaypoints[id].path.shift();
-                return;
-            }
-
-            // Calcular ángulo y enviar acción
-            const target  = normalizeAngle(angleToTarget(botPos.x, botPos.z, waypointPos.x, waypointPos.z) + Math.PI);
-            const current = normalizeAngle(-bot.rotation.y);
-
-            let diff = current - target;
-            if (diff >  Math.PI) diff -= 2 * Math.PI;
-            if (diff < -Math.PI) diff += 2 * Math.PI;
-
-            if (diff > 0.05) {
-                //send_action(id, move_actions.camera_left.action_type);
-            } else if (diff < -0.05) {
-                //send_action(id, move_actions.camera_right.action_type);
-            } else {
-                //send_action(id, move_actions.forward.action_type);
-            }
-        }
-
-        // ------------------------------------------------------------------
-        // API
-        // ------------------------------------------------------------------
-        async function send_action(id_bot, action, data = undefined) {
-            await fetch('/api/action_bot', {
-                method:  'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ id_bot, state_bot: action, ...data ? {data: data} : {} }),
-            });
-        }
-
-        // ------------------------------------------------------------------
-        // SSE
-        // ------------------------------------------------------------------
-        const sseSource = new EventSource('/api/connect');
-
-        sseSource.onmessage = e => {
-            try {
-                const data = JSON.parse(e.data);
-
-                if (data.type_action === 'sync' && data.value_action) {
-                    const idBot = Number(data.value_action?.bot);
-                    if (!players[idBot]) return;
-
-                    players[idBot].position.set(
-                        data.value_action.x * 0.001,
-                        9,
-                        -data.value_action.y * 0.001
-                    );
-
-                    if (typeof data.value_action.r === 'number') {
-                        players[idBot].rotation.y = -(data.value_action.r / 256) * Math.PI * 2;
-                    }
-
-                    if (idBot === 0) {
-                        // Actualizar posición canónica del jugador 0
-                        playerPosition.copy(players[0].position);
-                        yellowMarker.position.copy(players[0].position);
-                        yellowMarker.visible = true;
-                        helper.setTargetPosition(targetPosition);
-                    } else {
-                        helper.setPlayerPosition(players[idBot].position);
-                    }
-
-                } else if (data.type_action === 'spawn' && data.value_action) {
-                    console.log('spawn: ', data)
-                    const idBot = Number(data.id_bot ?? data.value_action?.bot);
-                    if (idBot <= 0) return;
-
-
-                    const bot = !players[idBot] ? botPrototype.clone() : players[idBot];
-                    bot.traverse(c => { if (c.isMesh) c.userData.type = 'bot'; });
-                    
-
-                    if(!players[idBot]){
-  
-                        scene.add(bot);
-                        players[idBot] = bot;
-                    }
-                    players[idBot].position.set(
-                        data.value_action.x * 0.001,
-                        9,
-                        -data.value_action.y * 0.001
-                    );
-                    helper.setPlayerPosition(players[idBot].position);
-                }else if(data.type_action === 'waypoints'){
-                    console.log('¡waypoints recive!: ', data)
-                    _regenPath(data.id_bot, data.value_action.path, data.value_action.group);
-                }else if(data.type_action === 'die'){
-                    console.log('bot is death: ', data.id_bot)
-                }
-                else if(data.type_action === 'patrol_points'){
-                    console.log('patrol_points', data)
-                }
-            } catch (err) {
-                console.error('SSE parse error', err);
-            }
-        };
-
-        sseSource.onerror = err => console.warn('SSE connection error', err);
-
-        // ------------------------------------------------------------------
-        // Helpers matemáticos
-        // ------------------------------------------------------------------
-        function normalizeAngle(a) {
-            return ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
-        }
-
-        function angleToTarget(botX, botZ, targetX, targetZ) {
-            return Math.atan2(targetZ - botZ, targetX - botX) - Math.PI / 2;
-        }
-    </script>
-
-    <div class="formulario">
-        <div class="tituloformulario"><span>Añadir bots en la partida</span></div>
-        <div class="datosformulario">
-            <label>Dirección IP:<br><input type="text" id="ipv4" value="192.168.1.128"></label>
-            <label>Puerto:<br><input type="number" id="puerto" value="8888"></label>
-            <label>Número de bots:<br><input type="number" id="numbots" max="32" value="2"></label>
-            <label>Bots hablan cuando mueren:<br><input type="checkbox" id="botsTalk" checked></label>
-            <label>Dificultad: <span id="difficult_span">0.00</span><br><input type="range" step="0.01" min="0" max="1" value="0.00" id="dificult" oninput="console.log('changes! range'); window.difficult = parseFloat(this.value); document.getElementById('difficult_span').textContent = window.difficult.toFixed(2);"><br> </slide></label>
-        </div>
-    </div>
-
-    <div id="ocultar" style="display:none;">
-        <div id="map2d" style="position:fixed; top:10px; right:10px; z-index:9999;"></div>
-    </div>
-
-    <div id="offset-panel" style="
-        position: fixed; top: 20px; left: 20px; z-index: 9999;
-        background: rgba(0,0,0,0.75); color: white;
-        padding: 12px 16px; border-radius: 10px;
-        font-family: monospace; font-size: 13px;
-        display: flex; flex-direction: column; gap: 8px; min-width: auto;">
-
-        <span style="font-weight:bold; margin-bottom:4px;">Conectar</span>
-        <input id="boton" type="button" value="Conectar" onclick="btnocultar()">
-
-        <div style="display:none">
-            <label>Offset X: <span id="lx">0.00</span>
-                <input id="offsetX" type="range" min="-20" max="20" step="0.1" value="-3.9"
-                    oninput="offsetX = parseFloat(this.value); document.getElementById('lx').textContent = offsetX.toFixed(2);"
-                    style="width:100%; margin-top:4px;">
-            </label>
-        </div>
-        <div style="display:none">
-            <label>Offset Z: <span id="lz">0.00</span>
-            <input id="offsetZ" type="range" min="-20" max="20" step="0.1" value="-1.6"
-                oninput="offsetZ = parseFloat(this.value); document.getElementById('lz').textContent = offsetZ.toFixed(2);"
-                style="width:100%; margin-top:4px;">
-            </label>
-        </div>
-    </div>
-
-    <script src="index.js"></script>
-
 </body>
 </html>

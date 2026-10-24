@@ -61,16 +61,16 @@ class publicApi {
 
     const indexpath = path.join(__dirname, './../public/index.html');
     let html = fs.readFileSync(indexpath);
-    
+
     const pathconfig = path.join(__dirname, './../config');
-    const ip_port_config = fs.readFileSync(pathconfig, {encoding: 'ascii'});
+    const ip_port_config = fs.readFileSync(pathconfig, { encoding: 'ascii' });
     console.log(ip_port_config.split('//'))
-    if(ip_port_config.split('//').length > 0){
+    if (ip_port_config.split('//').length > 0) {
       html = html.toString("utf8").replace('value="192.168.1.128"', `value="${ip_port_config.split('//')[0]}"`)
       html = html.toString("utf8").replace('value="8888"', `value="${(ip_port_config.split('//')[1])}"`)
       html = html.toString("utf8").replace('value="2"', `value="${(ip_port_config.split('//')[2])}"`)
-      html = html.toString("utf8").replace('checked>', `${(ip_port_config.split('//')[3])==='true'  ? 'checked' : ''}>`) 
-      html = html.toString("utf8").replace('value="0.00"', `value="${(ip_port_config.split('//')[4]) ? parseFloat(ip_port_config.split('//')[4]) : 0.00}"`) 
+      html = html.toString("utf8").replace('checked>', `${(ip_port_config.split('//')[3]) === 'true' ? 'checked' : ''}>`)
+      html = html.toString("utf8").replace('value="0.00"', `value="${(ip_port_config.split('//')[4]) ? parseFloat(ip_port_config.split('//')[4]) : 0.00}"`)
       html = html.toString("utf8").replace('"difficult_span">0.00', `"difficult_span">${(ip_port_config.split('//')[4]) ? ip_port_config.split('//')[4] : '0.00'}`)
       html = Buffer.from(html, 'utf8')
 
@@ -194,9 +194,9 @@ class publicApi {
   starter() {
     if (this.number_bot_starts <= this.num_bots) {
       console.log(`create new bot order! ${this.number_bot_starts}`)
-      
+
       this.start_bots(() => {
-        
+
         this.starter()
       }, this.number_bot_starts).then(async () => {
       }).catch(err => new Error(err))
@@ -221,11 +221,11 @@ class publicApi {
         first_msg_callback()
         break;
       case 'calc_waypoints':
-        
-        setTimeout(()=>{
-          const res = this.#waypoints_worker.postMessage(JSON.stringify({ type: 'calc_waypoints', data: { player_cords: data.player_cords, bot_cords: data.bot_cords, number_worker: number_worker_dad } }))
-          console.log('res calc_waypoints in api: ', res)
-        },10)
+
+        setTimeout(() => {
+          //const res = this.#waypoints_worker.postMessage(JSON.stringify({ type: 'calc_waypoints', data: { player_cords: data.player_cords, bot_cords: data.bot_cords, number_worker: number_worker_dad } }))
+          //console.log('res calc_waypoints in api: ', res)
+        }, 10)
 
         //this.#waypoints_worker.postMessage(JSON.stringify({ type: 'calc', data: { player_cords: data.player_cords, bot_cords: data.bot_cords, number_worker: number_worker_dad } }))
         //this.#waypoints_worker.postMessage(JSON.stringify({ type: 'calc_patrol_points', data: { player_cords: data.player_cords, bot_cords: data.bot_cords, number_worker: number_worker_dad } }))
@@ -240,7 +240,7 @@ class publicApi {
       case 'patrol_points':
         console.log('data', data, "'set_patrol_points', { patrol_points: data.patrol_points }': ", 'set_patrol_points', { patrol_points: data.patrol_points }, number_worker)
         this.#send_msg_to_worker(number_worker, 'set_patrol_points', { patrol_points: data.patrol_points })
-        break;  
+        break;
       default:
         const err = new Error(`worker msg type ${type} not recongnice:`)
         console.error(err)
@@ -251,11 +251,13 @@ class publicApi {
   }
   #send_msg_to_worker(number_worker, type, data) {
     try {
-      console.log(`this.#workers[number_worker]: ${this.#workers.length}: number_worker: ${number_worker}`)
-      this.#workers[number_worker].postMessage(JSON.stringify({
-        type,
-        data
-      }));
+      console.log(`this.#workers[number_worker]: ${type} ${this.#workers.length}: number_worker: ${number_worker}`)
+      if(!!this.#workers[number_worker]){
+        this.#workers[number_worker].postMessage(JSON.stringify({
+          type,
+          data
+        }));
+      }
     } catch (err) {
       console.error(new Error(err.stack))
       throw new Error(err.stack)
@@ -288,14 +290,14 @@ class publicApi {
     this.difficult = body.difficult
     const pathmap = path.join(__dirname, './../config');
     fs.writeFileSync(pathmap, `${this.ip_server}//${this.port_server}//${this.num_bots}//${this.bots_can_talk}//${this.difficult}`);
-    
+
     this.bot_master = true
 
     this.number_bot_starts = 1
-    setTimeout(async()=>{
+    setTimeout(async () => {
       await this.start_bots(() => this.starter(), this.number_bot_starts)
     }, 1200)
-    
+
 
     //const helloClient = Buffer.from("000221a5011242191fb8bb154e4401763631007932", "hex")
     //const hello_response = await this.send_package_to_server(this.number_bot_starts, helloClient)
@@ -341,24 +343,25 @@ class publicApi {
         return
       }
 
-
-
-
-      /*if ('forward_move' === body.state_bot) {
-
-        await this.packetQueue.mapper[bot_port].bot.forward_move()
+      
+      if ('forward_move' === body.state_bot) {
+        
+        this.#send_msg_to_worker(body.id_bot, 'action_bot', { type: 'forward_move' })
 
       }
 
       if (body.state_bot === "camera_right") {
-
-        await this.packetQueue.mapper[bot_port].bot.camera_right()
+        
+        this.#send_msg_to_worker(body.id_bot, 'action_bot', { type: 'camera_right', value: body.data })
       }
       if (body.state_bot === "camera_left") {
-
-        await this.packetQueue.mapper[bot_port].bot.camera_left()
-      }*/
-
+        
+        this.#send_msg_to_worker(body.id_bot, 'action_bot', { type: 'camera_left', value: body.data })
+      }
+      if (body.state_bot === "shot") {
+        
+        this.#send_msg_to_worker(body.id_bot, 'action_bot', { type: 'shot', value: body.data })
+      }
       //stream.respond(response)
       stream.write('')
       stream.end()
@@ -375,7 +378,7 @@ class publicApi {
       console.log(`new bot: id_bot${i} port: ${obj_starter.port}`);
     }
     const worker = new Worker(this.#path_worker, {
-      workerData: {difficult: this.difficult, bots_can_talk: this.bots_can_talk, number_bot: i, body_data: this.body_data, bot_master: this.bot_master, bot_helper: this.bot, ZONE: this.ZONE, ip_connect: this.ip_server, port_connect: this.port_server }
+      workerData: { difficult: this.difficult, bots_can_talk: this.bots_can_talk, number_bot: i, body_data: this.body_data, bot_master: this.bot_master, bot_helper: this.bot, ZONE: this.ZONE, ip_connect: this.ip_server, port_connect: this.port_server }
     });
     this.number_bot_starts++
 

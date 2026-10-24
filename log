@@ -1,0 +1,1422 @@
+
+> torrente_online_bot@1.0.0 start
+> npx electron .
+
+
+Servidor corriendo en https://localhost:3000
+request on / GET
+[ '192.168.1.129', '8888', '1', 'true', '0.05' ]
+null
+request on /api/recive_start POST
+body {
+  ip_server: '192.168.1.129',
+  port_server: 8888,
+  num_bots: 1,
+  bots_can_talk: true,
+  difficult: '0.05'
+}
+[ false, 204 ]
+request on /api/connect GET
+undefined
+192.168.1.129 number {
+  difficult: '0.05',
+  bots_can_talk: true,
+  number_bot: 1,
+  body_data: undefined,
+  bot_master: true,
+  bot_helper: {},
+  ZONE: undefined,
+  ip_connect: '192.168.1.129',
+  port_connect: 8888
+}
+listening 1 { port: 62068 }
+port server :  8888 192.168.1.129  --->  1
+bot recv msg 1:  0003f18a64000000ec01000050000000010000000000000003000000580000000c00000000000000000000000000000000000000000000000000000061f0288d7642504a8fe5316f544ce10e1242191fb8bb154e4401763631007932610074006500730074000000011058656e646f006f72003e552091bcb25e3139322e3136382e312e313239000000803f0000803f98859eaf350be331f829ad2f6b20913c6ce4ff3d076493bf0000803f0000803f0000803f60df743f168561746573740033a00cbdfb9f45bfe1695bbd62876cbf0100803f0000803f0000803fe65b5f3f902cfa3edee9b731d75735b1fd8eb83d345527bdd36e5fbf0000803f0000803f0200803faf737f3f13f285bd722baa30298c5f31a2ee473c79774f3d633220bf0000803f0100803f0000803f0000803f8fdfa73040b29b31f7c12331d99d983c81d2ecbdeb1017bf0000803ffeff7f3fffff7f3fa096633f746eea3ecdbb8f315e66ac317ac305bda52aea3d544985bf0000803f0000803f0100803fbb935c3f08ee013f049a0fb148befb300101983cd3051abd726c7cbf0000803f0100803f0100803fbc397e3f75b7f0bdf1ad3ab29331ac31b162fb3bc2d800044d505f444d5f414e444552475541544552b0a400883553b1bcec00b1fe5317b2161e913cf3d2ecbd5ffe24bfffff7f3f0000803fffff7f3fe77e663f1d85d4444d5f414e444552475541544552005bbd821b68bf0000803fffff7f3f0200803fbb935c3f08ee013fa488b0301a1a83302886ffbc96a808bd6d3a43bfffff7f000000803f000080141d1e00000000080602cdb822005ce703
+bot send msg 1:  8801000006000100cac34001e82c6168
+bot recv msg 1:  8802000006000100cac34001cd7ba100
+bot send msg 1:  8002010006000100cac34001e665f602
+bot send msg 1:  3f020000cac34001
+bot send msg 1:  7f000100c100000002000000070000005800000014000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000430068006100760061006c006f00740065000000
+bot recv msg 1:  3f020000cac34001
+bot recv msg 1:  7f000102c2000000000000000000000050000000010000000000000004000000e00000000c00000000000000000000000000000000000000000000000000000061f0288d7642504a8fe5316f544ce10e1242191fb8bb154e440176363100793267f0588d0700000000000000020000000000000063f0088d000000000204000002000000000000000700000000000000000000000000000000000000000000000000000067f0588d0000000000020000070000000000000007000000cc0000001400000000000000000000000000000000000000430068006100760061006c006f00740065000000610074006500730074000000
+bot send msg 1:  7f000202c3000000
+bot send msg 1:  3f000401000047756e6e6572212121000000000000000b02000000000000000000000806000001104d505f444d5f414e4445524755415445520000000090b51900be000000b0b4190001000000010000000500000074b31900c7932b5380b3190001000000102d6903
+bot recv msg 1:  8006030002030000ce7ba10001000000
+<Buffer 3f 02 03 02 ca c3 40 01>
+bot send msg 1:  3f020302cac34001
+bot recv msg 1:  37000205c7ff046efbe1086e003e820c5019820cc0be19005c0000005019820c010b51040000000001ddea0800409c4664006400
+bot send msg 1:  3f020503cac34001
+bot recv msg 1:  3f000305c7ff036efbe1086e003e820c5019820cc0be19005c0000005019820c010b51040000000001ddea0800409c4664006400
+bot send msg 199:  3f020504cac34001
+bot recv msg 199:  8006010004060000da7ba100
+<Buffer 3f 02 06 04 ca c3 40 01>
+bot send msg 199:  3f020604cac34001
+bot recv msg 199:  8006010004070000da7ba100
+<Buffer 3f 02 07 04 ca c3 40 01>
+bot send msg 199:  3f020704cac34001
+bot recv msg 199:  8006010004080000e77ba100
+<Buffer 3f 02 08 04 ca c3 40 01>
+bot send msg 199:  3f020804cac34001
+bot recv msg 199:  8006010004090000f17ba100
+<Buffer 3f 02 09 04 ca c3 40 01>
+bot send msg 199:  3f020904cac34001
+bot recv msg 199:  80060100040a0000fc7ba100
+<Buffer 3f 02 0a 04 ca c3 40 01>
+bot send msg 199:  3f020a04cac34001
+bot recv msg 199:  80060100040b0000047ca100
+<Buffer 3f 02 0b 04 ca c3 40 01>
+bot send msg 199:  3f020b04cac34001
+bot recv msg 199:  80060100040c00000e7ca100
+<Buffer 3f 02 0c 04 ca c3 40 01>
+bot send msg 199:  3f020c04cac34001
+bot recv msg 199:  80060100040d00001a7ca100
+<Buffer 3f 02 0d 04 ca c3 40 01>
+bot send msg 199:  3f020d04cac34001
+bot recv msg 199:  80060100040e0000277ca100
+<Buffer 3f 02 0e 04 ca c3 40 01>
+bot send msg 199:  3f020e04cac34001
+bot recv msg 199:  80060100040f0000317ca100
+<Buffer 3f 02 0f 04 ca c3 40 01>
+bot send msg 199:  3f020f04cac34001
+bot recv msg 199:  80060100041000003c7ca100
+<Buffer 3f 02 10 04 ca c3 40 01>
+bot send msg 199:  3f021004cac34001
+bot recv msg 199:  8006010004110000447ca100
+<Buffer 3f 02 11 04 ca c3 40 01>
+bot send msg 199:  3f021104cac34001
+bot recv msg 199:  80060100041200004d7ca100
+<Buffer 3f 02 12 04 ca c3 40 01>
+bot send msg 199:  3f021204cac34001
+bot recv msg 199:  8006010004130000597ca100
+<Buffer 3f 02 13 04 ca c3 40 01>
+bot send msg 199:  3f021304cac34001
+bot recv msg 199:  8006010004140000667ca100
+<Buffer 3f 02 14 04 ca c3 40 01>
+bot send msg 199:  3f021404cac34001
+bot recv msg 199:  8006010004150000727ca100
+<Buffer 3f 02 15 04 ca c3 40 01>
+bot send msg 199:  3f021504cac34001
+bot recv msg 199:  80060100041600007d7ca100
+<Buffer 3f 02 16 04 ca c3 40 01>
+bot send msg 199:  3f021604cac34001
+bot recv msg 199:  8006010004170000897ca100
+<Buffer 3f 02 17 04 ca c3 40 01>
+bot send msg 199:  3f021704cac34001
+bot recv msg 199:  8006010004180000947ca100
+<Buffer 3f 02 18 04 ca c3 40 01>
+bot send msg 199:  3f021804cac34001
+bot recv msg 199:  80060100041900009e7ca100
+<Buffer 3f 02 19 04 ca c3 40 01>
+bot send msg 199:  3f021904cac34001
+bot recv msg 199:  80060100041a0000aa7ca100
+<Buffer 3f 02 1a 04 ca c3 40 01>
+bot send msg 199:  3f021a04cac34001
+bot recv msg 199:  80060100041b0000b47ca100
+<Buffer 3f 02 1b 04 ca c3 40 01>
+bot send msg 199:  3f021b04cac34001
+bot recv msg 199:  80060100041c0000bc7ca100
+<Buffer 3f 02 1c 04 ca c3 40 01>
+bot send msg 199:  3f021c04cac34001
+bot recv msg 199:  80060100041d0000c57ca100
+<Buffer 3f 02 1d 04 ca c3 40 01>
+bot send msg 199:  3f021d04cac34001
+bot recv msg 199:  80060100041e0000d17ca100
+<Buffer 3f 02 1e 04 ca c3 40 01>
+bot send msg 199:  3f021e04cac34001
+bot recv msg 199:  80060100041f0000df7ca100
+<Buffer 3f 02 1f 04 ca c3 40 01>
+bot send msg 199:  3f021f04cac34001
+bot recv msg 199:  8006010004200000eb7ca100
+<Buffer 3f 02 20 04 ca c3 40 01>
+bot send msg 199:  3f022004cac34001
+bot recv msg 199:  8006010004210000f77ca100
+<Buffer 3f 02 21 04 ca c3 40 01>
+bot send msg 199:  3f022104cac34001
+bot recv msg 199:  8006010004220000017da100
+<Buffer 3f 02 22 04 ca c3 40 01>
+bot send msg 199:  3f022204cac34001
+bot recv msg 199:  80060100042300000d7da100
+<Buffer 3f 02 23 04 ca c3 40 01>
+bot send msg 199:  3f022304cac34001
+bot recv msg 199:  8006010004240000187da100
+<Buffer 3f 02 24 04 ca c3 40 01>
+bot send msg 199:  3f022404cac34001
+bot recv msg 199:  8006010004250000207da100
+<Buffer 3f 02 25 04 ca c3 40 01>
+bot send msg 199:  3f022504cac34001
+bot recv msg 199:  80060100042600002a7da100
+<Buffer 3f 02 26 04 ca c3 40 01>
+bot send msg 199:  3f022604cac34001
+bot recv msg 199:  8006010004270000367da100
+<Buffer 3f 02 27 04 ca c3 40 01>
+bot send msg 199:  3f022704cac34001
+bot recv msg 199:  8006010004280000437da100
+<Buffer 3f 02 28 04 ca c3 40 01>
+bot send msg 199:  3f022804cac34001
+bot recv msg 199:  80060100042900004f7da100
+<Buffer 3f 02 29 04 ca c3 40 01>
+bot send msg 199:  3f022904cac34001
+bot recv msg 199:  80060100042a0000597da100
+<Buffer 3f 02 2a 04 ca c3 40 01>
+bot send msg 199:  3f022a04cac34001
+bot recv msg 199:  80060100042b0000657da100
+<Buffer 3f 02 2b 04 ca c3 40 01>
+bot send msg 199:  3f022b04cac34001
+bot recv msg 199:  80060100042c0000707da100
+<Buffer 3f 02 2c 04 ca c3 40 01>
+bot send msg 199:  3f022c04cac34001
+bot recv msg 199:  80060100042d0000787da100
+<Buffer 3f 02 2d 04 ca c3 40 01>
+bot send msg 199:  3f022d04cac34001
+bot recv msg 199:  80060100042e0000817da100
+<Buffer 3f 02 2e 04 ca c3 40 01>
+bot send msg 199:  3f022e04cac34001
+bot recv msg 199:  80060100042f00008d7da100
+<Buffer 3f 02 2f 04 ca c3 40 01>
+bot send msg 199:  3f022f04cac34001
+bot recv msg 199:  80060100043000009a7da100
+<Buffer 3f 02 30 04 ca c3 40 01>
+bot send msg 199:  3f023004cac34001
+bot recv msg 199:  8006010004310000a67da100
+<Buffer 3f 02 31 04 ca c3 40 01>
+bot send msg 199:  3f023104cac34001
+bot recv msg 199:  8006010004320000b27da100
+<Buffer 3f 02 32 04 ca c3 40 01>
+bot send msg 199:  3f023204cac34001
+bot recv msg 199:  8006010004330000bd7da100
+<Buffer 3f 02 33 04 ca c3 40 01>
+bot send msg 199:  3f023304cac34001
+bot recv msg 199:  8006010004340000c97da100
+<Buffer 3f 02 34 04 ca c3 40 01>
+bot send msg 199:  3f023404cac34001
+bot recv msg 199:  8006010004350000d47da100
+<Buffer 3f 02 35 04 ca c3 40 01>
+bot send msg 199:  3f023504cac34001
+bot recv msg 199:  8006010004360000dc7da100
+<Buffer 3f 02 36 04 ca c3 40 01>
+bot send msg 199:  3f023604cac34001
+bot recv msg 199:  8006010004370000e67da100
+<Buffer 3f 02 37 04 ca c3 40 01>
+bot send msg 199:  3f023704cac34001
+bot recv msg 199:  8006010004380000f27da100
+<Buffer 3f 02 38 04 ca c3 40 01>
+bot send msg 199:  3f023804cac34001
+bot recv msg 199:  8006010004390000fc7da100
+<Buffer 3f 02 39 04 ca c3 40 01>
+bot send msg 199:  3f023904cac34001
+bot recv msg 199:  80060100043a0000047ea100
+<Buffer 3f 02 3a 04 ca c3 40 01>
+bot send msg 199:  3f023a04cac34001
+bot recv msg 199:  80060100043b00000d7ea100
+<Buffer 3f 02 3b 04 ca c3 40 01>
+bot send msg 199:  3f023b04cac34001
+bot recv msg 199:  80060100043c0000197ea100
+<Buffer 3f 02 3c 04 ca c3 40 01>
+bot send msg 199:  3f023c04cac34001
+bot recv msg 199:  80060100043d0000277ea100
+<Buffer 3f 02 3d 04 ca c3 40 01>
+bot send msg 199:  3f023d04cac34001
+bot recv msg 199:  80060100043e0000337ea100
+<Buffer 3f 02 3e 04 ca c3 40 01>
+bot send msg 199:  3f023e04cac34001
+bot recv msg 199:  80060100043f00003f7ea100
+<Buffer 3f 02 3f 04 ca c3 40 01>
+bot send msg 199:  3f023f04cac34001
+bot recv msg 199:  80060100044000004b7ea100
+<Buffer 3f 02 40 04 ca c3 40 01>
+bot send msg 199:  3f024004cac34001
+bot recv msg 199:  8006010004410000557ea100
+<Buffer 3f 02 41 04 ca c3 40 01>
+bot send msg 199:  3f024104cac34001
+bot recv msg 199:  8006010004420000617ea100
+<Buffer 3f 02 42 04 ca c3 40 01>
+bot send msg 199:  3f024204cac34001
+bot recv msg 199:  80060100044300006c7ea100
+<Buffer 3f 02 43 04 ca c3 40 01>
+bot send msg 199:  3f024304cac34001
+bot recv msg 199:  8006010004440000747ea100
+<Buffer 3f 02 44 04 ca c3 40 01>
+bot send msg 199:  3f024404cac34001
+bot recv msg 199:  80060100044500007e7ea100
+<Buffer 3f 02 45 04 ca c3 40 01>
+bot send msg 199:  3f024504cac34001
+bot recv msg 199:  80060100044600008a7ea100
+<Buffer 3f 02 46 04 ca c3 40 01>
+bot send msg 199:  3f024604cac34001
+bot recv msg 199:  8006010004470000977ea100
+<Buffer 3f 02 47 04 ca c3 40 01>
+bot send msg 199:  3f024704cac34001
+bot recv msg 199:  8006010004480000a17ea100
+<Buffer 3f 02 48 04 ca c3 40 01>
+bot send msg 199:  3f024804cac34001
+bot recv msg 199:  8006010004490000ad7ea100
+<Buffer 3f 02 49 04 ca c3 40 01>
+bot send msg 199:  3f024904cac34001
+bot recv msg 199:  80060100044a0000b87ea100
+<Buffer 3f 02 4a 04 ca c3 40 01>
+bot send msg 199:  3f024a04cac34001
+bot recv msg 199:  80060100044b0000c07ea100
+<Buffer 3f 02 4b 04 ca c3 40 01>
+bot send msg 199:  3f024b04cac34001
+bot recv msg 199:  80060100044c0000c97ea100
+<Buffer 3f 02 4c 04 ca c3 40 01>
+bot send msg 199:  3f024c04cac34001
+bot recv msg 199:  80060100044d0000d57ea100
+<Buffer 3f 02 4d 04 ca c3 40 01>
+bot send msg 199:  3f024d04cac34001
+bot recv msg 199:  80060100044e0000e27ea100
+<Buffer 3f 02 4e 04 ca c3 40 01>
+bot send msg 199:  3f024e04cac34001
+bot recv msg 199:  80060100044f0000ee7ea100
+<Buffer 3f 02 4f 04 ca c3 40 01>
+bot send msg 199:  3f024f04cac34001
+bot recv msg 199:  8006010004500000fa7ea100
+<Buffer 3f 02 50 04 ca c3 40 01>
+bot send msg 199:  3f025004cac34001
+bot recv msg 199:  8006010004510000067fa100
+<Buffer 3f 02 51 04 ca c3 40 01>
+bot send msg 199:  3f025104cac34001
+bot recv msg 199:  8006010004520000117fa100
+<Buffer 3f 02 52 04 ca c3 40 01>
+bot send msg 199:  3f025204cac34001
+bot recv msg 199:  80060100045300001d7fa100
+<Buffer 3f 02 53 04 ca c3 40 01>
+bot send msg 199:  3f025304cac34001
+bot recv msg 199:  8006010004540000287fa100
+<Buffer 3f 02 54 04 ca c3 40 01>
+bot send msg 199:  3f025404cac34001
+bot recv msg 199:  8006010004550000307fa100
+<Buffer 3f 02 55 04 ca c3 40 01>
+bot send msg 199:  3f025504cac34001
+bot recv msg 199:  80060100045600003a7fa100
+<Buffer 3f 02 56 04 ca c3 40 01>
+bot send msg 199:  3f025604cac34001
+bot recv msg 199:  8006010004570000467fa100
+<Buffer 3f 02 57 04 ca c3 40 01>
+bot send msg 199:  3f025704cac34001
+bot recv msg 199:  8006010004580000507fa100
+<Buffer 3f 02 58 04 ca c3 40 01>
+bot send msg 199:  3f025804cac34001
+bot recv msg 199:  8006010004590000587fa100
+<Buffer 3f 02 59 04 ca c3 40 01>
+bot send msg 199:  3f025904cac34001
+bot recv msg 199:  80060100045a0000617fa100
+<Buffer 3f 02 5a 04 ca c3 40 01>
+bot send msg 199:  3f025a04cac34001
+bot recv msg 199:  80060100045b00006d7fa100
+<Buffer 3f 02 5b 04 ca c3 40 01>
+bot send msg 199:  3f025b04cac34001
+bot recv msg 199:  80060100045c00007b7fa100
+<Buffer 3f 02 5c 04 ca c3 40 01>
+bot send msg 199:  3f025c04cac34001
+bot recv msg 199:  80060100045d0000877fa100
+<Buffer 3f 02 5d 04 ca c3 40 01>
+bot send msg 199:  3f025d04cac34001
+bot recv msg 199:  80060100045e0000937fa100
+<Buffer 3f 02 5e 04 ca c3 40 01>
+bot send msg 199:  3f025e04cac34001
+bot recv msg 199:  80060100045f00009f7fa100
+<Buffer 3f 02 5f 04 ca c3 40 01>
+bot send msg 199:  3f025f04cac34001
+bot recv msg 199:  8006010004600000a97fa100
+<Buffer 3f 02 60 04 ca c3 40 01>
+bot send msg 199:  3f026004cac34001
+bot recv msg 199:  8006010004610000b57fa100
+<Buffer 3f 02 61 04 ca c3 40 01>
+bot send msg 199:  3f026104cac34001
+bot recv msg 199:  8006010004620000c07fa100
+<Buffer 3f 02 62 04 ca c3 40 01>
+bot send msg 199:  3f026204cac34001
+bot recv msg 199:  8006010004630000c87fa100
+<Buffer 3f 02 63 04 ca c3 40 01>
+bot send msg 199:  3f026304cac34001
+bot recv msg 199:  8006010004640000d27fa100
+<Buffer 3f 02 64 04 ca c3 40 01>
+bot send msg 199:  3f026404cac34001
+bot recv msg 199:  8006010004650000de7fa100
+<Buffer 3f 02 65 04 ca c3 40 01>
+bot send msg 199:  3f026504cac34001
+bot recv msg 199:  8006010004660000eb7fa100
+<Buffer 3f 02 66 04 ca c3 40 01>
+bot send msg 199:  3f026604cac34001
+bot recv msg 199:  8006010004670000f57fa100
+<Buffer 3f 02 67 04 ca c3 40 01>
+bot send msg 199:  3f026704cac34001
+bot recv msg 199:  80060100046800000180a100
+<Buffer 3f 02 68 04 ca c3 40 01>
+bot send msg 199:  3f026804cac34001
+bot recv msg 199:  80060100046900000c80a100
+<Buffer 3f 02 69 04 ca c3 40 01>
+bot send msg 199:  3f026904cac34001
+bot recv msg 199:  80060100046a00001480a100
+<Buffer 3f 02 6a 04 ca c3 40 01>
+bot send msg 199:  3f026a04cac34001
+bot recv msg 199:  80060100046b00001d80a100
+<Buffer 3f 02 6b 04 ca c3 40 01>
+bot send msg 199:  3f026b04cac34001
+bot recv msg 199:  80060100046c00002980a100
+<Buffer 3f 02 6c 04 ca c3 40 01>
+bot send msg 199:  3f026c04cac34001
+bot recv msg 199:  80060100046d00003680a100
+<Buffer 3f 02 6d 04 ca c3 40 01>
+bot send msg 199:  3f026d04cac34001
+bot recv msg 199:  80060100046e00004280a100
+<Buffer 3f 02 6e 04 ca c3 40 01>
+bot send msg 199:  3f026e04cac34001
+bot recv msg 199:  80060100046f00004e80a100
+<Buffer 3f 02 6f 04 ca c3 40 01>
+bot send msg 199:  3f026f04cac34001
+bot recv msg 199:  80060100047000005980a100
+<Buffer 3f 02 70 04 ca c3 40 01>
+bot send msg 199:  3f027004cac34001
+bot recv msg 199:  80060100047100006580a100
+<Buffer 3f 02 71 04 ca c3 40 01>
+bot send msg 199:  3f027104cac34001
+bot recv msg 199:  80060100047200007080a100
+<Buffer 3f 02 72 04 ca c3 40 01>
+bot send msg 199:  3f027204cac34001
+bot recv msg 199:  80060100047300007880a100
+<Buffer 3f 02 73 04 ca c3 40 01>
+bot send msg 199:  3f027304cac34001
+bot recv msg 199:  80060100047400008280a100
+<Buffer 3f 02 74 04 ca c3 40 01>
+bot send msg 199:  3f027404cac34001
+bot recv msg 199:  80060100047500008e80a100
+<Buffer 3f 02 75 04 ca c3 40 01>
+bot send msg 199:  3f027504cac34001
+bot recv msg 199:  80060100047600009880a100
+<Buffer 3f 02 76 04 ca c3 40 01>
+bot send msg 199:  3f027604cac34001
+bot recv msg 199:  8006010004770000a080a100
+<Buffer 3f 02 77 04 ca c3 40 01>
+bot send msg 199:  3f027704cac34001
+bot recv msg 199:  8006010004780000a980a100
+<Buffer 3f 02 78 04 ca c3 40 01>
+bot send msg 199:  3f027804cac34001
+bot recv msg 199:  8006010004790000b580a100
+<Buffer 3f 02 79 04 ca c3 40 01>
+bot send msg 199:  3f027904cac34001
+bot recv msg 199:  80060100047a0000c380a100
+<Buffer 3f 02 7a 04 ca c3 40 01>
+bot send msg 199:  3f027a04cac34001
+bot recv msg 199:  80060100047b0000cf80a100
+<Buffer 3f 02 7b 04 ca c3 40 01>
+bot send msg 199:  3f027b04cac34001
+bot recv msg 199:  80060100047c0000db80a100
+<Buffer 3f 02 7c 04 ca c3 40 01>
+bot send msg 199:  3f027c04cac34001
+bot recv msg 199:  80060100047d0000e780a100
+<Buffer 3f 02 7d 04 ca c3 40 01>
+bot send msg 199:  3f027d04cac34001
+bot recv msg 199:  80060100047e0000f180a100
+<Buffer 3f 02 7e 04 ca c3 40 01>
+bot send msg 199:  3f027e04cac34001
+bot recv msg 199:  80060100047f0000fd80a100
+<Buffer 3f 02 7f 04 ca c3 40 01>
+bot send msg 199:  3f027f04cac34001
+bot recv msg 199:  80060100048000000881a100
+<Buffer 3f 02 80 04 ca c3 40 01>
+bot send msg 199:  3f028004cac34001
+bot recv msg 199:  80060100048100001081a100
+<Buffer 3f 02 81 04 ca c3 40 01>
+bot send msg 199:  3f028104cac34001
+bot recv msg 199:  80060100048200001a81a100
+<Buffer 3f 02 82 04 ca c3 40 01>
+bot send msg 199:  3f028204cac34001
+bot recv msg 199:  80060100048300002681a100
+<Buffer 3f 02 83 04 ca c3 40 01>
+bot send msg 199:  3f028304cac34001
+bot recv msg 199:  80060100048400003281a100
+<Buffer 3f 02 84 04 ca c3 40 01>
+bot send msg 199:  3f028404cac34001
+bot recv msg 199:  80060100048500003e81a100
+<Buffer 3f 02 85 04 ca c3 40 01>
+bot send msg 199:  3f028504cac34001
+bot recv msg 199:  80060100048600004981a100
+<Buffer 3f 02 86 04 ca c3 40 01>
+bot send msg 199:  3f028604cac34001
+bot recv msg 199:  80060100048700005581a100
+<Buffer 3f 02 87 04 ca c3 40 01>
+bot send msg 199:  3f028704cac34001
+bot recv msg 199:  80060100048800006081a100
+<Buffer 3f 02 88 04 ca c3 40 01>
+bot send msg 199:  3f028804cac34001
+bot recv msg 199:  80060100048900006981a100
+<Buffer 3f 02 89 04 ca c3 40 01>
+bot send msg 199:  3f028904cac34001
+bot recv msg 199:  80060100048a00007581a100
+<Buffer 3f 02 8a 04 ca c3 40 01>
+bot send msg 199:  3f028a04cac34001
+bot recv msg 199:  80060100048b00008281a100
+<Buffer 3f 02 8b 04 ca c3 40 01>
+bot send msg 199:  3f028b04cac34001
+bot recv msg 199:  80060100048c00008e81a100
+<Buffer 3f 02 8c 04 ca c3 40 01>
+bot send msg 199:  3f028c04cac34001
+bot recv msg 199:  80060100048d00009a81a100
+<Buffer 3f 02 8d 04 ca c3 40 01>
+bot send msg 199:  3f028d04cac34001
+bot recv msg 199:  80060100048e0000a681a100
+<Buffer 3f 02 8e 04 ca c3 40 01>
+bot send msg 199:  3f028e04cac34001
+bot recv msg 199:  80060100048f0000b181a100
+<Buffer 3f 02 8f 04 ca c3 40 01>
+bot send msg 199:  3f028f04cac34001
+bot recv msg 199:  8006010004900000bd81a100
+<Buffer 3f 02 90 04 ca c3 40 01>
+bot send msg 199:  3f029004cac34001
+bot recv msg 199:  8006010004910000c881a100
+<Buffer 3f 02 91 04 ca c3 40 01>
+bot send msg 199:  3f029104cac34001
+bot recv msg 199:  8006010004920000d081a100
+<Buffer 3f 02 92 04 ca c3 40 01>
+bot send msg 199:  3f029204cac34001
+bot recv msg 199:  8006010004930000da81a100
+<Buffer 3f 02 93 04 ca c3 40 01>
+bot send msg 199:  3f029304cac34001
+bot recv msg 199:  8006010004940000e681a100
+<Buffer 3f 02 94 04 ca c3 40 01>
+bot send msg 199:  3f029404cac34001
+bot recv msg 199:  8006010004950000f081a100
+<Buffer 3f 02 95 04 ca c3 40 01>
+bot send msg 199:  3f029504cac34001
+bot recv msg 199:  8006010004960000f881a100
+<Buffer 3f 02 96 04 ca c3 40 01>
+bot send msg 199:  3f029604cac34001
+bot recv msg 199:  80060100049700000182a100
+<Buffer 3f 02 97 04 ca c3 40 01>
+bot send msg 199:  3f029704cac34001
+bot recv msg 199:  80060100049800000d82a100
+<Buffer 3f 02 98 04 ca c3 40 01>
+bot send msg 199:  3f029804cac34001
+bot recv msg 199:  80060100049900001b82a100
+<Buffer 3f 02 99 04 ca c3 40 01>
+bot send msg 199:  3f029904cac34001
+bot recv msg 199:  80060100049a00002782a100
+<Buffer 3f 02 9a 04 ca c3 40 01>
+bot send msg 199:  3f029a04cac34001
+bot recv msg 199:  80060100049b00003382a100
+<Buffer 3f 02 9b 04 ca c3 40 01>
+bot send msg 199:  3f029b04cac34001
+bot recv msg 199:  80060100049c00003f82a100
+<Buffer 3f 02 9c 04 ca c3 40 01>
+bot send msg 199:  3f029c04cac34001
+bot recv msg 199:  80060100049d00004982a100
+<Buffer 3f 02 9d 04 ca c3 40 01>
+bot send msg 199:  3f029d04cac34001
+bot recv msg 199:  80060100049e00005582a100
+<Buffer 3f 02 9e 04 ca c3 40 01>
+bot send msg 199:  3f029e04cac34001
+bot recv msg 199:  80060100049f00006082a100
+<Buffer 3f 02 9f 04 ca c3 40 01>
+bot send msg 199:  3f029f04cac34001
+bot recv msg 199:  8006010004a000006882a100
+<Buffer 3f 02 a0 04 ca c3 40 01>
+bot send msg 199:  3f02a004cac34001
+bot recv msg 199:  8006010004a100007282a100
+<Buffer 3f 02 a1 04 ca c3 40 01>
+bot send msg 199:  3f02a104cac34001
+bot recv msg 199:  8006010004a200007e82a100
+<Buffer 3f 02 a2 04 ca c3 40 01>
+bot send msg 199:  3f02a204cac34001
+bot recv msg 199:  8006010004a300008b82a100
+<Buffer 3f 02 a3 04 ca c3 40 01>
+bot send msg 199:  3f02a304cac34001
+bot recv msg 199:  8006010004a400009582a100
+<Buffer 3f 02 a4 04 ca c3 40 01>
+bot send msg 199:  3f02a404cac34001
+bot recv msg 199:  8006010004a50000a182a100
+<Buffer 3f 02 a5 04 ca c3 40 01>
+bot send msg 199:  3f02a504cac34001
+bot recv msg 199:  8006010004a60000ac82a100
+<Buffer 3f 02 a6 04 ca c3 40 01>
+bot send msg 199:  3f02a604cac34001
+bot recv msg 199:  8006010004a70000b482a100
+<Buffer 3f 02 a7 04 ca c3 40 01>
+bot send msg 199:  3f02a704cac34001
+bot recv msg 199:  8006010004a80000bd82a100
+<Buffer 3f 02 a8 04 ca c3 40 01>
+bot send msg 199:  3f02a804cac34001
+bot recv msg 199:  8006010004a90000c982a100
+<Buffer 3f 02 a9 04 ca c3 40 01>
+bot send msg 199:  3f02a904cac34001
+bot recv msg 199:  8006010004aa0000d682a100
+<Buffer 3f 02 aa 04 ca c3 40 01>
+bot send msg 199:  3f02aa04cac34001
+bot recv msg 199:  8006010004ab0000e282a100
+<Buffer 3f 02 ab 04 ca c3 40 01>
+bot send msg 199:  3f02ab04cac34001
+bot recv msg 199:  8006010004ac0000ee82a100
+<Buffer 3f 02 ac 04 ca c3 40 01>
+bot send msg 199:  3f02ac04cac34001
+bot recv msg 199:  8006010004ad0000fa82a100
+<Buffer 3f 02 ad 04 ca c3 40 01>
+bot send msg 199:  3f02ad04cac34001
+bot recv msg 199:  8006010004ae00000583a100
+<Buffer 3f 02 ae 04 ca c3 40 01>
+bot send msg 199:  3f02ae04cac34001
+bot recv msg 199:  8006010004af00001183a100
+<Buffer 3f 02 af 04 ca c3 40 01>
+bot send msg 199:  3f02af04cac34001
+bot recv msg 199:  8006010004b000001c83a100
+<Buffer 3f 02 b0 04 ca c3 40 01>
+bot send msg 199:  3f02b004cac34001
+bot recv msg 199:  8006010004b100002483a100
+<Buffer 3f 02 b1 04 ca c3 40 01>
+bot send msg 199:  3f02b104cac34001
+bot recv msg 199:  8006010004b200002e83a100
+<Buffer 3f 02 b2 04 ca c3 40 01>
+bot send msg 199:  3f02b204cac34001
+bot recv msg 199:  8006010004b300003a83a100
+<Buffer 3f 02 b3 04 ca c3 40 01>
+bot send msg 199:  3f02b304cac34001
+bot recv msg 199:  8006010004b400004483a100
+<Buffer 3f 02 b4 04 ca c3 40 01>
+bot send msg 199:  3f02b404cac34001
+bot recv msg 199:  8006010004b500004c83a100
+<Buffer 3f 02 b5 04 ca c3 40 01>
+bot send msg 199:  3f02b504cac34001
+bot recv msg 199:  8006010004b600005583a100
+<Buffer 3f 02 b6 04 ca c3 40 01>
+bot send msg 199:  3f02b604cac34001
+bot recv msg 199:  8006010004b700006183a100
+<Buffer 3f 02 b7 04 ca c3 40 01>
+bot send msg 199:  3f02b704cac34001
+bot recv msg 199:  8006010004b800006f83a100
+<Buffer 3f 02 b8 04 ca c3 40 01>
+bot send msg 199:  3f02b804cac34001
+bot recv msg 199:  8006010004b900007b83a100
+<Buffer 3f 02 b9 04 ca c3 40 01>
+bot send msg 199:  3f02b904cac34001
+bot recv msg 199:  8006010004ba00008783a100
+<Buffer 3f 02 ba 04 ca c3 40 01>
+bot send msg 199:  3f02ba04cac34001
+bot recv msg 199:  8006010004bb00009383a100
+<Buffer 3f 02 bb 04 ca c3 40 01>
+bot send msg 199:  3f02bb04cac34001
+bot recv msg 199:  8006010004bc00009d83a100
+<Buffer 3f 02 bc 04 ca c3 40 01>
+bot send msg 199:  3f02bc04cac34001
+bot recv msg 199:  8006010004bd0000a983a100
+<Buffer 3f 02 bd 04 ca c3 40 01>
+bot send msg 199:  3f02bd04cac34001
+bot recv msg 199:  8006010004be0000b483a100
+<Buffer 3f 02 be 04 ca c3 40 01>
+bot send msg 199:  3f02be04cac34001
+bot recv msg 199:  8006010004bf0000bc83a100
+<Buffer 3f 02 bf 04 ca c3 40 01>
+bot send msg 199:  3f02bf04cac34001
+bot recv msg 199:  8006010004c00000c683a100
+<Buffer 3f 02 c0 04 ca c3 40 01>
+bot send msg 199:  3f02c004cac34001
+bot recv msg 199:  8006010004c10000d283a100
+<Buffer 3f 02 c1 04 ca c3 40 01>
+bot send msg 199:  3f02c104cac34001
+bot recv msg 199:  8006010004c20000df83a100
+<Buffer 3f 02 c2 04 ca c3 40 01>
+bot send msg 199:  3f02c204cac34001
+bot recv msg 199:  8006010004c30000e983a100
+<Buffer 3f 02 c3 04 ca c3 40 01>
+bot send msg 199:  3f02c304cac34001
+bot recv msg 199:  8006010004c40000f583a100
+<Buffer 3f 02 c4 04 ca c3 40 01>
+bot send msg 199:  3f02c404cac34001
+bot recv msg 199:  8006010004c500000084a100
+<Buffer 3f 02 c5 04 ca c3 40 01>
+bot send msg 199:  3f02c504cac34001
+bot recv msg 199:  8006010004c600000884a100
+<Buffer 3f 02 c6 04 ca c3 40 01>
+bot send msg 199:  3f02c604cac34001
+bot recv msg 199:  8006010004c700001184a100
+<Buffer 3f 02 c7 04 ca c3 40 01>
+bot send msg 199:  3f02c704cac34001
+bot recv msg 199:  8006010004c800001d84a100
+<Buffer 3f 02 c8 04 ca c3 40 01>
+bot send msg 199:  3f02c804cac34001
+bot recv msg 199:  8006010004c900002a84a100
+<Buffer 3f 02 c9 04 ca c3 40 01>
+bot send msg 199:  3f02c904cac34001
+bot recv msg 199:  8006010004ca00003684a100
+<Buffer 3f 02 ca 04 ca c3 40 01>
+bot send msg 199:  3f02ca04cac34001
+bot recv msg 199:  8006010004cb00004284a100
+<Buffer 3f 02 cb 04 ca c3 40 01>
+bot send msg 199:  3f02cb04cac34001
+bot recv msg 199:  8006010004cc00004e84a100
+<Buffer 3f 02 cc 04 ca c3 40 01>
+bot send msg 199:  3f02cc04cac34001
+bot recv msg 199:  8006010004cd00005984a100
+<Buffer 3f 02 cd 04 ca c3 40 01>
+bot send msg 199:  3f02cd04cac34001
+bot recv msg 199:  8006010004ce00006584a100
+<Buffer 3f 02 ce 04 ca c3 40 01>
+bot send msg 199:  3f02ce04cac34001
+bot recv msg 199:  8006010004cf00007084a100
+<Buffer 3f 02 cf 04 ca c3 40 01>
+bot send msg 199:  3f02cf04cac34001
+bot recv msg 199:  8006010004d000007884a100
+<Buffer 3f 02 d0 04 ca c3 40 01>
+bot send msg 199:  3f02d004cac34001
+bot recv msg 199:  8006010004d100008284a100
+<Buffer 3f 02 d1 04 ca c3 40 01>
+bot send msg 199:  3f02d104cac34001
+bot recv msg 199:  8006010004d200008e84a100
+<Buffer 3f 02 d2 04 ca c3 40 01>
+bot send msg 199:  3f02d204cac34001
+bot recv msg 199:  8006010004d300009884a100
+<Buffer 3f 02 d3 04 ca c3 40 01>
+bot send msg 199:  3f02d304cac34001
+bot recv msg 199:  8006010004d40000a084a100
+<Buffer 3f 02 d4 04 ca c3 40 01>
+bot send msg 199:  3f02d404cac34001
+bot recv msg 199:  8006010004d50000a984a100
+<Buffer 3f 02 d5 04 ca c3 40 01>
+bot send msg 199:  3f02d504cac34001
+bot recv msg 199:  8006010004d60000b584a100
+<Buffer 3f 02 d6 04 ca c3 40 01>
+bot send msg 199:  3f02d604cac34001
+bot recv msg 199:  8006010004d70000c384a100
+<Buffer 3f 02 d7 04 ca c3 40 01>
+bot send msg 199:  3f02d704cac34001
+bot recv msg 199:  8006010004d80000cf84a100
+<Buffer 3f 02 d8 04 ca c3 40 01>
+bot send msg 199:  3f02d804cac34001
+bot recv msg 199:  8006010004d90000db84a100
+<Buffer 3f 02 d9 04 ca c3 40 01>
+bot send msg 199:  3f02d904cac34001
+bot recv msg 199:  8006010004da0000e584a100
+<Buffer 3f 02 da 04 ca c3 40 01>
+bot send msg 199:  3f02da04cac34001
+bot recv msg 199:  8006010004db0000f084a100
+<Buffer 3f 02 db 04 ca c3 40 01>
+bot send msg 199:  3f02db04cac34001
+bot recv msg 199:  8006010004dc0000f884a100
+<Buffer 3f 02 dc 04 ca c3 40 01>
+bot send msg 199:  3f02dc04cac34001
+bot recv msg 199:  8006010004dd00000285a100
+<Buffer 3f 02 dd 04 ca c3 40 01>
+bot send msg 199:  3f02dd04cac34001
+bot recv msg 199:  8006010004de00000e85a100
+<Buffer 3f 02 de 04 ca c3 40 01>
+bot send msg 199:  3f02de04cac34001
+bot recv msg 199:  8006010004df00001b85a100
+<Buffer 3f 02 df 04 ca c3 40 01>
+bot send msg 199:  3f02df04cac34001
+bot recv msg 199:  8006010004e000002585a100
+<Buffer 3f 02 e0 04 ca c3 40 01>
+bot send msg 199:  3f02e004cac34001
+bot recv msg 199:  8006010004e100003185a100
+<Buffer 3f 02 e1 04 ca c3 40 01>
+bot send msg 199:  3f02e104cac34001
+bot recv msg 199:  8006010004e200003c85a100
+<Buffer 3f 02 e2 04 ca c3 40 01>
+bot send msg 199:  3f02e204cac34001
+bot recv msg 199:  8006010004e300004585a100
+<Buffer 3f 02 e3 04 ca c3 40 01>
+bot send msg 199:  3f02e304cac34001
+bot recv msg 199:  8006010004e400005185a100
+<Buffer 3f 02 e4 04 ca c3 40 01>
+bot send msg 199:  3f02e404cac34001
+bot recv msg 199:  8006010004e500005e85a100
+<Buffer 3f 02 e5 04 ca c3 40 01>
+bot send msg 199:  3f02e504cac34001
+bot recv msg 199:  8006010004e600006a85a100
+<Buffer 3f 02 e6 04 ca c3 40 01>
+bot send msg 199:  3f02e604cac34001
+bot recv msg 199:  8006010004e700007685a100
+<Buffer 3f 02 e7 04 ca c3 40 01>
+bot send msg 199:  3f02e704cac34001
+bot recv msg 199:  8006010004e800008185a100
+<Buffer 3f 02 e8 04 ca c3 40 01>
+bot send msg 199:  3f02e804cac34001
+bot recv msg 199:  8006010004e900008d85a100
+<Buffer 3f 02 e9 04 ca c3 40 01>
+bot send msg 199:  3f02e904cac34001
+bot recv msg 199:  8006010004ea00009885a100
+<Buffer 3f 02 ea 04 ca c3 40 01>
+bot send msg 199:  3f02ea04cac34001
+bot recv msg 199:  8006010004eb0000a285a100
+<Buffer 3f 02 eb 04 ca c3 40 01>
+bot send msg 199:  3f02eb04cac34001
+bot recv msg 199:  8006010004ec0000ae85a100
+<Buffer 3f 02 ec 04 ca c3 40 01>
+bot send msg 199:  3f02ec04cac34001
+bot recv msg 199:  8006010004ed0000b885a100
+<Buffer 3f 02 ed 04 ca c3 40 01>
+bot send msg 199:  3f02ed04cac34001
+bot recv msg 199:  8006010004ee0000c085a100
+<Buffer 3f 02 ee 04 ca c3 40 01>
+bot send msg 199:  3f02ee04cac34001
+bot recv msg 199:  8006010004ef0000c985a100
+<Buffer 3f 02 ef 04 ca c3 40 01>
+bot send msg 199:  3f02ef04cac34001
+bot recv msg 199:  8006010004f00000d585a100
+<Buffer 3f 02 f0 04 ca c3 40 01>
+bot send msg 199:  3f02f004cac34001
+bot recv msg 199:  8006010004f10000e385a100
+<Buffer 3f 02 f1 04 ca c3 40 01>
+bot send msg 199:  3f02f104cac34001
+bot recv msg 199:  8006010004f20000ef85a100
+<Buffer 3f 02 f2 04 ca c3 40 01>
+bot send msg 199:  3f02f204cac34001
+bot recv msg 199:  8006010004f30000fb85a100
+<Buffer 3f 02 f3 04 ca c3 40 01>
+bot send msg 199:  3f02f304cac34001
+bot recv msg 199:  8006010004f400000586a100
+<Buffer 3f 02 f4 04 ca c3 40 01>
+bot send msg 199:  3f02f404cac34001
+bot recv msg 199:  8006010004f500001186a100
+<Buffer 3f 02 f5 04 ca c3 40 01>
+bot send msg 199:  3f02f504cac34001
+bot recv msg 199:  8006010004f600001c86a100
+<Buffer 3f 02 f6 04 ca c3 40 01>
+bot send msg 199:  3f02f604cac34001
+bot recv msg 199:  8006010004f700002486a100
+<Buffer 3f 02 f7 04 ca c3 40 01>
+bot send msg 199:  3f02f704cac34001
+bot recv msg 199:  8006010004f800002e86a100
+<Buffer 3f 02 f8 04 ca c3 40 01>
+bot send msg 199:  3f02f804cac34001
+bot recv msg 199:  8006010004f900003a86a100
+<Buffer 3f 02 f9 04 ca c3 40 01>
+bot send msg 199:  3f02f904cac34001
+bot recv msg 199:  8006010004fa00004786a100
+<Buffer 3f 02 fa 04 ca c3 40 01>
+bot send msg 199:  3f02fa04cac34001
+bot recv msg 199:  8006010004fb00005186a100
+<Buffer 3f 02 fb 04 ca c3 40 01>
+bot send msg 199:  3f02fb04cac34001
+bot recv msg 199:  8006010004fc00005d86a100
+<Buffer 3f 02 fc 04 ca c3 40 01>
+bot send msg 199:  3f02fc04cac34001
+bot recv msg 199:  8006010004fd00006886a100
+<Buffer 3f 02 fd 04 ca c3 40 01>
+bot send msg 199:  3f02fd04cac34001
+bot recv msg 199:  8006010004fe00007086a100
+<Buffer 3f 02 fe 04 ca c3 40 01>
+bot send msg 199:  3f02fe04cac34001
+bot recv msg 199:  8006010004ff00007986a100
+<Buffer 3f 02 ff 04 ca c3 40 01>
+bot send msg 199:  3f02ff04cac34001
+bot recv msg 199:  80060100040000008586a100
+<Buffer 3f 02 00 04 ca c3 40 01>
+bot send msg 199:  3f020004cac34001
+bot recv msg 199:  80060100040100009286a100
+<Buffer 3f 02 01 04 ca c3 40 01>
+bot send msg 199:  3f020104cac34001
+bot recv msg 199:  80060100040200009e86a100
+<Buffer 3f 02 02 04 ca c3 40 01>
+bot send msg 199:  3f020204cac34001
+bot recv msg 199:  8006010004030000aa86a100
+<Buffer 3f 02 03 04 ca c3 40 01>
+bot send msg 199:  3f020304cac34001
+bot recv msg 199:  8006010004040000b686a100
+<Buffer 3f 02 04 04 ca c3 40 01>
+bot send msg 199:  3f020404cac34001
+bot recv msg 199:  8006010004050000c186a100
+<Buffer 3f 02 05 04 ca c3 40 01>
+bot send msg 199:  3f020504cac34001
+bot recv msg 199:  8006010004060000cd86a100
+<Buffer 3f 02 06 04 ca c3 40 01>
+bot send msg 199:  3f020604cac34001
+bot recv msg 199:  8006010004070000d886a100
+<Buffer 3f 02 07 04 ca c3 40 01>
+bot send msg 199:  3f020704cac34001
+bot recv msg 199:  8006010004080000e286a100
+<Buffer 3f 02 08 04 ca c3 40 01>
+bot send msg 199:  3f020804cac34001
+bot recv msg 199:  8006010004090000ee86a100
+<Buffer 3f 02 09 04 ca c3 40 01>
+bot send msg 199:  3f020904cac34001
+bot recv msg 199:  80060100040a0000f886a100
+<Buffer 3f 02 0a 04 ca c3 40 01>
+bot send msg 199:  3f020a04cac34001
+bot recv msg 199:  80060100040b00000087a100
+<Buffer 3f 02 0b 04 ca c3 40 01>
+bot send msg 199:  3f020b04cac34001
+bot recv msg 199:  80060100040c00000987a100
+<Buffer 3f 02 0c 04 ca c3 40 01>
+bot send msg 199:  3f020c04cac34001
+bot recv msg 199:  80060100040d00001587a100
+<Buffer 3f 02 0d 04 ca c3 40 01>
+bot send msg 199:  3f020d04cac34001
+bot recv msg 199:  80060100040e00002387a100
+<Buffer 3f 02 0e 04 ca c3 40 01>
+bot send msg 199:  3f020e04cac34001
+bot recv msg 199:  80060100040f00002f87a100
+<Buffer 3f 02 0f 04 ca c3 40 01>
+bot send msg 199:  3f020f04cac34001
+bot recv msg 199:  80060100041000003b87a100
+<Buffer 3f 02 10 04 ca c3 40 01>
+bot send msg 199:  3f021004cac34001
+bot recv msg 199:  80060100041100004787a100
+<Buffer 3f 02 11 04 ca c3 40 01>
+bot send msg 199:  3f021104cac34001
+bot recv msg 199:  80060100041200005187a100
+<Buffer 3f 02 12 04 ca c3 40 01>
+bot send msg 199:  3f021204cac34001
+bot recv msg 199:  80060100041300005d87a100
+<Buffer 3f 02 13 04 ca c3 40 01>
+bot send msg 199:  3f021304cac34001
+bot recv msg 199:  80060100041400006887a100
+<Buffer 3f 02 14 04 ca c3 40 01>
+bot send msg 199:  3f021404cac34001
+bot recv msg 199:  80060100041500007087a100
+<Buffer 3f 02 15 04 ca c3 40 01>
+bot send msg 199:  3f021504cac34001
+bot recv msg 199:  80060100041600007a87a100
+<Buffer 3f 02 16 04 ca c3 40 01>
+bot send msg 199:  3f021604cac34001
+bot recv msg 199:  80060100041700008687a100
+<Buffer 3f 02 17 04 ca c3 40 01>
+bot send msg 199:  3f021704cac34001
+bot recv msg 199:  80060100041800009387a100
+<Buffer 3f 02 18 04 ca c3 40 01>
+bot send msg 199:  3f021804cac34001
+bot recv msg 199:  80060100041900009d87a100
+<Buffer 3f 02 19 04 ca c3 40 01>
+bot send msg 199:  3f021904cac34001
+bot recv msg 199:  80060100041a0000a987a100
+<Buffer 3f 02 1a 04 ca c3 40 01>
+bot send msg 199:  3f021a04cac34001
+bot recv msg 199:  80060100041b0000b487a100
+<Buffer 3f 02 1b 04 ca c3 40 01>
+bot send msg 199:  3f021b04cac34001
+bot recv msg 199:  80060100041c0000bc87a100
+<Buffer 3f 02 1c 04 ca c3 40 01>
+bot send msg 199:  3f021c04cac34001
+bot recv msg 199:  80060100041d0000c587a100
+<Buffer 3f 02 1d 04 ca c3 40 01>
+bot send msg 199:  3f021d04cac34001
+bot recv msg 199:  80060100041e0000d187a100
+<Buffer 3f 02 1e 04 ca c3 40 01>
+bot send msg 199:  3f021e04cac34001
+bot recv msg 199:  80060100041f0000de87a100
+<Buffer 3f 02 1f 04 ca c3 40 01>
+bot send msg 199:  3f021f04cac34001
+bot recv msg 199:  8006010004200000ea87a100
+<Buffer 3f 02 20 04 ca c3 40 01>
+bot send msg 199:  3f022004cac34001
+bot recv msg 199:  8006010004210000f687a100
+<Buffer 3f 02 21 04 ca c3 40 01>
+bot send msg 199:  3f022104cac34001
+bot recv msg 199:  80060100042200000288a100
+<Buffer 3f 02 22 04 ca c3 40 01>
+bot send msg 199:  3f022204cac34001
+bot recv msg 199:  80060100042300000d88a100
+<Buffer 3f 02 23 04 ca c3 40 01>
+bot send msg 199:  3f022304cac34001
+bot recv msg 199:  80060100042400001988a100
+<Buffer 3f 02 24 04 ca c3 40 01>
+bot send msg 199:  3f022404cac34001
+bot recv msg 199:  80060100042500002488a100
+<Buffer 3f 02 25 04 ca c3 40 01>
+bot send msg 199:  3f022504cac34001
+bot recv msg 199:  80060100042600002c88a100
+<Buffer 3f 02 26 04 ca c3 40 01>
+bot send msg 199:  3f022604cac34001
+bot recv msg 199:  80060100042700003688a100
+<Buffer 3f 02 27 04 ca c3 40 01>
+bot send msg 199:  3f022704cac34001
+bot recv msg 199:  80060100042800004088a100
+<Buffer 3f 02 28 04 ca c3 40 01>
+bot send msg 199:  3f022804cac34001
+bot recv msg 199:  80060100042900004888a100
+<Buffer 3f 02 29 04 ca c3 40 01>
+bot send msg 199:  3f022904cac34001
+bot recv msg 199:  80060100042a00005188a100
+<Buffer 3f 02 2a 04 ca c3 40 01>
+bot send msg 199:  3f022a04cac34001
+bot recv msg 199:  80060100042b00005d88a100
+<Buffer 3f 02 2b 04 ca c3 40 01>
+bot send msg 199:  3f022b04cac34001
+bot recv msg 199:  80060100042c00006b88a100
+<Buffer 3f 02 2c 04 ca c3 40 01>
+bot send msg 199:  3f022c04cac34001
+bot recv msg 199:  80060100042d00007788a100
+<Buffer 3f 02 2d 04 ca c3 40 01>
+bot send msg 199:  3f022d04cac34001
+bot recv msg 199:  80060100042e00008388a100
+<Buffer 3f 02 2e 04 ca c3 40 01>
+bot send msg 199:  3f022e04cac34001
+bot recv msg 199:  80060100042f00008d88a100
+<Buffer 3f 02 2f 04 ca c3 40 01>
+bot send msg 199:  3f022f04cac34001
+bot recv msg 199:  80060100043000009988a100
+<Buffer 3f 02 30 04 ca c3 40 01>
+bot send msg 199:  3f023004cac34001
+bot recv msg 199:  8006010004310000a488a100
+<Buffer 3f 02 31 04 ca c3 40 01>
+bot send msg 199:  3f023104cac34001
+bot recv msg 199:  8006010004320000ac88a100
+<Buffer 3f 02 32 04 ca c3 40 01>
+bot send msg 199:  3f023204cac34001
+bot recv msg 199:  8006010004330000b688a100
+<Buffer 3f 02 33 04 ca c3 40 01>
+bot send msg 199:  3f023304cac34001
+bot recv msg 199:  8006010004340000c288a100
+<Buffer 3f 02 34 04 ca c3 40 01>
+bot send msg 199:  3f023404cac34001
+bot recv msg 199:  8006010004350000cf88a100
+<Buffer 3f 02 35 04 ca c3 40 01>
+bot send msg 199:  3f023504cac34001
+bot recv msg 199:  8006010004360000db88a100
+<Buffer 3f 02 36 04 ca c3 40 01>
+bot send msg 199:  3f023604cac34001
+bot recv msg 199:  8006010004370000e588a100
+<Buffer 3f 02 37 04 ca c3 40 01>
+bot send msg 199:  3f023704cac34001
+bot recv msg 199:  8006010004380000f188a100
+<Buffer 3f 02 38 04 ca c3 40 01>
+bot send msg 199:  3f023804cac34001
+bot recv msg 199:  8006010004390000fc88a100
+<Buffer 3f 02 39 04 ca c3 40 01>
+bot send msg 199:  3f023904cac34001
+bot recv msg 199:  80060100043a00000589a100
+<Buffer 3f 02 3a 04 ca c3 40 01>
+bot send msg 199:  3f023a04cac34001
+bot recv msg 199:  80060100043b00001189a100
+<Buffer 3f 02 3b 04 ca c3 40 01>
+bot send msg 199:  3f023b04cac34001
+bot recv msg 199:  80060100043c00001e89a100
+<Buffer 3f 02 3c 04 ca c3 40 01>
+bot send msg 199:  3f023c04cac34001
+bot recv msg 199:  80060100043d00002a89a100
+<Buffer 3f 02 3d 04 ca c3 40 01>
+bot send msg 199:  3f023d04cac34001
+bot recv msg 199:  80060100043e00003689a100
+<Buffer 3f 02 3e 04 ca c3 40 01>
+bot send msg 199:  3f023e04cac34001
+bot recv msg 199:  80060100043f00004289a100
+<Buffer 3f 02 3f 04 ca c3 40 01>
+bot send msg 199:  3f023f04cac34001
+bot recv msg 199:  80060100044000004d89a100
+<Buffer 3f 02 40 04 ca c3 40 01>
+bot send msg 199:  3f024004cac34001
+bot recv msg 199:  80060100044100005989a100
+<Buffer 3f 02 41 04 ca c3 40 01>
+bot send msg 199:  3f024104cac34001
+bot recv msg 199:  80060100044200006489a100
+<Buffer 3f 02 42 04 ca c3 40 01>
+bot send msg 199:  3f024204cac34001
+bot recv msg 199:  80060100044300006c89a100
+<Buffer 3f 02 43 04 ca c3 40 01>
+bot send msg 199:  3f024304cac34001
+bot recv msg 199:  80060100044400007689a100
+<Buffer 3f 02 44 04 ca c3 40 01>
+bot send msg 199:  3f024404cac34001
+bot recv msg 199:  80060100044500008289a100
+<Buffer 3f 02 45 04 ca c3 40 01>
+bot send msg 199:  3f024504cac34001
+bot recv msg 199:  80060100044600008c89a100
+<Buffer 3f 02 46 04 ca c3 40 01>
+bot send msg 199:  3f024604cac34001
+bot recv msg 199:  80060100044700009489a100
+<Buffer 3f 02 47 04 ca c3 40 01>
+bot send msg 199:  3f024704cac34001
+bot recv msg 199:  80060100044800009d89a100
+<Buffer 3f 02 48 04 ca c3 40 01>
+bot send msg 199:  3f024804cac34001
+bot recv msg 199:  8006010004490000a989a100
+<Buffer 3f 02 49 04 ca c3 40 01>
+bot send msg 199:  3f024904cac34001
+bot recv msg 199:  80060100044a0000b789a100
+<Buffer 3f 02 4a 04 ca c3 40 01>
+bot send msg 199:  3f024a04cac34001
+bot recv msg 199:  80060100044b0000c389a100
+<Buffer 3f 02 4b 04 ca c3 40 01>
+bot send msg 199:  3f024b04cac34001
+bot recv msg 199:  80060100044c0000cf89a100
+<Buffer 3f 02 4c 04 ca c3 40 01>
+bot send msg 199:  3f024c04cac34001
+bot recv msg 199:  80060100044d0000d989a100
+<Buffer 3f 02 4d 04 ca c3 40 01>
+bot send msg 199:  3f024d04cac34001
+bot recv msg 199:  80060100044e0000e589a100
+<Buffer 3f 02 4e 04 ca c3 40 01>
+bot send msg 199:  3f024e04cac34001
+bot recv msg 199:  80060100044f0000f089a100
+<Buffer 3f 02 4f 04 ca c3 40 01>
+bot send msg 199:  3f024f04cac34001
+bot recv msg 199:  8006010004500000f889a100
+<Buffer 3f 02 50 04 ca c3 40 01>
+bot send msg 199:  3f025004cac34001
+bot recv msg 199:  8006010004510000028aa100
+<Buffer 3f 02 51 04 ca c3 40 01>
+bot send msg 199:  3f025104cac34001
+bot recv msg 199:  80060100045200000e8aa100
+<Buffer 3f 02 52 04 ca c3 40 01>
+bot send msg 199:  3f025204cac34001
+bot recv msg 199:  80060100045300001b8aa100
+<Buffer 3f 02 53 04 ca c3 40 01>
+bot send msg 199:  3f025304cac34001
+bot recv msg 199:  8006010004540000278aa100
+<Buffer 3f 02 54 04 ca c3 40 01>
+bot send msg 199:  3f025404cac34001
+bot recv msg 199:  8006010004550000318aa100
+<Buffer 3f 02 55 04 ca c3 40 01>
+bot send msg 199:  3f025504cac34001
+bot recv msg 199:  80060100045600003d8aa100
+<Buffer 3f 02 56 04 ca c3 40 01>
+bot send msg 199:  3f025604cac34001
+bot recv msg 199:  8006010004570000488aa100
+<Buffer 3f 02 57 04 ca c3 40 01>
+bot send msg 199:  3f025704cac34001
+bot recv msg 199:  8006010004580000508aa100
+<Buffer 3f 02 58 04 ca c3 40 01>
+bot send msg 199:  3f025804cac34001
+bot recv msg 199:  8006010004590000598aa100
+<Buffer 3f 02 59 04 ca c3 40 01>
+bot send msg 199:  3f025904cac34001
+bot recv msg 199:  80060100045a0000658aa100
+<Buffer 3f 02 5a 04 ca c3 40 01>
+bot send msg 199:  3f025a04cac34001
+bot recv msg 199:  80060100045b0000728aa100
+<Buffer 3f 02 5b 04 ca c3 40 01>
+bot send msg 199:  3f025b04cac34001
+bot recv msg 199:  80060100045c00007e8aa100
+<Buffer 3f 02 5c 04 ca c3 40 01>
+bot send msg 199:  3f025c04cac34001
+bot recv msg 199:  80060100045d00008a8aa100
+<Buffer 3f 02 5d 04 ca c3 40 01>
+bot send msg 199:  3f025d04cac34001
+bot recv msg 199:  80060100045e0000968aa100
+<Buffer 3f 02 5e 04 ca c3 40 01>
+bot send msg 199:  3f025e04cac34001
+bot recv msg 199:  80060100045f0000a28aa100
+<Buffer 3f 02 5f 04 ca c3 40 01>
+bot send msg 199:  3f025f04cac34001
+bot recv msg 199:  8006010004600000ad8aa100
+<Buffer 3f 02 60 04 ca c3 40 01>
+bot send msg 199:  3f026004cac34001
+bot recv msg 199:  8006010004610000b88aa100
+<Buffer 3f 02 61 04 ca c3 40 01>
+bot send msg 199:  3f026104cac34001
+bot recv msg 199:  8006010004620000c08aa100
+<Buffer 3f 02 62 04 ca c3 40 01>
+bot send msg 199:  3f026204cac34001
+bot recv msg 199:  8006010004630000ca8aa100
+<Buffer 3f 02 63 04 ca c3 40 01>
+bot send msg 199:  3f026304cac34001
+bot recv msg 199:  8006010004640000d78aa100
+<Buffer 3f 02 64 04 ca c3 40 01>
+bot send msg 199:  3f026404cac34001
+bot recv msg 199:  8006010004650000e08aa100
+<Buffer 3f 02 65 04 ca c3 40 01>
+bot send msg 199:  3f026504cac34001
+bot recv msg 199:  8006010004660000e88aa100
+<Buffer 3f 02 66 04 ca c3 40 01>
+bot send msg 199:  3f026604cac34001
+bot recv msg 199:  8006010004670000f38aa100
+<Buffer 3f 02 67 04 ca c3 40 01>
+bot send msg 199:  3f026704cac34001
+bot recv msg 199:  8006010004680000fc8aa100
+<Buffer 3f 02 68 04 ca c3 40 01>
+bot send msg 199:  3f026804cac34001
+bot recv msg 199:  8006010004690000078ba100
+<Buffer 3f 02 69 04 ca c3 40 01>
+bot send msg 199:  3f026904cac34001
+bot recv msg 199:  80060100046a0000138ba100
+<Buffer 3f 02 6a 04 ca c3 40 01>
+bot send msg 199:  3f026a04cac34001
+bot recv msg 199:  80060100046b00001f8ba100
+<Buffer 3f 02 6b 04 ca c3 40 01>
+bot send msg 199:  3f026b04cac34001
+bot recv msg 199:  80060100046c0000298ba100
+<Buffer 3f 02 6c 04 ca c3 40 01>
+bot send msg 199:  3f026c04cac34001
+bot recv msg 199:  80060100046d0000358ba100
+<Buffer 3f 02 6d 04 ca c3 40 01>
+bot send msg 199:  3f026d04cac34001
+bot recv msg 199:  80060100046e0000418ba100
+<Buffer 3f 02 6e 04 ca c3 40 01>
+bot send msg 199:  3f026e04cac34001
+bot recv msg 199:  80060100046f00004d8ba100
+<Buffer 3f 02 6f 04 ca c3 40 01>
+bot send msg 199:  3f026f04cac34001
+bot recv msg 199:  80060100047000005b8ba100
+<Buffer 3f 02 70 04 ca c3 40 01>
+bot send msg 199:  3f027004cac34001
+bot recv msg 199:  8006010004710000678ba100
+<Buffer 3f 02 71 04 ca c3 40 01>
+bot send msg 199:  3f027104cac34001
+bot recv msg 199:  8006010004720000738ba100
+<Buffer 3f 02 72 04 ca c3 40 01>
+bot send msg 199:  3f027204cac34001
+bot recv msg 199:  80060100047300007f8ba100
+<Buffer 3f 02 73 04 ca c3 40 01>
+bot send msg 199:  3f027304cac34001
+bot recv msg 199:  8006010004740000898ba100
+<Buffer 3f 02 74 04 ca c3 40 01>
+bot send msg 199:  3f027404cac34001
+bot recv msg 199:  8006010004750000958ba100
+<Buffer 3f 02 75 04 ca c3 40 01>
+bot send msg 199:  3f027504cac34001
+bot recv msg 199:  8006010004760000a08ba100
+<Buffer 3f 02 76 04 ca c3 40 01>
+bot send msg 199:  3f027604cac34001
+bot recv msg 199:  8006010004770000a88ba100
+<Buffer 3f 02 77 04 ca c3 40 01>
+bot send msg 199:  3f027704cac34001
+bot recv msg 199:  8006010004780000b18ba100
+<Buffer 3f 02 78 04 ca c3 40 01>
+bot send msg 199:  3f027804cac34001
+bot recv msg 199:  8006010004790000bd8ba100
+<Buffer 3f 02 79 04 ca c3 40 01>
+bot send msg 199:  3f027904cac34001
+bot recv msg 199:  80060100047a0000c98ba100
+<Buffer 3f 02 7a 04 ca c3 40 01>
+bot send msg 199:  3f027a04cac34001
+bot recv msg 199:  80060100047b0000d58ba100
+<Buffer 3f 02 7b 04 ca c3 40 01>
+bot send msg 199:  3f027b04cac34001
+bot recv msg 199:  80060100047c0000e08ba100
+<Buffer 3f 02 7c 04 ca c3 40 01>
+bot send msg 199:  3f027c04cac34001
+bot recv msg 199:  80060100047d0000e88ba100
+<Buffer 3f 02 7d 04 ca c3 40 01>
+bot send msg 199:  3f027d04cac34001
+bot recv msg 199:  80060100047e0000f18ba100
+<Buffer 3f 02 7e 04 ca c3 40 01>
+bot send msg 199:  3f027e04cac34001
+bot recv msg 199:  80060100047f0000fd8ba100
+<Buffer 3f 02 7f 04 ca c3 40 01>
+bot send msg 199:  3f027f04cac34001
+bot recv msg 199:  8006010004800000088ca100
+<Buffer 3f 02 80 04 ca c3 40 01>
+bot send msg 199:  3f028004cac34001
+bot recv msg 199:  8006010004810000108ca100
+<Buffer 3f 02 81 04 ca c3 40 01>
+bot send msg 199:  3f028104cac34001
+bot recv msg 199:  80060100048200001a8ca100
+<Buffer 3f 02 82 04 ca c3 40 01>
+bot send msg 199:  3f028204cac34001
+bot recv msg 199:  8006010004830000268ca100
+<Buffer 3f 02 83 04 ca c3 40 01>
+bot send msg 199:  3f028304cac34001
+bot recv msg 199:  8006010004840000308ca100
+<Buffer 3f 02 84 04 ca c3 40 01>
+bot send msg 199:  3f028404cac34001
+bot recv msg 199:  8006010004850000388ca100
+<Buffer 3f 02 85 04 ca c3 40 01>
+bot send msg 199:  3f028504cac34001
+bot recv msg 199:  8006010004860000438ca100
+<Buffer 3f 02 86 04 ca c3 40 01>
+bot send msg 199:  3f028604cac34001
+bot recv msg 199:  80060100048700004f8ca100
+<Buffer 3f 02 87 04 ca c3 40 01>
+bot send msg 199:  3f028704cac34001
+bot recv msg 199:  80060100048800005b8ca100
+<Buffer 3f 02 88 04 ca c3 40 01>
+bot send msg 199:  3f028804cac34001
+bot recv msg 199:  8006010004890000678ca100
+<Buffer 3f 02 89 04 ca c3 40 01>
+bot send msg 199:  3f028904cac34001
+bot recv msg 199:  80060100048a0000738ca100
+<Buffer 3f 02 8a 04 ca c3 40 01>
+bot send msg 199:  3f028a04cac34001
+bot recv msg 199:  80060100048b00007d8ca100
+<Buffer 3f 02 8b 04 ca c3 40 01>
+bot send msg 199:  3f028b04cac34001
+bot recv msg 199:  80060100048c0000898ca100
+<Buffer 3f 02 8c 04 ca c3 40 01>
+bot send msg 199:  3f028c04cac34001
+bot recv msg 199:  80060100048d0000948ca100
+<Buffer 3f 02 8d 04 ca c3 40 01>
+bot send msg 199:  3f028d04cac34001
+bot recv msg 199:  80060100048e00009c8ca100
+<Buffer 3f 02 8e 04 ca c3 40 01>
+bot send msg 199:  3f028e04cac34001
+bot recv msg 199:  80060100048f0000a68ca100
+<Buffer 3f 02 8f 04 ca c3 40 01>
+bot send msg 199:  3f028f04cac34001
+bot recv msg 199:  8006010004900000b28ca100
+<Buffer 3f 02 90 04 ca c3 40 01>
+bot send msg 199:  3f029004cac34001
+bot recv msg 199:  8006010004910000bf8ca100
+<Buffer 3f 02 91 04 ca c3 40 01>
+bot send msg 199:  3f029104cac34001
+bot recv msg 199:  8006010004920000cb8ca100
+<Buffer 3f 02 92 04 ca c3 40 01>
+bot send msg 199:  3f029204cac34001
+bot recv msg 199:  8006010004930000d58ca100
+<Buffer 3f 02 93 04 ca c3 40 01>
+bot send msg 199:  3f029304cac34001
+bot recv msg 199:  8006010004940000e18ca100
+<Buffer 3f 02 94 04 ca c3 40 01>
+bot send msg 199:  3f029404cac34001
+bot recv msg 199:  8006010004950000ec8ca100
+<Buffer 3f 02 95 04 ca c3 40 01>
+bot send msg 199:  3f029504cac34001
+bot recv msg 199:  8006010004960000f48ca100
+<Buffer 3f 02 96 04 ca c3 40 01>
+bot send msg 199:  3f029604cac34001
+bot recv msg 199:  8006010004970000fd8ca100
+<Buffer 3f 02 97 04 ca c3 40 01>
+bot send msg 199:  3f029704cac34001
+bot recv msg 199:  8006010004980000098da100
+<Buffer 3f 02 98 04 ca c3 40 01>
+bot send msg 199:  3f029804cac34001
+bot recv msg 199:  8006010004990000158da100
+<Buffer 3f 02 99 04 ca c3 40 01>
+bot send msg 199:  3f029904cac34001
+bot recv msg 199:  80060100049a0000218da100
+<Buffer 3f 02 9a 04 ca c3 40 01>
+bot send msg 199:  3f029a04cac34001
+bot recv msg 199:  80060100049b00002c8da100
+<Buffer 3f 02 9b 04 ca c3 40 01>
+bot send msg 199:  3f029b04cac34001
+bot recv msg 199:  80060100049c0000348da100
+<Buffer 3f 02 9c 04 ca c3 40 01>
+bot send msg 199:  3f029c04cac34001
+bot recv msg 199:  80060100049d00003d8da100
+<Buffer 3f 02 9d 04 ca c3 40 01>
+bot send msg 199:  3f029d04cac34001
+bot recv msg 199:  80060100049e0000498da100
+<Buffer 3f 02 9e 04 ca c3 40 01>
+bot send msg 199:  3f029e04cac34001
+bot recv msg 199:  80060100049f0000548da100
+<Buffer 3f 02 9f 04 ca c3 40 01>
+bot send msg 199:  3f029f04cac34001
+bot recv msg 199:  8006010004a000005c8da100
+<Buffer 3f 02 a0 04 ca c3 40 01>
+bot send msg 199:  3f02a004cac34001
+bot recv msg 199:  8006010004a10000668da100
+<Buffer 3f 02 a1 04 ca c3 40 01>
+bot send msg 199:  3f02a104cac34001
+bot recv msg 199:  8006010004a20000728da100
+<Buffer 3f 02 a2 04 ca c3 40 01>
+bot send msg 199:  3f02a204cac34001
+bot recv msg 199:  8006010004a300007c8da100
+<Buffer 3f 02 a3 04 ca c3 40 01>
+bot send msg 199:  3f02a304cac34001
+bot recv msg 199:  8006010004a40000848da100
+<Buffer 3f 02 a4 04 ca c3 40 01>
+bot send msg 199:  3f02a404cac34001
+bot recv msg 199:  8006010004a500008f8da100
+<Buffer 3f 02 a5 04 ca c3 40 01>
+bot send msg 199:  3f02a504cac34001
+bot recv msg 199:  8006010004a600009b8da100
+<Buffer 3f 02 a6 04 ca c3 40 01>
+bot send msg 199:  3f02a604cac34001
+bot recv msg 199:  8006010004a70000a78da100
+<Buffer 3f 02 a7 04 ca c3 40 01>
+bot send msg 199:  3f02a704cac34001
+bot recv msg 199:  8006010004a80000b38da100
+<Buffer 3f 02 a8 04 ca c3 40 01>
+bot send msg 199:  3f02a804cac34001
+bot recv msg 199:  8006010004a90000bf8da100
+<Buffer 3f 02 a9 04 ca c3 40 01>
+bot send msg 199:  3f02a904cac34001
+bot recv msg 199:  8006010004aa0000c98da100
+<Buffer 3f 02 aa 04 ca c3 40 01>
+bot send msg 199:  3f02aa04cac34001
+bot recv msg 199:  8006010004ab0000d58da100
+<Buffer 3f 02 ab 04 ca c3 40 01>
+bot send msg 199:  3f02ab04cac34001
+bot recv msg 199:  8006010004ac0000e08da100
+<Buffer 3f 02 ac 04 ca c3 40 01>
+bot send msg 199:  3f02ac04cac34001
+bot recv msg 199:  8006010004ad0000e88da100
+<Buffer 3f 02 ad 04 ca c3 40 01>
+bot send msg 199:  3f02ad04cac34001
+bot recv msg 199:  8006010004ae0000f28da100
+<Buffer 3f 02 ae 04 ca c3 40 01>
+bot send msg 199:  3f02ae04cac34001
+bot recv msg 199:  8006010004af0000fe8da100
+<Buffer 3f 02 af 04 ca c3 40 01>
+bot send msg 199:  3f02af04cac34001
+bot recv msg 199:  8006010004b000000b8ea100
+<Buffer 3f 02 b0 04 ca c3 40 01>
+bot send msg 199:  3f02b004cac34001
+bot recv msg 199:  8006010004b10000178ea100
+<Buffer 3f 02 b1 04 ca c3 40 01>
+bot send msg 199:  3f02b104cac34001
+bot recv msg 199:  8006010004b20000218ea100
+<Buffer 3f 02 b2 04 ca c3 40 01>
+bot send msg 199:  3f02b204cac34001
+bot recv msg 199:  8006010004b300002d8ea100
+<Buffer 3f 02 b3 04 ca c3 40 01>
+bot send msg 199:  3f02b304cac34001
+bot recv msg 199:  8006010004b40000388ea100
+<Buffer 3f 02 b4 04 ca c3 40 01>
+bot send msg 199:  3f02b404cac34001
+bot recv msg 199:  8006010004b50000408ea100
+<Buffer 3f 02 b5 04 ca c3 40 01>
+bot send msg 199:  3f02b504cac34001
+bot recv msg 199:  8006010004b60000498ea100
+<Buffer 3f 02 b6 04 ca c3 40 01>
+bot send msg 199:  3f02b604cac34001
+bot recv msg 199:  8006010004b70000558ea100
+<Buffer 3f 02 b7 04 ca c3 40 01>
+bot send msg 199:  3f02b704cac34001
+bot recv msg 199:  8006010004b80000618ea100
+<Buffer 3f 02 b8 04 ca c3 40 01>
+bot send msg 199:  3f02b804cac34001
+bot recv msg 199:  8006010004b900006d8ea100
+<Buffer 3f 02 b9 04 ca c3 40 01>
+bot send msg 199:  3f02b904cac34001
+bot recv msg 199:  8006010004ba0000788ea100
+this.#workers[number_worker]: disconnect 1: number_worker: 0
+<Buffer 3f 02 ba 04 ca c3 40 01>
+bot send msg 199:  3f02ba04cac34001
+bot recv msg 199:  8006010004bb0000808ea100
+<Buffer 3f 02 bb 04 ca c3 40 01>
+bot send msg 199:  3f02bb04cac34001
+bot recv msg 199:  8006010004bc0000898ea100
+<Buffer 3f 02 bc 04 ca c3 40 01>
+bot send msg 199:  3f02bc04cac34001
+bot recv msg 199:  8006010004bd0000958ea100
+<Buffer 3f 02 bd 04 ca c3 40 01>
+bot send msg 199:  3f02bd04cac34001
+bot recv msg 199:  8006010004be0000a08ea100
+<Buffer 3f 02 be 04 ca c3 40 01>
+bot send msg 199:  3f02be04cac34001
+bot recv msg 199:  8006010004bf0000a88ea100
+<Buffer 3f 02 bf 04 ca c3 40 01>
+bot send msg 199:  3f02bf04cac34001
+bot recv msg 199:  8006010004c00000b28ea100
+<Buffer 3f 02 c0 04 ca c3 40 01>
+bot send msg 199:  3f02c004cac34001
+bot recv msg 199:  8006010004c10000bf8ea100
+<Buffer 3f 02 c1 04 ca c3 40 01>
+bot send msg 199:  3f02c104cac34001
+bot recv msg 199:  8006010004c20000c88ea100
+<Buffer 3f 02 c2 04 ca c3 40 01>
+bot send msg 199:  3f02c204cac34001
+bot recv msg 199:  8006010004c30000d08ea100
+<Buffer 3f 02 c3 04 ca c3 40 01>
+bot send msg 199:  3f02c304cac34001
+bot recv msg 199:  8006010004c40000db8ea100
+<Buffer 3f 02 c4 04 ca c3 40 01>
+bot send msg 199:  3f02c404cac34001
+bot recv msg 199:  8006010004c50000e78ea100
+<Buffer 3f 00 c5 04 c7 02>
+bot send msg 199:  3f00c504c702
+bot recv msg 199:  8006010004c60000f38ea100
+<Buffer 3f 08 c6 04>
+bot send msg 199:  3f08c604
+bot recv msg 199:  8006010004c70000ff8ea100
+<Buffer 3f 02 c7 04 ca c3 40 01>
+bot send msg 199:  3f02c704cac34001
+bot recv msg 199:  8006010004c70000ff8ea100
+<Buffer 3f 02 c7 04 ca c3 40 01>
+bot send msg 199:  3f02c704cac34001
+bot recv msg 199:  8006010004c70000ff8ea100
+<Buffer 3f 02 c7 04 ca c3 40 01>
+bot send msg 199:  3f02c704cac34001
+bot recv msg 199:  8006010004c70000ff8ea100
+<Buffer 3f 02 c7 04 ca c3 40 01>
+bot send msg 199:  3f02c704cac34001
+bot recv msg 199:  3f0804c7
+end party!
+bot send msg 199:  8801000006c705005b378ac51a406168
+bot recv msg 199:  8006010005c80000ff8ea100
+<Buffer 3f 02 c8 05 ca c3 40 01>
+bot send msg 199:  3f02c805cac34001
+bot recv msg 199:  8006010005c80000ff8ea100
+<Buffer 3f 02 c8 05 ca c3 40 01>
+bot send msg 199:  3f02c805cac34001
+bot recv msg 199:  8006010005c80000ff8ea100
+<Buffer 3f 02 c8 05 ca c3 40 01>
+bot send msg 199:  3f02c805cac34001
